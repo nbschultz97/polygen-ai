@@ -121,6 +121,12 @@ const App: React.FC = () => {
     setInput('');
     const imageToSend = attachedImage;
     clearAttachedImage(); // Clear the image preview immediately
+
+    // Clear clarifications when user responds (prevents stale UI)
+    if (currentAsset?.clarifications) {
+      setCurrentAsset(prev => prev ? { ...prev, clarifications: undefined } : null);
+    }
+
     setWorkflowStep('processing');
 
     try {

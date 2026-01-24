@@ -5,6 +5,23 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-01-24
+
+### Fixed
+- **Clarification Loop**: Planner no longer asks repetitive questions; uses industry standards by default
+- **Clarifications UI**: Panel now clears when user responds instead of persisting
+- **Claude API CORS**: Added proper proxy configuration with required Anthropic headers
+
+### Changed
+- **Planner Prompt**: Rewrote to prioritize building over asking; max 1 round of questions
+- **Coder Prompt**: Cleaner output style - removed formulaic "=== SECTION ===" banners
+- **Code Quality**: Generated OpenSCAD now reads like human-written code
+- **Domain Knowledge**: Added MOLLE/PALS and Picatinny (MIL-STD-1913) specs to both agents
+
+### Technical
+- Added Vite proxy for Claude API (`/api/claude` → `api.anthropic.com`)
+- Fixed TypeScript errors in plannerService (ThinkingLevel type)
+
 ## [2.0.0] - 2026-01-24
 
 ### Added

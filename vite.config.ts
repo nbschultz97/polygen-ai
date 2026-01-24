@@ -7,7 +7,23 @@ export default defineConfig(({ mode }) => {
     return {
       server: {
         port: 3000,
-        host: 'localhost', // Changed from 0.0.0.0 for security - only listen on localhost
+        host: 'localhost',
+        proxy: {
+          // Proxy /api/claude to Anthropic API
+          '/api/claude': {
+            target: 'https://api.anthropic.com',
+            changeOrigin: true,
+            rewrite: (path) => '/v1/messages',
+            configure: (proxy) => {
+              proxy.on('proxyReq', (proxyReq) => {
+                // Add Anthropic API headers
+                proxyReq.setHeader('x-api-key', env.ANTHROPIC_API_KEY || '');
+                proxyReq.setHeader('anthropic-version', '2023-06-01');
+                proxyReq.setHeader('anthropic-dangerous-direct-browser-access', 'true');
+              });
+            }
+          }
+        }
       },
       plugins: [react()],
       define: {

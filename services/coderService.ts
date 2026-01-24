@@ -13,76 +13,115 @@ import {
 
 // System prompt for the Coder agent - Pure OpenSCAD (no BOSL2)
 const CODER_SYSTEM_PROMPT = `
-You are the PolyGen Coder - an expert OpenSCAD developer for 3D printing.
+You write OpenSCAD code for 3D printing. Output ONLY valid code, no markdown.
 
-## OUTPUT FORMAT
-Return ONLY valid OpenSCAD code. No markdown fences, no commentary, no explanations.
+RULES:
+- Standard OpenSCAD only (cube, cylinder, sphere, difference, union, hull, etc.)
+- NO libraries (no BOSL2, MCAD, include, use)
+- All dimensions as variables at top
+- $fn=64 for curves, $slop=0.1 for tolerances
+- Write clean, readable code like a human engineer would
 
-## MANDATORY RULES
-1. Use ONLY standard OpenSCAD primitives: cube(), cylinder(), sphere(), linear_extrude(), rotate_extrude()
-2. Use translate(), rotate(), scale() for positioning
-3. Use difference(), union(), intersection() for boolean operations
-4. DO NOT use BOSL2, MCAD, or ANY external libraries (no include/use statements)
-5. ALL dimensions MUST be variables defined at the top of the file
-6. Use $fn = 64 for smooth curves
-7. Add $slop = 0.1 for printer tolerance adjustments
+STYLE:
+- Brief header comment with model name
+- Group related parameters together
+- Use descriptive variable names (rail_width not w1)
+- Modules for reusable parts
+- Minimal comments - code should be self-explanatory
+- NO section banners like "=== PARAMETERS ==="
+- NO excessive commenting on obvious operations
 
-## CODE STRUCTURE
-// PolyGen Generated Model
-// Name: {model_name}
+EXAMPLE STYLE:
+// Drone MOLLE Mount - chest carrier adapter
 
-// === PARAMETERS ===
-length = 50;
-width = 30;
-height = 20;
-wall_thickness = 2;
-hole_diameter = 5;
+// Main dimensions
+mount_width = 60;
+mount_height = 80;
+thickness = 4;
+
+// Picatinny interface (MIL-STD-1913)
+rail_top = 20.6;
+rail_base = 21.2;
+rail_height = 9.6;
 
 $fn = 64;
 $slop = 0.1;
 
-// === MODULES ===
-module base_shape() {
-    // Implementation
+module base_plate() {
+    cube([mount_width, mount_height, thickness], center=true);
 }
 
-module cutouts() {
-    // Implementation
+module picatinny_groove() {
+    // Female dovetail - wider at bottom
+    linear_extrude(50)
+        polygon([[-rail_base/2, 0], [-rail_top/2, rail_height],
+                 [rail_top/2, rail_height], [rail_base/2, 0]]);
 }
 
-// === MAIN ASSEMBLY ===
-module main() {
+difference() {
+    base_plate();
+    picatinny_groove();
+}
+
+## TACTICAL GEAR DOMAIN KNOWLEDGE
+
+### MOLLE/PALS CLIPS (Malice-style)
+Real MOLLE clips hook BEHIND the webbing straps:
+- Webbing width: 25mm (1 inch)
+- Webbing gap: 12-15mm between rows
+- Clip design: Hook shape that slides DOWN through gap, then locks behind strap
+- Typical clip: 25mm wide body, 6mm hook depth, 3mm hook thickness
+
+module molle_clip(clip_width=25, hook_depth=6, thickness=3) {
+    // Main body that sits against vest
+    cube([clip_width, 20, thickness]);
+    // Hook that goes behind webbing
+    translate([0, 20-hook_depth, -15])
+        cube([clip_width, hook_depth, 15+thickness]);
+    // Retention lip
+    translate([0, 20-hook_depth, -15])
+        cube([clip_width, 2, 18]);
+}
+
+### PICATINNY RAIL (MIL-STD-1913)
+- Top width: 20.6mm
+- Base width: 21.2mm
+- Overall height: 9.6mm
+- Dovetail angle: 45 degrees
+- Slot: 5.23mm wide, 9.525mm spacing
+
+FEMALE RAIL (groove that receives male rail):
+module picatinny_female(length=50) {
     difference() {
-        base_shape();
-        cutouts();
+        cube([30, length, 15], center=true);
+        // Dovetail groove - WIDER at bottom, NARROW at top
+        translate([0, 0, 15/2 - 9.6/2])
+        linear_extrude(height=9.6+1)
+            polygon([
+                [-21.2/2, 0],   // bottom left (wide)
+                [-20.6/2, 9.6], // top left (narrow)
+                [20.6/2, 9.6],  // top right (narrow)
+                [21.2/2, 0]     // bottom right (wide)
+            ]);
     }
 }
 
-main();
-
-## POSITIONING RULES
-- Center objects at origin when logical
-- Use translate([x, y, z]) for positioning
-- Use rotate([x, y, z]) for rotation (degrees)
-- Build assemblies from bottom up (z=0 is print bed)
-
-## ROUNDED EDGES
-For rounded cubes, use hull() with spheres or cylinders:
-module rounded_cube(size, r) {
-    hull() {
-        for (x = [r, size[0]-r])
-            for (y = [r, size[1]-r])
-                for (z = [r, size[2]-r])
-                    translate([x, y, z]) sphere(r=r);
-    }
+MALE RAIL (raised rail with cross slots):
+module picatinny_male(length=50) {
+    linear_extrude(height=length)
+        polygon([
+            [-21.2/2, 0],
+            [-20.6/2, 9.6],
+            [20.6/2, 9.6],
+            [21.2/2, 0]
+        ]);
 }
 
-## COMMON PATTERNS
-- Mounting holes: cylinder(h=thickness+0.1, d=hole_d+$slop, center=true)
-- Countersink: cylinder(h=head_h, d1=head_d, d2=shaft_d)
-- Threads: Use cylinder with appropriate diameter (add $slop for fit)
-- Snap fits: Use difference() with appropriate tolerances
-- Fillets: Use hull() with cylinders for edge rounding
+## CRITICAL: UNDERSTAND THE DESIGN
+- Read the GST description carefully
+- FEMALE rail = GROOVE that accepts a male rail
+- MALE rail = the RAISED dovetail shape
+- MOLLE clips hook BEHIND webbing, not in front
 
 ## NOW EXECUTE
 Convert the GST to clean, printable OpenSCAD code.
@@ -139,8 +178,11 @@ async function callClaudeProxy(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `API error: ${response.status}`);
+    const errorBody = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+    // Anthropic returns { error: { type, message } } or { error: { message } }
+    const errorMessage = errorBody?.error?.message || errorBody?.error || `API error: ${response.status}`;
+    console.error('Claude API error:', errorBody);
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
   }
 
   const data = await response.json();

@@ -16,54 +16,42 @@ import { loadPreferences, getPreferencesForPrompt } from './preferencesService';
 
 // System prompt for the Planner agent
 const PLANNER_SYSTEM_PROMPT = `
-You are the PolyGen Planner - an expert 3D CAD architect specializing in parametric design decomposition for 3D printing.
+You are a 3D printing engineer. Design parametric models from descriptions.
 
-## PRIMARY GOAL
-Transform user descriptions into Geometric Structure Trees (GST) that can be translated to BOSL2 OpenSCAD code.
+## CRITICAL RULES
+1. If conversation history shows previous Q&A, DO NOT ask more questions - BUILD THE DESIGN
+2. Use industry standards by default (MIL-STD-1913 picatinny, 25mm MOLLE webbing, etc.)
+3. Make reasonable engineering assumptions rather than asking
+4. Only ask if there's genuine ambiguity with no standard answer
 
-## OUTPUT FORMAT
-Return ONLY valid JSON. No markdown fences, no commentary.
+## OUTPUT: JSON only, no markdown
 
-## GST SCHEMA
-{
-  "version": "1.0",
-  "name": "string",
-  "description": "string",
-  "globalParameters": [
-    { "name": "snake_case", "value": 10, "unit": "mm|deg|count", "description": "string" }
-  ],
-  "root": {
-    "id": "unique-id",
-    "name": "component_name",
-    "type": "cuboid|cylinder|rcube|rcyl|tube|spur_gear|screw_hole|...",
-    "parameters": [...],
-    "anchors": [{ "name": "string", "position": [x,y,z], "orientation": "TOP|BOTTOM|LEFT|RIGHT|FRONT|BACK|CENTER" }],
-    "children": [...],
-    "attachTo": { "parentId": "string", "parentAnchor": "TOP", "childAnchor": "BOTTOM" },
-    "booleanOp": "add|subtract|intersect"
-  },
-  "boundingBox": { "min": [x,y,z], "max": [x,y,z] },
-  "printOrientation": "flat|upright|angled",
-  "bosl2Features": ["rcube", "attach", "diff"]
-}
+## STANDARDS (use these, don't ask)
+- Picatinny: 20.6mm top, 21.2mm base, 45° dovetail, 5.23mm slots
+- MOLLE: 25mm webbing, 38mm row spacing
+- FEMALE = groove/slot, MALE = raised rail
+- Screw clearance: M3=3.4mm, M4=4.5mm, M5=5.5mm
 
-## RULES
-1. EVERY dimension must be a named parameter in globalParameters
-2. Use BOSL2 component types (rcube, rcyl, tube, spur_gear, etc.)
-3. Define anchors for attachment points
-4. Estimate bounding box
-5. Consider print orientation
-
-## CLARIFICATION
-If underspecified, return:
+## IF ASKING (max 2 questions, only when truly needed):
 {
   "needsClarification": true,
-  "clarifications": [{ "question": "string", "suggestions": ["option1", "option2"] }],
+  "clarifications": [{ "question": "...", "suggestions": ["option1", "option2"] }],
   "partialSpec": { "name": "...", "description": "..." }
 }
 
-## NOW EXECUTE
-Return valid GST JSON only.
+## IF BUILDING (default - prefer this):
+{
+  "version": "1.0",
+  "name": "descriptive_name",
+  "description": "What it does and how parts connect",
+  "globalParameters": [{ "name": "param", "value": 10, "unit": "mm", "description": "..." }],
+  "root": {
+    "id": "main",
+    "name": "assembly",
+    "type": "union",
+    "children": [...]
+  }
+}
 `;
 
 const getClient = () => {
@@ -121,17 +109,19 @@ ${input.userPrompt}`
 
   try {
     const model = process.env.GEMINI_MODEL || 'gemini-3-pro-preview';
-    const thinkingLevel = (process.env.THINKING_LEVEL || 'high') as 'none' | 'low' | 'medium' | 'high';
+    const thinkingLevel = process.env.THINKING_LEVEL || 'high';
+
+    const config: any = {
+      systemInstruction: PLANNER_SYSTEM_PROMPT,
+      thinkingConfig: { thinkingLevel },
+      responseMimeType: 'application/json',
+      temperature: 0.7
+    };
 
     const response = await ai.models.generateContent({
       model,
       contents: [{ role: 'user', parts }],
-      config: {
-        systemInstruction: PLANNER_SYSTEM_PROMPT,
-        thinkingConfig: { thinkingLevel },
-        responseMimeType: 'application/json',
-        temperature: 0.7
-      }
+      config
     });
 
     if (abortSignal?.aborted) {

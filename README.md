@@ -1,6 +1,6 @@
 # PolyGen AI
 
-**v2.0.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md)
+**v2.1.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md)
 
 A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natural language descriptions into printable OpenSCAD code using Google Gemini (Planner) and Anthropic Claude (Coder).
 
