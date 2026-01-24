@@ -171,7 +171,7 @@ const App: React.FC = () => {
             </span>
             <span className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              Gemini 2.5 Pro
+              Gemini 3 Pro
             </span>
             <button
               onClick={() => setShowSettings(true)}

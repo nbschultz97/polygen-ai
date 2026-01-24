@@ -1,6 +1,6 @@
 # PolyGen AI
 
-A text-to-3D model generator that converts natural language descriptions into printable OpenSCAD code using Google's Gemini 2.5 Pro.
+A text-to-3D model generator that converts natural language descriptions into printable OpenSCAD code using Google's Gemini 3 Pro.
 
 ## Features
 
@@ -31,8 +31,8 @@ A text-to-3D model generator that converts natural language descriptions into pr
 3. Create `.env.local` and add your Gemini API key:
    ```
    GEMINI_API_KEY=your_api_key_here
-   GEMINI_MODEL=gemini-2.5-pro
-   THINKING_BUDGET=24576
+   GEMINI_MODEL=gemini-3-pro-preview
+   THINKING_LEVEL=high
    ```
 
 4. Run the app:
@@ -49,8 +49,8 @@ Edit `.env.local` to customize:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GEMINI_API_KEY` | (required) | Your Google AI API key |
-| `GEMINI_MODEL` | `gemini-2.5-pro` | Model to use (`gemini-2.5-pro`, `gemini-2.5-flash`) |
-| `THINKING_BUDGET` | `24576` | Token budget for reasoning (max 24576 for 2.5-pro) |
+| `GEMINI_MODEL` | `gemini-3-pro-preview` | Model to use (`gemini-3-pro-preview`, `gemini-2.5-pro`, `gemini-2.5-flash`) |
+| `THINKING_LEVEL` | `high` | Reasoning depth: `low`, `medium`, or `high` |
 
 ## Tech Stack
 

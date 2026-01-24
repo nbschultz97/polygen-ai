@@ -5,12 +5,12 @@ import { SpecData, GeneratedAsset, ClarificationQuestion } from "../types";
 import { loadPreferences, getPreferencesForPrompt, addRecentDesign } from "./preferencesService";
 
 // App Version - update this when making changes
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = "1.3.0";
 export const APP_BUILD_DATE = "2026-01-24";
 
 // Configuration - can be overridden via environment variables
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
-const THINKING_BUDGET = parseInt(process.env.THINKING_BUDGET || '24576', 10); // Increased for complex 3D designs
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-pro-preview';
+const THINKING_LEVEL = process.env.THINKING_LEVEL || 'high'; // Gemini 3 uses thinking_level: low, medium, high
 const TEMPERATURE = 0.7; // Balanced creativity vs consistency
 
 const getClient = () => {
@@ -343,7 +343,7 @@ ${userPrompt}
         // Build config - note: can't use responseMimeType with tools
         const config: any = {
             systemInstruction: POLYGEN_AUTHOR_SYSTEM_PROMPT,
-            thinkingConfig: { thinkingBudget: THINKING_BUDGET },
+            thinkingConfig: { thinkingLevel: THINKING_LEVEL },
             temperature: TEMPERATURE,
         };
 
