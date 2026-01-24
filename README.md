@@ -1,13 +1,18 @@
 # PolyGen AI
 
+**v1.4.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md)
+
 A text-to-3D model generator that converts natural language descriptions into printable OpenSCAD code using Google's Gemini 3 Pro.
 
 ## Features
 
 - **Natural Language Input** - Describe what you want to create in plain English
+- **Image-to-3D** - Upload a photo and recreate it as a printable model
 - **OpenSCAD Code Generation** - Outputs parametric, printable-ready OpenSCAD code
-- **Built-in SCAD Kernel** - Pre-loaded utility modules for fasteners, patterns, and structural elements
-- **In-App 3D Preview** - View your model in the browser with Three.js (requires CDN access)
+- **Built-in SCAD Kernel** - Pre-loaded modules for fasteners, threads, gears, bearings, hinges, and more
+- **In-App 3D Preview** - View your model in the browser with Three.js
+- **STL Export** - Download STL files directly from the preview
+- **Design Templates** - 9 quick-start templates for common objects
 - **Clarification Questions** - AI asks follow-up questions with clickable suggested answers
 - **Quick Fix Buttons** - One-click adjustments for tolerances, scaling, and wall thickness
 - **User Preferences** - Save your printer settings, tolerances, and material preferences
