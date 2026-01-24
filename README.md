@@ -1,20 +1,66 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# PolyGen AI
 
-# Run and deploy your AI Studio app
+A text-to-3D model generator that converts natural language descriptions into printable OpenSCAD code using Google's Gemini 2.5 Pro.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1NkCuxnzYW25-Jih5UXoBXMsi9XgDZT17
+- **Natural Language Input** - Describe what you want to create in plain English
+- **OpenSCAD Code Generation** - Outputs parametric, printable-ready OpenSCAD code
+- **Built-in SCAD Kernel** - Pre-loaded utility modules for fasteners, patterns, and structural elements
+- **In-App 3D Preview** - View your model in the browser with Three.js (requires CDN access)
+- **Clarification Questions** - AI asks follow-up questions with clickable suggested answers
+- **Quick Fix Buttons** - One-click adjustments for tolerances, scaling, and wall thickness
+- **User Preferences** - Save your printer settings, tolerances, and material preferences
+- **Export Options** - Copy code, download `.scad` files, or open directly in OpenSCAD desktop
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js 18+
 
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/nbschultz97/polygen-ai.git
+   cd polygen-ai
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create `.env.local` and add your Gemini API key:
+   ```
+   GEMINI_API_KEY=your_api_key_here
+   GEMINI_MODEL=gemini-2.5-pro
+   THINKING_BUDGET=24576
+   ```
+
+4. Run the app:
+   ```bash
+   npm run dev
+   ```
+
+5. Open http://localhost:3000 in your browser
+
+## Configuration
+
+Edit `.env.local` to customize:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GEMINI_API_KEY` | (required) | Your Google AI API key |
+| `GEMINI_MODEL` | `gemini-2.5-pro` | Model to use (`gemini-2.5-pro`, `gemini-2.5-flash`) |
+| `THINKING_BUDGET` | `24576` | Token budget for reasoning (max 24576 for 2.5-pro) |
+
+## Tech Stack
+
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- Three.js (3D rendering)
+- OpenSCAD WASM (browser-based compilation)
+- Google Gemini API
+
+## License
+
+MIT
