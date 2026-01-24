@@ -11,10 +11,16 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
+        // Gemini (Planner Agent)
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_MODEL': JSON.stringify(env.GEMINI_MODEL || 'gemini-2.5-pro'),
-        'process.env.THINKING_BUDGET': JSON.stringify(env.THINKING_BUDGET || '8192'),
+        'process.env.GEMINI_MODEL': JSON.stringify(env.GEMINI_MODEL || 'gemini-3-pro-preview'),
+        'process.env.THINKING_LEVEL': JSON.stringify(env.THINKING_LEVEL || 'high'),
+        // Claude (Coder Agent)
+        'process.env.ANTHROPIC_API_KEY': JSON.stringify(env.ANTHROPIC_API_KEY),
+        'process.env.CODER_MODEL': JSON.stringify(env.CODER_MODEL || 'claude-sonnet-4-20250514'),
+        // Multi-Agent Pipeline
+        'process.env.USE_MULTI_AGENT': JSON.stringify(env.USE_MULTI_AGENT || 'false'),
       },
       resolve: {
         alias: {

@@ -3,10 +3,12 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Message, GeneratedAsset, WorkflowStep } from './types';
 import { processArchitectRequest, APP_VERSION, APP_BUILD_DATE, ImageData } from './services/geminiService';
+import { orchestrateGeneration, isMultiAgentAvailable } from './services/agentOrchestrator';
 import { exportToOpenSCAD, copyToClipboard } from './services/openscadExport';
 import ScadRenderer from './components/ScadRenderer';
 import SettingsPanel from './components/SettingsPanel';
 import DesignTemplates from './components/DesignTemplates';
+import SmartQuickFixes from './components/SmartQuickFixes';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
@@ -17,35 +19,22 @@ import {
   Box,
   Copy,
   Check,
-  Download,
   ExternalLink,
   HelpCircle,
   ChevronRight,
   Sparkles,
-  FileCode,
   Loader2,
   Eye,
   Code,
-  Wrench,
-  Plus,
-  Minus,
   RotateCcw,
-  Move,
   Settings,
   ImagePlus,
   X
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
-// Quick fix suggestions for common issues
-const QUICK_FIXES = [
-  { label: "Too tight", prompt: "Increase all tolerances by 0.2mm for a looser fit", icon: Plus },
-  { label: "Too loose", prompt: "Decrease all tolerances by 0.15mm for a tighter fit", icon: Minus },
-  { label: "Walls too thin", prompt: "Increase all wall thicknesses to at least 2.4mm", icon: Wrench },
-  { label: "Make bigger", prompt: "Scale the entire design up by 10%", icon: Plus },
-  { label: "Make smaller", prompt: "Scale the entire design down by 10%", icon: Minus },
-  { label: "Add clearance", prompt: "Add 0.5mm clearance around all mating surfaces", icon: Move },
-];
+// Check if multi-agent pipeline is enabled
+const USE_MULTI_AGENT = process.env.USE_MULTI_AGENT === 'true';
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -136,27 +125,64 @@ const App: React.FC = () => {
 
     try {
       const history = messages.map(m => m.text);
-      const asset = await processArchitectRequest(
-        sanitizedInput,
-        history,
-        currentAsset,
-        abortControllerRef.current.signal,
-        imageToSend || undefined
-      );
 
-      if (abortControllerRef.current?.signal.aborted) return;
+      // Use multi-agent pipeline if enabled and available
+      if (USE_MULTI_AGENT && isMultiAgentAvailable()) {
+        const asset = await orchestrateGeneration(
+          {
+            userPrompt: sanitizedInput,
+            existingAsset: currentAsset || undefined,
+            isEdit: !!currentAsset?.scadCode,
+            imageData: imageToSend || undefined,
+            conversationHistory: history
+          },
+          {
+            onStepChange: (step) => setWorkflowStep(step),
+            onGSTGenerated: (gst) => console.log('GST generated:', gst.name),
+            onCodeGenerated: (code) => console.log('Code generated:', code.length, 'chars'),
+            onValidationComplete: (result) => {
+              if (result.success) {
+                setMessages(prev => [...prev, { role: 'model', text: "Done! Your OpenSCAD code is ready. Click **Open in OpenSCAD** to edit and render it." }]);
+              } else {
+                setMessages(prev => [...prev, { role: 'model', text: `Validation issues: ${result.errors.join(', ')}` }]);
+              }
+            },
+            onSmartFixesGenerated: (fixes) => console.log('Smart fixes generated:', fixes.length),
+            onError: (error, step) => {
+              console.error(`Error in ${step}:`, error);
+              setMessages(prev => [...prev, { role: 'model', text: `Error during ${step}: ${error.message}`, isError: true }]);
+            }
+          },
+          abortControllerRef.current.signal
+        );
 
-      setCurrentAsset(asset);
+        if (abortControllerRef.current?.signal.aborted) return;
+        setCurrentAsset(asset);
 
-      if (asset.scadCode) {
-        setWorkflowStep('complete');
-        setMessages(prev => [...prev, { role: 'model', text: "Done! Your OpenSCAD code is ready. Click **Open in OpenSCAD** to edit and render it." }]);
-      } else if (asset.questions && asset.questions.length > 0) {
-        setWorkflowStep('spec-review');
-        setMessages(prev => [...prev, { role: 'model', text: "I have a few questions to finalize the design:" }]);
       } else {
-        setWorkflowStep('spec-review');
-        setMessages(prev => [...prev, { role: 'model', text: "I've drafted the specification. Click **Generate Code** when you're ready." }]);
+        // Fallback to legacy single-agent flow
+        const asset = await processArchitectRequest(
+          sanitizedInput,
+          history,
+          currentAsset,
+          abortControllerRef.current.signal,
+          imageToSend || undefined
+        );
+
+        if (abortControllerRef.current?.signal.aborted) return;
+
+        setCurrentAsset(asset);
+
+        if (asset.scadCode) {
+          setWorkflowStep('complete');
+          setMessages(prev => [...prev, { role: 'model', text: "Done! Your OpenSCAD code is ready. Click **Open in OpenSCAD** to edit and render it." }]);
+        } else if (asset.questions && asset.questions.length > 0) {
+          setWorkflowStep('spec-review');
+          setMessages(prev => [...prev, { role: 'model', text: "I have a few questions to finalize the design:" }]);
+        } else {
+          setWorkflowStep('spec-review');
+          setMessages(prev => [...prev, { role: 'model', text: "I've drafted the specification. Click **Generate Code** when you're ready." }]);
+        }
       }
 
     } catch (e: any) {
@@ -218,9 +244,15 @@ const App: React.FC = () => {
             <span className="px-2 py-1 text-[10px] font-mono text-gray-500 bg-white/[0.03] rounded border border-white/[0.06]">
               {APP_BUILD_DATE}
             </span>
-            <span className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              Gemini 3 Pro
+            <span className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full ${
+              USE_MULTI_AGENT && isMultiAgentAvailable()
+                ? 'text-violet-400 bg-violet-500/10'
+                : 'text-emerald-400 bg-emerald-500/10'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                USE_MULTI_AGENT && isMultiAgentAvailable() ? 'bg-violet-400' : 'bg-emerald-400'
+              }`}></span>
+              {USE_MULTI_AGENT && isMultiAgentAvailable() ? 'Multi-Agent' : 'Gemini 3 Pro'}
             </span>
             <button
               onClick={() => setShowSettings(true)}
@@ -294,14 +326,19 @@ const App: React.FC = () => {
                 </div>
               ))}
 
-              {workflowStep === 'processing' && (
+              {['processing', 'planning', 'coding', 'validating'].includes(workflowStep) && (
                 <div className="flex gap-2.5">
                   <div className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0">
                     <Bot className="w-3.5 h-3.5 text-violet-400" />
                   </div>
                   <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl rounded-bl-sm px-3 py-2 flex items-center gap-2">
                     <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />
-                    <span className="text-sm text-gray-500">Thinking...</span>
+                    <span className="text-sm text-gray-500">
+                      {workflowStep === 'planning' && 'Planning structure...'}
+                      {workflowStep === 'coding' && 'Generating code...'}
+                      {workflowStep === 'validating' && 'Validating model...'}
+                      {workflowStep === 'processing' && 'Thinking...'}
+                    </span>
                   </div>
                 </div>
               )}
@@ -536,26 +573,12 @@ const App: React.FC = () => {
                   )}
                 </div>
 
-                {/* Quick Fix Bar */}
-                <div className="px-4 py-2.5 border-t border-white/[0.06] bg-white/[0.02]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Wrench className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Quick Adjustments</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {QUICK_FIXES.map((fix, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSend(fix.prompt)}
-                        disabled={workflowStep === 'processing'}
-                        className="flex items-center gap-1 px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-[11px] rounded-md transition-colors border border-white/[0.06] disabled:opacity-50"
-                      >
-                        <fix.icon className="w-3 h-3" />
-                        {fix.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {/* Smart Quick Fixes */}
+                <SmartQuickFixes
+                  fixes={currentAsset.smartFixes || []}
+                  onApplyFix={(fix) => handleSend(fix.prompt)}
+                  isLoading={['processing', 'planning', 'coding', 'validating'].includes(workflowStep)}
+                />
 
                 {/* Footer */}
                 <div className="px-5 py-2 border-t border-white/[0.06] flex items-center justify-between">

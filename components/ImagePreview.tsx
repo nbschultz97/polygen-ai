@@ -10,8 +10,8 @@ interface ImagePreviewProps {
 }
 
 const ImagePreview: React.FC<ImagePreviewProps> = ({ imageUrl, workflowStep, onApprove, onReject }) => {
-  const isLoading = workflowStep === 'generating-image';
-  const isPendingApproval = workflowStep === 'reviewing';
+  const isLoading = workflowStep === 'planning' || workflowStep === 'processing';
+  const isPendingApproval = workflowStep === 'gst-review';
 
   if (isLoading) {
     return (
