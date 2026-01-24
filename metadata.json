@@ -1,0 +1,5 @@
+{
+  "name": "PolyGen AI Assistant",
+  "description": "A specialized 3D modeling assistant utilizing Gemini 3 Pro with Thinking and Google Search to generate functional OpenSCAD code and concept visualizations.",
+  "requestFramePermissions": []
+}
