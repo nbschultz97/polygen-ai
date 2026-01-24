@@ -5,7 +5,7 @@ import { SpecData, GeneratedAsset, ClarificationQuestion } from "../types";
 import { loadPreferences, getPreferencesForPrompt, addRecentDesign } from "./preferencesService";
 
 // App Version - update this when making changes
-export const APP_VERSION = "1.3.0";
+export const APP_VERSION = "1.4.0";
 export const APP_BUILD_DATE = "2026-01-24";
 
 // Configuration - can be overridden via environment variables
@@ -172,6 +172,204 @@ module snap_tab(length=8, width=4, thickness=1.5, hook=1) {
         cube([hook, width, hook], center=true);
 }
 
+// === THREADS (Simplified metric threads) ===
+
+// Module: External Thread (for bolts/screws)
+// pitch=1.5 for M10, 1.25 for M8, 1.0 for M6, 0.7 for M4, 0.5 for M3
+module ext_thread(d, h, pitch=1.0, starts=1) {
+    thread_depth = pitch * 0.6134;
+    thread_angle = 30;
+    n_turns = h / pitch;
+
+    difference() {
+        cylinder(h=h, d=d, center=false);
+        for(start=[0:starts-1]) {
+            rotate([0,0,start*360/starts])
+            linear_extrude(height=h, twist=-360*n_turns, convexity=10)
+            translate([d/2-thread_depth/2, 0, 0])
+                circle(d=thread_depth*1.2, $fn=3);
+        }
+    }
+}
+
+// Module: Internal Thread (for nuts/holes)
+module int_thread(d, h, pitch=1.0, starts=1) {
+    thread_depth = pitch * 0.6134;
+    n_turns = h / pitch;
+
+    for(start=[0:starts-1]) {
+        rotate([0,0,start*360/starts])
+        linear_extrude(height=h, twist=-360*n_turns, convexity=10)
+        translate([d/2+thread_depth/4, 0, 0])
+            circle(d=thread_depth*1.2, $fn=3);
+    }
+}
+
+// Module: Threaded Insert Boss (for M3 heat-set insert)
+module threaded_boss(h=8, od=8, id=4.2, center=false) {
+    difference() {
+        cylinder(h=h, d=od, center=center);
+        cylinder(h=h+EPSILON, d=id, center=center);
+    }
+}
+
+// === GEARS ===
+
+// Module: Spur Gear (simplified involute approximation)
+module spur_gear(teeth=20, module_=1, thickness=5, bore=0, pressure_angle=20) {
+    pitch_d = teeth * module_;
+    addendum = module_;
+    dedendum = module_ * 1.25;
+    outer_d = pitch_d + 2*addendum;
+    root_d = pitch_d - 2*dedendum;
+    tooth_angle = 360/teeth;
+
+    difference() {
+        union() {
+            // Base cylinder
+            cylinder(h=thickness, d=root_d, center=true);
+            // Teeth
+            for(i=[0:teeth-1]) {
+                rotate([0,0,i*tooth_angle])
+                linear_extrude(thickness, center=true)
+                polygon([
+                    [root_d/2*cos(-tooth_angle/4), root_d/2*sin(-tooth_angle/4)],
+                    [outer_d/2*cos(-tooth_angle/6), outer_d/2*sin(-tooth_angle/6)],
+                    [outer_d/2*cos(tooth_angle/6), outer_d/2*sin(tooth_angle/6)],
+                    [root_d/2*cos(tooth_angle/4), root_d/2*sin(tooth_angle/4)]
+                ]);
+            }
+        }
+        if(bore > 0) {
+            cylinder(h=thickness+EPSILON*2, d=bore, center=true);
+        }
+    }
+}
+
+// Module: Rack Gear (linear gear)
+module rack_gear(length=50, module_=1, thickness=5, height=10) {
+    tooth_pitch = PI * module_;
+    n_teeth = floor(length / tooth_pitch);
+    addendum = module_;
+
+    difference() {
+        cube([length, height, thickness], center=true);
+        for(i=[0:n_teeth-1]) {
+            translate([i*tooth_pitch - length/2 + tooth_pitch/2, height/2, 0])
+            linear_extrude(thickness+EPSILON, center=true)
+            polygon([
+                [-tooth_pitch/4, 0],
+                [0, -addendum*2],
+                [tooth_pitch/4, 0]
+            ]);
+        }
+    }
+}
+
+// === BEARINGS ===
+
+// Module: Bearing Pocket (recess for standard bearings)
+// Common sizes: 608 (22x8), 625 (16x5), 683 (7x3)
+module bearing_pocket(od=22, h=7, lip=1, center=true) {
+    shift = center ? [0,0,0] : [0,0,h/2];
+    translate(shift) {
+        // Main pocket
+        cylinder(h=h, d=od+FIT_NORMAL, center=true);
+        // Lip recess (prevents bearing from falling through)
+        if(lip > 0) {
+            translate([0,0,-h/2+lip/2-EPSILON])
+                cylinder(h=lip, d=od-2, center=true);
+        }
+    }
+}
+
+// Module: Bearing Seat (raised ring to hold bearing)
+module bearing_seat(od=22, id=8, h=7, wall=2, center=true) {
+    shift = center ? [0,0,0] : [0,0,h/2];
+    translate(shift)
+    difference() {
+        cylinder(h=h, d=od+wall*2, center=true);
+        cylinder(h=h+EPSILON*2, d=id-FIT_TIGHT, center=true);
+        translate([0,0,wall/2])
+            cylinder(h=h-wall+EPSILON, d=od+FIT_NORMAL, center=true);
+    }
+}
+
+// Module: Shaft with shoulder (for bearing support)
+module shaft_shoulder(d_shaft=8, d_shoulder=12, l_shaft=20, l_shoulder=3, center=false) {
+    shift = center ? [0,0,-(l_shaft+l_shoulder)/2] : [0,0,0];
+    translate(shift) {
+        cylinder(h=l_shaft, d=d_shaft-FIT_NORMAL, center=false);
+        translate([0,0,l_shaft-EPSILON])
+            cylinder(h=l_shoulder, d=d_shoulder, center=false);
+    }
+}
+
+// === HINGES ===
+
+// Module: Print-in-place Hinge (barrel hinge)
+module pip_hinge(length=20, barrel_d=6, pin_d=2.5, segments=3, gap=0.3) {
+    seg_len = length / segments;
+
+    // Male side (pin)
+    for(i=[0:2:segments-1]) {
+        translate([0, i*seg_len, 0])
+        difference() {
+            cylinder(h=seg_len-gap, d=barrel_d, center=false);
+            cylinder(h=seg_len-gap+EPSILON, d=pin_d+gap*2, center=false);
+        }
+    }
+    cylinder(h=length, d=pin_d, center=false);
+
+    // Female side (socket)
+    translate([barrel_d+gap, 0, 0])
+    for(i=[1:2:segments]) {
+        translate([0, i*seg_len, 0])
+        difference() {
+            cylinder(h=seg_len-gap, d=barrel_d, center=false);
+            translate([-barrel_d/2-gap, 0, -EPSILON])
+                cylinder(h=seg_len-gap+EPSILON*2, d=pin_d+gap*2, center=false);
+        }
+    }
+}
+
+// Module: Living Hinge (flexible hinge for single-material printing)
+module living_hinge(width=30, length=10, thickness=0.6, cuts=8) {
+    cut_spacing = width / (cuts+1);
+    cut_width = cut_spacing * 0.6;
+
+    difference() {
+        cube([width, length, thickness], center=true);
+        for(i=[1:cuts]) {
+            // Offset cuts for flexibility
+            translate([i*cut_spacing - width/2, (i%2==0 ? length/4 : -length/4), 0])
+                cube([cut_width, length/2+EPSILON, thickness+EPSILON*2], center=true);
+        }
+    }
+}
+
+// Module: Knuckle Hinge Leaf (one side of a removable hinge)
+module hinge_leaf(width=20, length=30, thickness=3, knuckles=3, pin_d=3, male=true) {
+    knuckle_len = width / knuckles;
+    knuckle_d = thickness * 2;
+
+    // Base plate
+    cube([width, length - knuckle_d/2, thickness], center=false);
+
+    // Knuckles
+    translate([0, length - knuckle_d/2, thickness/2])
+    rotate([0, 90, 0])
+    for(i=[0:knuckles-1]) {
+        if((male && i%2==0) || (!male && i%2==1)) {
+            translate([0, 0, i*knuckle_len])
+            difference() {
+                cylinder(h=knuckle_len-0.2, d=knuckle_d, center=false);
+                cylinder(h=knuckle_len, d=pin_d+FIT_LOOSE, center=false);
+            }
+        }
+    }
+}
+
 // --- POLYGEN KERNEL END ---
 `;
 
@@ -215,6 +413,25 @@ Structural:
 - rib(length, height, thickness=2) - triangular support
 - slot(length, width, height) - elongated hole
 - snap_tab(length=8, width=4, thickness=1.5, hook=1) - snap-fit feature
+
+Threads:
+- ext_thread(d, h, pitch=1.0, starts=1) - external thread for bolts
+- int_thread(d, h, pitch=1.0, starts=1) - internal thread for nuts
+- threaded_boss(h=8, od=8, id=4.2) - boss for heat-set insert
+
+Gears:
+- spur_gear(teeth=20, module_=1, thickness=5, bore=0) - basic spur gear
+- rack_gear(length=50, module_=1, thickness=5, height=10) - linear rack
+
+Bearings:
+- bearing_pocket(od=22, h=7, lip=1) - recess for ball bearing (608=22x7, 625=16x5)
+- bearing_seat(od=22, id=8, h=7, wall=2) - raised seat with pocket
+- shaft_shoulder(d_shaft=8, d_shoulder=12, l_shaft=20, l_shoulder=3) - shaft with shoulder
+
+Hinges:
+- pip_hinge(length=20, barrel_d=6, pin_d=2.5, segments=3, gap=0.3) - print-in-place hinge
+- living_hinge(width=30, length=10, thickness=0.6, cuts=8) - flexible living hinge
+- hinge_leaf(width=20, length=30, thickness=3, knuckles=3, pin_d=3, male=true) - removable hinge
 
 OPENSCAD BEST PRACTICES (MANDATORY)
 1. Always define: module main() { ... } and call: main();
@@ -277,11 +494,17 @@ NOW EXECUTE
 Process the user input with the above rules.
 `;
 
+export interface ImageData {
+  base64: string;
+  mimeType: string;
+}
+
 export const processArchitectRequest = async (
     userPrompt: string,
     conversationHistory: string[] = [],
     currentAsset: GeneratedAsset | null = null,
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
+    imageData?: ImageData
 ): Promise<GeneratedAsset> => {
   const ai = getClient();
   const maxRetries = 2;
@@ -328,9 +551,26 @@ ${userPrompt}
       return { role: i % 2 === 0 ? 'user' : 'model', parts: [{ text: msg }] };
   });
 
+  // Build the user message parts (text + optional image)
+  const userParts: any[] = [];
+
+  // Add image first if provided (Gemini prefers image before text for context)
+  if (imageData) {
+      userParts.push({
+          inlineData: {
+              mimeType: imageData.mimeType,
+              data: imageData.base64
+          }
+      });
+      // Add context for the image
+      userParts.push({ text: "REFERENCE IMAGE ATTACHED: Analyze this image and recreate it as a 3D printable object. Estimate dimensions from the image context.\n\n" + promptContent });
+  } else {
+      userParts.push({ text: promptContent });
+  }
+
   const messages = [
       ...chatHistory,
-      { role: 'user', parts: [{ text: promptContent }] }
+      { role: 'user', parts: userParts }
   ];
 
   while (attempt <= maxRetries) {

@@ -2,10 +2,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Message, GeneratedAsset, WorkflowStep } from './types';
-import { processArchitectRequest, APP_VERSION, APP_BUILD_DATE } from './services/geminiService';
+import { processArchitectRequest, APP_VERSION, APP_BUILD_DATE, ImageData } from './services/geminiService';
 import { exportToOpenSCAD, copyToClipboard } from './services/openscadExport';
 import ScadRenderer from './components/ScadRenderer';
 import SettingsPanel from './components/SettingsPanel';
+import DesignTemplates from './components/DesignTemplates';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
@@ -30,7 +31,9 @@ import {
   Minus,
   RotateCcw,
   Move,
-  Settings
+  Settings,
+  ImagePlus,
+  X
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -53,8 +56,11 @@ const App: React.FC = () => {
   const [exported, setExported] = useState(false);
   const [viewMode, setViewMode] = useState<'code' | '3d'>('code');
   const [showSettings, setShowSettings] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<ImageData | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -65,9 +71,49 @@ const App: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a valid image (JPEG, PNG, WebP, or GIF)');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image must be less than 10MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const base64Data = base64String.split(',')[1]; // Remove data URL prefix
+      setAttachedImage({
+        base64: base64Data,
+        mimeType: file.type
+      });
+      setImagePreview(base64String);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const clearAttachedImage = useCallback(() => {
+    setAttachedImage(null);
+    setImagePreview(null);
+  }, []);
+
   const handleSend = useCallback(async (overrideInput?: string) => {
     const textToSend = overrideInput || input;
-    if (!textToSend.trim() || workflowStep === 'processing') return;
+    if ((!textToSend.trim() && !attachedImage) || workflowStep === 'processing') return;
 
     const sanitizedInput = textToSend
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -81,9 +127,11 @@ const App: React.FC = () => {
     }
     abortControllerRef.current = new AbortController();
 
-    const userMsg: Message = { role: 'user', text: sanitizedInput };
+    const userMsg: Message = { role: 'user', text: attachedImage ? `[Image attached] ${sanitizedInput}` : sanitizedInput };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    const imageToSend = attachedImage;
+    clearAttachedImage(); // Clear the image preview immediately
     setWorkflowStep('processing');
 
     try {
@@ -92,7 +140,8 @@ const App: React.FC = () => {
         sanitizedInput,
         history,
         currentAsset,
-        abortControllerRef.current.signal
+        abortControllerRef.current.signal,
+        imageToSend || undefined
       );
 
       if (abortControllerRef.current?.signal.aborted) return;
@@ -116,7 +165,7 @@ const App: React.FC = () => {
       setWorkflowStep('idle');
       setMessages(prev => [...prev, { role: 'model', text: `Error: ${e.message || 'Something went wrong'}`, isError: true }]);
     }
-  }, [input, workflowStep, currentAsset, messages]);
+  }, [input, workflowStep, currentAsset, messages, attachedImage, clearAttachedImage]);
 
   const handleApproveSpec = useCallback(() => {
     handleSend("APPROVE_SPEC");
@@ -192,29 +241,23 @@ const App: React.FC = () => {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                  <div className="p-3 bg-violet-500/10 rounded-xl mb-4">
-                    <Cpu className="w-8 h-8 text-violet-400" />
+                <div className="flex flex-col h-full">
+                  <div className="flex flex-col items-center justify-center text-center px-6 py-8">
+                    <div className="p-3 bg-violet-500/10 rounded-xl mb-4">
+                      <Cpu className="w-8 h-8 text-violet-400" />
+                    </div>
+                    <h2 className="text-base font-medium text-white mb-1">AI-Powered 3D Modeling</h2>
+                    <p className="text-sm text-gray-500">
+                      Describe what you want to create, or pick a template below.
+                    </p>
                   </div>
-                  <h2 className="text-base font-medium text-white mb-1">AI-Powered 3D Modeling</h2>
-                  <p className="text-sm text-gray-500 mb-5">
-                    Describe what you want to create.
-                  </p>
-                  <div className="space-y-2 w-full max-w-[280px]">
-                    {[
-                      "Phone stand with adjustable angle",
-                      "Raspberry Pi 4 case with vents",
-                      "Cable clip for desk mounting"
-                    ].map((example, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setInput(example)}
-                        className="w-full text-left px-3 py-2.5 bg-white/[0.03] hover:bg-white/[0.06] rounded-lg text-sm text-gray-400 transition-colors border border-white/[0.06]"
-                      >
-                        "{example}"
-                      </button>
-                    ))}
-                  </div>
+                  <DesignTemplates
+                    isVisible={true}
+                    onSelectTemplate={(prompt) => {
+                      setInput(prompt);
+                      handleSend(prompt);
+                    }}
+                  />
                 </div>
               )}
 
@@ -346,22 +389,59 @@ const App: React.FC = () => {
 
             {/* Input Area */}
             <div className="p-3 border-t border-white/[0.06]">
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="mb-2 relative inline-block">
+                  <img
+                    src={imagePreview}
+                    alt="Attached"
+                    className="h-16 w-auto rounded-lg border border-white/[0.1]"
+                  />
+                  <button
+                    onClick={clearAttachedImage}
+                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 hover:bg-red-400 rounded-full text-white transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
               <div className="relative">
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={currentAsset?.scadCode ? "Describe what to change..." : "Describe what you want to create..."}
-                  className="w-full bg-white/[0.03] text-white text-sm rounded-xl border border-white/[0.08] focus:border-violet-500/50 p-3 pr-11 min-h-[72px] max-h-[140px] resize-none placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-500/30"
+                  placeholder={attachedImage
+                    ? "Describe what you want from this image..."
+                    : currentAsset?.scadCode
+                      ? "Describe what to change..."
+                      : "Describe what you want to create..."}
+                  className="w-full bg-white/[0.03] text-white text-sm rounded-xl border border-white/[0.08] focus:border-violet-500/50 p-3 pr-20 min-h-[72px] max-h-[140px] resize-none placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-500/30"
                   rows={2}
                 />
-                <button
-                  onClick={() => handleSend()}
-                  disabled={workflowStep === 'processing' || !input.trim()}
-                  className="absolute right-2 bottom-2 p-2 bg-violet-600 hover:bg-violet-500 disabled:bg-white/[0.06] disabled:text-gray-600 text-white rounded-lg transition-all"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
+                <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={workflowStep === 'processing'}
+                    className="p-2 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 text-gray-400 hover:text-white rounded-lg transition-all"
+                    title="Attach image to recreate"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleSend()}
+                    disabled={workflowStep === 'processing' || (!input.trim() && !attachedImage)}
+                    className="p-2 bg-violet-600 hover:bg-violet-500 disabled:bg-white/[0.06] disabled:text-gray-600 text-white rounded-lg transition-all"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

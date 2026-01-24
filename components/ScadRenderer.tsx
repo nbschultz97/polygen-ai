@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three-stdlib';
 import { OrbitControls } from 'three-stdlib';
-import { Loader2, AlertTriangle, RotateCcw, Lock, Play, Zap, ZapOff, Info } from 'lucide-react';
+import { Loader2, AlertTriangle, RotateCcw, Lock, Play, Zap, ZapOff, Info, Download } from 'lucide-react';
 import { loadOpenSCAD, cleanupInstance } from '../services/openscadLoader';
 
 interface ScadRendererProps {
@@ -24,6 +24,20 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
   const [autoUpdate, setAutoUpdate] = useState(false);
   const [isDirty, setIsDirty] = useState(true);
   const [renderStats, setRenderStats] = useState<{ time: number; vertices: number } | null>(null);
+  const [stlData, setStlData] = useState<Uint8Array | null>(null);
+
+  const downloadSTL = useCallback(() => {
+    if (!stlData) return;
+    const blob = new Blob([stlData], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'polygen-model.stl';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [stlData]);
 
   // Mark as dirty when code changes
   useEffect(() => {
@@ -191,6 +205,9 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
         throw new Error("Render Successful, but scene is empty. Check boolean/difference operations.");
       }
 
+      // Store STL data for download
+      setStlData(stlData);
+
       const loader = new STLLoader();
       const geometry = loader.parse(stlData.buffer);
 
@@ -313,15 +330,26 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
         </div>
 
         {renderStats && !loading && !error && (
-          <div className="bg-slate-900/80 backdrop-blur border border-white/10 rounded-xl p-3 shadow-xl pointer-events-auto text-[10px] space-y-1">
-            <div className="flex justify-between gap-4 text-slate-400">
-              <span>Compile Time:</span>
-              <span className="text-emerald-400 font-mono">{renderStats.time}ms</span>
+          <div className="bg-slate-900/80 backdrop-blur border border-white/10 rounded-xl p-3 shadow-xl pointer-events-auto text-[10px] space-y-2">
+            <div className="space-y-1">
+              <div className="flex justify-between gap-4 text-slate-400">
+                <span>Compile Time:</span>
+                <span className="text-emerald-400 font-mono">{renderStats.time}ms</span>
+              </div>
+              <div className="flex justify-between gap-4 text-slate-400">
+                <span>Mesh Vertices:</span>
+                <span className="text-indigo-400 font-mono">{renderStats.vertices.toLocaleString()}</span>
+              </div>
             </div>
-            <div className="flex justify-between gap-4 text-slate-400">
-              <span>Mesh Vertices:</span>
-              <span className="text-indigo-400 font-mono">{renderStats.vertices.toLocaleString()}</span>
-            </div>
+            {stlData && (
+              <button
+                onClick={downloadSTL}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold transition-colors"
+              >
+                <Download className="w-3 h-3" />
+                Download STL
+              </button>
+            )}
           </div>
         )}
       </div>
