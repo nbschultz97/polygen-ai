@@ -11,13 +11,12 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        // Gemini (Planner Agent)
+        // Gemini (Planner Agent) - Add HTTP referrer restriction in Google Cloud Console
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_MODEL': JSON.stringify(env.GEMINI_MODEL || 'gemini-3-pro-preview'),
         'process.env.THINKING_LEVEL': JSON.stringify(env.THINKING_LEVEL || 'high'),
-        // Claude (Coder Agent)
-        'process.env.ANTHROPIC_API_KEY': JSON.stringify(env.ANTHROPIC_API_KEY),
+        // Claude (Coder Agent) - Model name only; API key is server-side via /api/claude proxy
         'process.env.CODER_MODEL': JSON.stringify(env.CODER_MODEL || 'claude-sonnet-4-20250514'),
         // Multi-Agent Pipeline
         'process.env.USE_MULTI_AGENT': JSON.stringify(env.USE_MULTI_AGENT || 'false'),

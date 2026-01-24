@@ -1,9 +1,9 @@
 /**
  * Coder Service
- * Interfaces with Claude 3.7 Sonnet to generate OpenSCAD code from GST
+ * Generates OpenSCAD code from GST using Claude API (via server proxy)
+ * Uses pure OpenSCAD primitives (no BOSL2) for WASM compatibility
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import {
   GeometricStructureTree,
   CoderInput,
@@ -11,81 +11,147 @@ import {
   CoderOutput
 } from '../types';
 
-// System prompt for the Coder agent
+// System prompt for the Coder agent - Pure OpenSCAD (no BOSL2)
 const CODER_SYSTEM_PROMPT = `
-You are the PolyGen Coder - an expert OpenSCAD developer specializing in BOSL2 library usage.
+You are the PolyGen Coder - an expert OpenSCAD developer for 3D printing.
 
 ## OUTPUT FORMAT
-Return ONLY valid OpenSCAD code. No markdown fences, no commentary.
+Return ONLY valid OpenSCAD code. No markdown fences, no commentary, no explanations.
 
-## MANDATORY STRUCTURE
-\`\`\`openscad
+## MANDATORY RULES
+1. Use ONLY standard OpenSCAD primitives: cube(), cylinder(), sphere(), linear_extrude(), rotate_extrude()
+2. Use translate(), rotate(), scale() for positioning
+3. Use difference(), union(), intersection() for boolean operations
+4. DO NOT use BOSL2, MCAD, or ANY external libraries (no include/use statements)
+5. ALL dimensions MUST be variables defined at the top of the file
+6. Use $fn = 64 for smooth curves
+7. Add $slop = 0.1 for printer tolerance adjustments
+
+## CODE STRUCTURE
 // PolyGen Generated Model
-// Name: {name}
-
-include <BOSL2/std.scad>
+// Name: {model_name}
 
 // === PARAMETERS ===
-{all parameters as variables}
+length = 50;
+width = 30;
+height = 20;
+wall_thickness = 2;
+hole_diameter = 5;
 
-$slop = 0.1;
 $fn = 64;
+$slop = 0.1;
 
 // === MODULES ===
-{each component as a module}
+module base_shape() {
+    // Implementation
+}
 
-// === MAIN ===
+module cutouts() {
+    // Implementation
+}
+
+// === MAIN ASSEMBLY ===
 module main() {
-    {assembly}
+    difference() {
+        base_shape();
+        cutouts();
+    }
 }
 
 main();
-\`\`\`
 
-## RULES
-1. ALL numbers must be variables at top
-2. Use BOSL2 shapes (cuboid, cyl, tube) not OpenSCAD primitives
-3. Use attach() for positioning, NOT translate()
-4. Use diff("remove") for boolean operations
-5. One module per GST component
+## POSITIONING RULES
+- Center objects at origin when logical
+- Use translate([x, y, z]) for positioning
+- Use rotate([x, y, z]) for rotation (degrees)
+- Build assemblies from bottom up (z=0 is print bed)
+
+## ROUNDED EDGES
+For rounded cubes, use hull() with spheres or cylinders:
+module rounded_cube(size, r) {
+    hull() {
+        for (x = [r, size[0]-r])
+            for (y = [r, size[1]-r])
+                for (z = [r, size[2]-r])
+                    translate([x, y, z]) sphere(r=r);
+    }
+}
+
+## COMMON PATTERNS
+- Mounting holes: cylinder(h=thickness+0.1, d=hole_d+$slop, center=true)
+- Countersink: cylinder(h=head_h, d1=head_d, d2=shaft_d)
+- Threads: Use cylinder with appropriate diameter (add $slop for fit)
+- Snap fits: Use difference() with appropriate tolerances
+- Fillets: Use hull() with cylinders for edge rounding
 
 ## NOW EXECUTE
-Convert the GST to BOSL2 OpenSCAD code.
+Convert the GST to clean, printable OpenSCAD code.
 `;
 
-// BOSL2 reference (abbreviated for token efficiency)
-const BOSL2_QUICK_REF = `
-BOSL2 Quick Reference:
-- cuboid([x,y,z], rounding=r, anchor=BOTTOM)
-- cyl(h=h, d=d, rounding=r)
-- tube(h=h, od=od, id=id)
-- sphere(d=d)
-- attach(PARENT_ANCHOR, CHILD_ANCHOR) child();
-- diff("remove") parent() { tag("remove") cutter(); }
-- xcopies(n, spacing), ycopies(), zcopies()
-- zrot_copies(n=6, r=radius) child();
-
-Anchors: TOP, BOTTOM, LEFT, RIGHT, FRONT, BACK, CENTER
+// Quick reference for common operations
+const OPENSCAD_QUICK_REF = `
+OpenSCAD Quick Reference:
+- cube([x,y,z]) or cube([x,y,z], center=true)
+- cylinder(h=h, d=d) or cylinder(h=h, r=r, center=true)
+- cylinder(h=h, d1=bottom_d, d2=top_d) for cones
+- sphere(d=d) or sphere(r=r)
+- translate([x,y,z]) child();
+- rotate([x,y,z]) child(); (angles in degrees)
+- difference() { base(); cutter(); }
+- union() { part1(); part2(); }
+- intersection() { shape1(); shape2(); }
+- hull() { shape1(); shape2(); }
+- linear_extrude(height=h) 2D_shape();
+- rotate_extrude(angle=360) 2D_profile();
 `;
 
-let anthropicClient: Anthropic | null = null;
+const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 
-function getClient(): Anthropic {
-  if (!anthropicClient) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error("ANTHROPIC_API_KEY not set. Add it to .env.local to enable multi-agent pipeline.");
-    }
-    anthropicClient = new Anthropic({ apiKey });
-  }
-  return anthropicClient;
+/**
+ * Check if Claude API is available (proxy endpoint exists)
+ */
+export function isCoderAvailable(): boolean {
+  // In deployed environment, proxy is available
+  // Returns true optimistically; proxy will return 503 if API key not configured
+  return true;
 }
 
 /**
- * Check if Claude API is available
+ * Call Claude API via server proxy
  */
-export function isCoderAvailable(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+async function callClaudeProxy(
+  prompt: string,
+  systemPrompt: string,
+  abortSignal?: AbortSignal
+): Promise<string> {
+  const response = await fetch('/api/claude', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: process.env.CODER_MODEL || DEFAULT_MODEL,
+      max_tokens: 8192,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: prompt }]
+    }),
+    signal: abortSignal
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  // Extract text from Claude response
+  const content = data.content?.[0];
+  if (!content || content.type !== 'text') {
+    throw new Error('Unexpected response format from Claude');
+  }
+
+  return content.text;
 }
 
 /**
@@ -95,8 +161,6 @@ export async function generateCode(
   input: CoderInput,
   abortSignal?: AbortSignal
 ): Promise<CoderOutput> {
-  const client = getClient();
-
   if (abortSignal?.aborted) {
     throw new DOMException('Request was aborted', 'AbortError');
   }
@@ -107,7 +171,7 @@ export async function generateCode(
 ${JSON.stringify(input.gst, null, 2)}
 \`\`\`
 
-${BOSL2_QUICK_REF}
+${OPENSCAD_QUICK_REF}
 `;
 
   // Add validation errors if this is a retry
@@ -120,25 +184,14 @@ ${input.validationErrors.map(e => `- ${e}`).join('\n')}
   prompt += `\nGenerate the OpenSCAD code. Output ONLY valid SCAD code, no markdown.`;
 
   try {
-    const response = await client.messages.create({
-      model: process.env.CODER_MODEL || 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      system: CODER_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const text = await callClaudeProxy(prompt, CODER_SYSTEM_PROMPT, abortSignal);
 
     if (abortSignal?.aborted) {
       throw new DOMException('Request was aborted', 'AbortError');
     }
 
-    // Extract text content
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Coder agent');
-    }
-
     return {
-      scadCode: extractScadCode(content.text)
+      scadCode: extractScadCode(text)
     };
 
   } catch (error) {
@@ -157,8 +210,6 @@ export async function editCode(
   input: CoderEditInput,
   abortSignal?: AbortSignal
 ): Promise<CoderOutput> {
-  const client = getClient();
-
   if (abortSignal?.aborted) {
     throw new DOMException('Request was aborted', 'AbortError');
   }
@@ -179,31 +230,22 @@ ${input.editRequest}
 ## INSTRUCTIONS
 Apply SYMBOLIC CORRECTION:
 1. Modify ONLY the relevant variables or module parameters
-2. DO NOT rewrite the file structure
+2. DO NOT rewrite the entire file structure
 3. Preserve comments and formatting
-4. If adding a feature, add a new module
+4. If adding a new feature, add a new module
+5. Keep using pure OpenSCAD (no external libraries)
 
 Output the complete modified SCAD code.`;
 
   try {
-    const response = await client.messages.create({
-      model: process.env.CODER_MODEL || 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      system: CODER_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const text = await callClaudeProxy(prompt, CODER_SYSTEM_PROMPT, abortSignal);
 
     if (abortSignal?.aborted) {
       throw new DOMException('Request was aborted', 'AbortError');
     }
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Coder agent');
-    }
-
     return {
-      scadCode: extractScadCode(content.text)
+      scadCode: extractScadCode(text)
     };
 
   } catch (error) {

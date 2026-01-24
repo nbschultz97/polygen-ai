@@ -20,10 +20,6 @@ interface OpenSCADLoader {
 let openScadPromise: Promise<OpenSCADLoader> | null = null;
 let isLoading = false;
 
-// Instance pool for reuse - helps with memory management
-const instancePool: OpenSCADInstance[] = [];
-const MAX_POOL_SIZE = 2;
-
 export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
   // Return existing promise if loading or loaded
   if (openScadPromise) return openScadPromise;
@@ -202,7 +198,6 @@ export const cleanupInstance = (instance: OpenSCADInstance): void => {
 export const resetLoader = (): void => {
   openScadPromise = null;
   isLoading = false;
-  instancePool.length = 0;
 
   // Clean up global references
   const globalScope = window as any;

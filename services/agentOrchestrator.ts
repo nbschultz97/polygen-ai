@@ -108,7 +108,11 @@ export async function orchestrateGeneration(
     // Store GST and spec
     asset.gst = plannerOutput.gst;
     asset.spec = plannerOutput.spec;
-    callbacks.onGSTGenerated(plannerOutput.gst!);
+
+    // Notify GST generated (with null check)
+    if (plannerOutput.gst) {
+      callbacks.onGSTGenerated(plannerOutput.gst);
+    }
 
     // Step 2: Coder Agent generates SCAD
     console.log('Orchestrator: Starting Coder agent');
@@ -193,13 +197,15 @@ export async function orchestrateGeneration(
 
 /**
  * Check if the multi-agent pipeline is available
- * Requires both Gemini and Anthropic API keys
+ * Requires Gemini API key and Claude proxy (available when deployed)
  */
 export function isMultiAgentAvailable(): boolean {
   const hasGemini = !!(process.env.GEMINI_API_KEY || process.env.API_KEY);
-  const hasClaude = !!process.env.ANTHROPIC_API_KEY;
+  // Claude is available via /api/claude proxy in deployed environments
+  // In development, it depends on whether the proxy is running
+  const hasClaudeProxy = process.env.USE_MULTI_AGENT === 'true';
 
-  return hasGemini && hasClaude;
+  return hasGemini && hasClaudeProxy;
 }
 
 /**

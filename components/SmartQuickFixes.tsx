@@ -31,13 +31,22 @@ const categoryIcons: Record<QuickFixCategory, React.ComponentType<{ className?: 
   geometry: AlertTriangle
 };
 
-// Color mapping by category
+// Color mapping by category (button styles)
 const categoryColors: Record<QuickFixCategory, string> = {
   tolerance: 'text-blue-400 hover:bg-blue-500/10 border-blue-500/30',
   dimension: 'text-green-400 hover:bg-green-500/10 border-green-500/30',
   structure: 'text-purple-400 hover:bg-purple-500/10 border-purple-500/30',
   print: 'text-orange-400 hover:bg-orange-500/10 border-orange-500/30',
   geometry: 'text-red-400 hover:bg-red-500/10 border-red-500/30'
+};
+
+// Background dot colors for category legend
+const categoryDotColors: Record<QuickFixCategory, string> = {
+  tolerance: 'bg-blue-400',
+  dimension: 'bg-green-400',
+  structure: 'bg-purple-400',
+  print: 'bg-orange-400',
+  geometry: 'bg-red-400'
 };
 
 const SmartQuickFixes: React.FC<SmartQuickFixesProps> = ({
@@ -100,7 +109,7 @@ const SmartQuickFixes: React.FC<SmartQuickFixesProps> = ({
         <div className="mt-2 pt-2 border-t border-white/[0.04] flex flex-wrap gap-3">
           {Object.entries(groupedFixes).map(([category, categoryFixes]) => (
             <div key={category} className="flex items-center gap-1">
-              <div className={`w-1.5 h-1.5 rounded-full ${categoryColors[category as QuickFixCategory]?.split(' ')[0]?.replace('text-', 'bg-')}`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${categoryDotColors[category as QuickFixCategory] || 'bg-gray-400'}`} />
               <span className="text-[9px] text-gray-500 capitalize">{category}</span>
               <span className="text-[9px] text-gray-600">({categoryFixes.length})</span>
             </div>

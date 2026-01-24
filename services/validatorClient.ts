@@ -51,33 +51,6 @@ export async function validate(input: {
 }
 
 /**
- * Validate with auto-retry on failure
- * Used by the orchestrator for the Coder retry loop
- */
-export async function validateWithRetry(
-  scadCode: string,
-  gst?: GeometricStructureTree,
-  maxRetries: number = 2
-): Promise<ValidationResult> {
-  let lastResult: ValidationResult | null = null;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    lastResult = await validate({ scadCode, gst });
-
-    if (lastResult.success) {
-      return lastResult;
-    }
-
-    // Log retry attempt
-    if (attempt < maxRetries) {
-      console.log(`Validation attempt ${attempt + 1} failed, retrying...`);
-    }
-  }
-
-  return lastResult!;
-}
-
-/**
  * Check if validation is available (WASM loaded)
  * Always returns true since we use browser WASM
  */
@@ -88,7 +61,6 @@ export function isValidatorAvailable(): boolean {
 // Export as object for consistent API
 export const validatorClient = {
   validate,
-  validateWithRetry,
   isValidatorAvailable
 };
 
