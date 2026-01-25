@@ -2,85 +2,117 @@
 
 This document outlines planned features and improvements for PolyGen AI.
 
-## Current Version: 1.4.0
+## Current Version: 3.0.0
 
 ---
 
-## v1.5.0 - Quality of Life
+## Completed
 
-- [ ] Model history with thumbnails
-- [ ] Undo/redo for code edits
-- [ ] Keyboard shortcuts (Ctrl+Enter to generate, etc.)
-- [ ] Dark/light theme toggle
-- [ ] Mobile-responsive layout improvements
+### v3.0.0 - SaaS Monetization (January 2026)
+- [x] User authentication (Supabase)
+- [x] Subscription payments (Stripe)
+- [x] 3-tier pricing (Free/Pro/Enterprise)
+- [x] Usage tracking and limits
+- [x] Landing page with marketing content
+- [x] Pricing page with plan comparison
+- [x] Analytics dashboard
+- [x] Referral system
+- [x] Email capture and newsletter
+- [x] SEO optimization
+- [x] Legal pages (Privacy, Terms)
+- [x] Onboarding tour
 
----
+### v2.1.0 - Concept Preview (January 2026)
+- [x] AI-generated preview image during generation
+- [x] Fixed clarification loop issues
+- [x] Domain knowledge (MOLLE/PALS, Picatinny specs)
 
-## v1.6.0 - Advanced Editing
+### v2.0.0 - Multi-Agent Architecture (January 2026)
+- [x] Planner Agent (Gemini 3 Pro)
+- [x] Coder Agent (Claude Sonnet)
+- [x] Geometric Structure Tree (GST)
+- [x] Smart Quick Fixes
+- [x] Symbolic Correction
+- [x] Browser-based validation
 
-- [ ] Direct SCAD code editing with live preview
-- [ ] Parameter sliders for real-time dimension adjustments
-- [ ] Multi-part assembly support (generate multiple STLs)
-- [ ] Import existing SCAD files for modification
-
----
-
-## v2.0.0 - Architecture Overhaul
-
-Major refactor to improve code quality and reliability:
-
-### Planner-Coder-Validator Pattern
-- **Planner Agent**: Interprets user intent, produces structured specification
-- **Coder Agent**: Generates OpenSCAD from spec, handles edits at code level
-- **Validator Agent**: Checks manifold geometry, printability, compiles and tests
-
-### Geometric Structure Tree (GST)
-- Intermediate JSON representation between spec and code
-- Enables precise edits without regenerating entire model
-- Tree structure: primitives, operations, transforms, parameters
-
-### Code-Level Corrections
-- Edit requests modify existing code, not regenerate from scratch
-- Track which code sections correspond to which features
-- Surgical fixes for "make the hole bigger" type requests
-
-### Manifold Validation
-- Pre-flight geometry checks before compilation
-- Detect non-manifold edges, self-intersections
-- Warn about unprintable features (thin walls, overhangs)
+### v1.x - Core Features (January 2026)
+- [x] Natural language to OpenSCAD
+- [x] 3D preview with Three.js
+- [x] STL export
+- [x] Image-to-3D
+- [x] Design templates
+- [x] User preferences
+- [x] Clarification questions
 
 ---
 
-## v2.1.0 - Cloud Features
+## In Progress
 
-- [ ] User accounts and saved designs
-- [ ] Public design gallery
-- [ ] Share links for designs
-- [ ] Cloud rendering for faster compilation
+### v3.1.0 - Launch & Growth
+- [ ] Product Hunt launch
+- [ ] Public beta announcement
+- [ ] User feedback collection
+- [ ] Performance monitoring
+- [ ] A/B testing for pricing page
 
 ---
 
-## v2.2.0 - Print Integration
+## Planned
 
+### v3.2.0 - Team Features
+- [ ] Team workspaces
+- [ ] Shared design library
+- [ ] Role-based permissions
+- [ ] Team billing (per-seat pricing)
+- [ ] Admin dashboard
+
+### v3.3.0 - API Access
+- [ ] Public REST API
+- [ ] API key management
+- [ ] Rate limiting per tier
+- [ ] Webhook notifications
+- [ ] API documentation
+
+### v4.0.0 - Advanced Generation
+- [ ] Multi-part assembly support
+- [ ] Design version control
+- [ ] Collaborative real-time editing
+- [ ] AI-suggested improvements ("wall too thin")
+- [ ] STEP/IGES export for CNC
+
+### v4.1.0 - Print Integration
 - [ ] Direct slicer integration (PrusaSlicer, Cura)
 - [ ] Print time and filament estimates
 - [ ] Printer profile presets
 - [ ] G-code preview
+- [ ] Send to OctoPrint
+
+### v4.2.0 - Quality of Life
+- [ ] Model history with thumbnails
+- [ ] Undo/redo for code edits
+- [ ] Keyboard shortcuts
+- [ ] Dark/light theme toggle
+- [ ] Mobile app (React Native)
 
 ---
 
 ## Future Ideas (Unscheduled)
 
 - Voice input for hands-free design
-- AR preview (view model in real space)
-- Collaborative editing
-- Design version control
-- AI-suggested improvements ("this wall is too thin")
+- AR preview (view model in real space via phone camera)
 - Import from images with depth estimation
-- STEP/IGES export for CNC machining
+- Design marketplace (sell/buy designs)
+- White-label solution for maker spaces
+- Educational tier for schools
+- Plugin system for custom primitives
+- CAD software integrations (Fusion 360, FreeCAD)
 
 ---
 
 ## Contributing
 
 Have ideas? Open an issue on GitHub or submit a PR. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+*Last updated: January 24, 2026*
