@@ -165,7 +165,7 @@ This document summarizes all the components created for monetizing PolyGen AI as
 - [ ] Deploy
 
 ### 5. Domain & DNS (Optional)
-- [ ] Purchase domain (e.g., polygen.ai)
+- [ ] Purchase domain (e.g., polygen-ai.vercel.app)
 - [ ] Configure DNS in Vercel
 - [ ] Update canonical URLs in code
 

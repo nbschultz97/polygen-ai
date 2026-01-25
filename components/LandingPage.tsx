@@ -342,7 +342,7 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
           <div className="flex items-center gap-6 text-sm text-gray-500">
             <button onClick={onShowPrivacy} className="hover:text-white transition-colors">Privacy</button>
             <button onClick={onShowTerms} className="hover:text-white transition-colors">Terms</button>
-            <a href="mailto:support@polygen.ai" className="hover:text-white transition-colors">Contact</a>
+            <a href="mailto:support@polygenai.com" className="hover:text-white transition-colors">Contact</a>
           </div>
         </div>
       </footer>

@@ -1,5 +1,5 @@
 # PolyGen AI - robots.txt
-# https://polygen.ai
+# https://polygen-ai.vercel.app
 
 # Allow all web crawlers
 User-agent: *
@@ -22,8 +22,8 @@ Allow: /contact
 Crawl-delay: 1
 
 # Sitemaps
-Sitemap: https://polygen.ai/sitemap.xml
-Sitemap: https://polygen.ai/sitemap-blog.xml
+Sitemap: https://polygen-ai.vercel.app/sitemap.xml
+Sitemap: https://polygen-ai.vercel.app/sitemap-blog.xml
 
 # Google-specific
 User-agent: Googlebot

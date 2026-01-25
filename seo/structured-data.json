@@ -3,12 +3,12 @@
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://polygen.ai/#organization",
+      "@id": "https://polygen-ai.vercel.app/#organization",
       "name": "PolyGen AI",
-      "url": "https://polygen.ai",
+      "url": "https://polygen-ai.vercel.app",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://polygen.ai/logo.png",
+        "url": "https://polygen-ai.vercel.app/logo.png",
         "width": 512,
         "height": 512
       },
@@ -23,7 +23,7 @@
       "contactPoint": {
         "@type": "ContactPoint",
         "contactType": "customer support",
-        "email": "support@polygen.ai",
+        "email": "support@polygen-ai.vercel.app",
         "availableLanguage": ["English"]
       },
       "address": {
@@ -33,28 +33,28 @@
     },
     {
       "@type": "WebSite",
-      "@id": "https://polygen.ai/#website",
-      "url": "https://polygen.ai",
+      "@id": "https://polygen-ai.vercel.app/#website",
+      "url": "https://polygen-ai.vercel.app",
       "name": "PolyGen AI",
       "description": "AI-powered text to 3D model generator",
       "publisher": {
-        "@id": "https://polygen.ai/#organization"
+        "@id": "https://polygen-ai.vercel.app/#organization"
       },
       "potentialAction": {
         "@type": "SearchAction",
         "target": {
           "@type": "EntryPoint",
-          "urlTemplate": "https://polygen.ai/search?q={search_term_string}"
+          "urlTemplate": "https://polygen-ai.vercel.app/search?q={search_term_string}"
         },
         "query-input": "required name=search_term_string"
       }
     },
     {
       "@type": "SoftwareApplication",
-      "@id": "https://polygen.ai/#software",
+      "@id": "https://polygen-ai.vercel.app/#software",
       "name": "PolyGen AI",
       "description": "Transform text descriptions into 3D-printable models using AI. Supports natural language input, image-to-3D conversion, and exports to OpenSCAD and STL formats.",
-      "url": "https://polygen.ai",
+      "url": "https://polygen-ai.vercel.app",
       "applicationCategory": "DesignApplication",
       "applicationSubCategory": "3D Modeling Software",
       "operatingSystem": "Web Browser",
@@ -63,10 +63,10 @@
       "datePublished": "2024-01-01",
       "dateModified": "2026-01-24",
       "author": {
-        "@id": "https://polygen.ai/#organization"
+        "@id": "https://polygen-ai.vercel.app/#organization"
       },
       "publisher": {
-        "@id": "https://polygen.ai/#organization"
+        "@id": "https://polygen-ai.vercel.app/#organization"
       },
       "offers": {
         "@type": "AggregateOffer",
@@ -82,7 +82,7 @@
             "priceCurrency": "USD",
             "description": "5 generations per month, basic templates, OpenSCAD export",
             "availability": "https://schema.org/InStock",
-            "url": "https://polygen.ai/pricing"
+            "url": "https://polygen-ai.vercel.app/pricing"
           },
           {
             "@type": "Offer",
@@ -92,7 +92,7 @@
             "billingIncrement": "P1M",
             "description": "100 generations per month, all templates, STL export, image-to-3D",
             "availability": "https://schema.org/InStock",
-            "url": "https://polygen.ai/pricing"
+            "url": "https://polygen-ai.vercel.app/pricing"
           },
           {
             "@type": "Offer",
@@ -102,7 +102,7 @@
             "billingIncrement": "P1M",
             "description": "Unlimited generations, API access, team features, custom templates",
             "availability": "https://schema.org/InStock",
-            "url": "https://polygen.ai/pricing"
+            "url": "https://polygen-ai.vercel.app/pricing"
           }
         ]
       },
@@ -119,12 +119,12 @@
       "screenshot": [
         {
           "@type": "ImageObject",
-          "url": "https://polygen.ai/screenshots/editor.png",
+          "url": "https://polygen-ai.vercel.app/screenshots/editor.png",
           "caption": "PolyGen AI 3D Model Editor Interface"
         },
         {
           "@type": "ImageObject",
-          "url": "https://polygen.ai/screenshots/preview.png",
+          "url": "https://polygen-ai.vercel.app/screenshots/preview.png",
           "caption": "3D Preview with Real-time Rendering"
         }
       ],
@@ -153,24 +153,24 @@
     },
     {
       "@type": "Product",
-      "@id": "https://polygen.ai/#product",
+      "@id": "https://polygen-ai.vercel.app/#product",
       "name": "PolyGen AI Pro",
       "description": "Professional AI-powered 3D modeling subscription with unlimited potential for makers, designers, and businesses.",
       "brand": {
-        "@id": "https://polygen.ai/#organization"
+        "@id": "https://polygen-ai.vercel.app/#organization"
       },
       "category": "Software > Design Software > 3D Modeling",
-      "image": "https://polygen.ai/product-image.png",
+      "image": "https://polygen-ai.vercel.app/product-image.png",
       "offers": {
         "@type": "Offer",
-        "url": "https://polygen.ai/pricing",
+        "url": "https://polygen-ai.vercel.app/pricing",
         "priceCurrency": "USD",
         "price": "19.00",
         "priceValidUntil": "2026-12-31",
         "availability": "https://schema.org/InStock",
         "itemCondition": "https://schema.org/NewCondition",
         "seller": {
-          "@id": "https://polygen.ai/#organization"
+          "@id": "https://polygen-ai.vercel.app/#organization"
         }
       },
       "aggregateRating": {
@@ -182,7 +182,7 @@
     },
     {
       "@type": "FAQPage",
-      "@id": "https://polygen.ai/#faq",
+      "@id": "https://polygen-ai.vercel.app/#faq",
       "mainEntity": [
         {
           "@type": "Question",
@@ -220,7 +220,7 @@
     },
     {
       "@type": "HowTo",
-      "@id": "https://polygen.ai/#howto",
+      "@id": "https://polygen-ai.vercel.app/#howto",
       "name": "How to Create 3D Models with PolyGen AI",
       "description": "Step-by-step guide to generating 3D-printable models from text descriptions using PolyGen AI.",
       "totalTime": "PT5M",
@@ -235,28 +235,28 @@
           "position": 1,
           "name": "Describe Your Model",
           "text": "Tell the AI what you want to create in plain English. For example: 'A desk organizer with three compartments for pens and a slot for business cards.'",
-          "image": "https://polygen.ai/howto/step1.png"
+          "image": "https://polygen-ai.vercel.app/howto/step1.png"
         },
         {
           "@type": "HowToStep",
           "position": 2,
           "name": "Generate",
           "text": "Click generate and watch as our multi-agent AI creates optimized OpenSCAD code for your design.",
-          "image": "https://polygen.ai/howto/step2.png"
+          "image": "https://polygen-ai.vercel.app/howto/step2.png"
         },
         {
           "@type": "HowToStep",
           "position": 3,
           "name": "Preview and Refine",
           "text": "View your model in the 3D preview. Request changes like 'make it taller' or 'add rounded corners' to refine the design.",
-          "image": "https://polygen.ai/howto/step3.png"
+          "image": "https://polygen-ai.vercel.app/howto/step3.png"
         },
         {
           "@type": "HowToStep",
           "position": 4,
           "name": "Export",
           "text": "Download the OpenSCAD code to customize further, or export directly to STL format for 3D printing.",
-          "image": "https://polygen.ai/howto/step4.png"
+          "image": "https://polygen-ai.vercel.app/howto/step4.png"
         }
       ]
     }

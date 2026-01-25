@@ -118,7 +118,7 @@ This guide walks you through deploying PolyGen AI as a monetized SaaS product.
 ## Step 5: Configure Custom Domain (Optional)
 
 1. In Vercel, go to Settings > Domains
-2. Add your domain (e.g., `polygen.ai`)
+2. Add your domain (e.g., `polygen-ai.vercel.app`)
 3. Update DNS records as instructed
 4. Update `NEXT_PUBLIC_APP_URL` env var
 
@@ -174,7 +174,7 @@ This guide walks you through deploying PolyGen AI as a monetized SaaS product.
 
 ## Support
 
-- Set up support email: support@polygen.ai
+- Set up support email: support@polygen-ai.vercel.app
 - Consider Intercom or Crisp for live chat
 - Create FAQ page for common questions
 
