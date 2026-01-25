@@ -1,0 +1,264 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://polygen.ai/#organization",
+      "name": "PolyGen AI",
+      "url": "https://polygen.ai",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://polygen.ai/logo.png",
+        "width": 512,
+        "height": 512
+      },
+      "description": "PolyGen AI transforms text descriptions into printable 3D models using advanced multi-agent AI technology.",
+      "foundingDate": "2024",
+      "sameAs": [
+        "https://twitter.com/polygenai",
+        "https://github.com/polygen-ai",
+        "https://linkedin.com/company/polygen-ai",
+        "https://youtube.com/@polygenai"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "support@polygen.ai",
+        "availableLanguage": ["English"]
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "US"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://polygen.ai/#website",
+      "url": "https://polygen.ai",
+      "name": "PolyGen AI",
+      "description": "AI-powered text to 3D model generator",
+      "publisher": {
+        "@id": "https://polygen.ai/#organization"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://polygen.ai/search?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://polygen.ai/#software",
+      "name": "PolyGen AI",
+      "description": "Transform text descriptions into 3D-printable models using AI. Supports natural language input, image-to-3D conversion, and exports to OpenSCAD and STL formats.",
+      "url": "https://polygen.ai",
+      "applicationCategory": "DesignApplication",
+      "applicationSubCategory": "3D Modeling Software",
+      "operatingSystem": "Web Browser",
+      "browserRequirements": "Requires JavaScript. Requires modern browser with WebGL support.",
+      "softwareVersion": "3.0.0",
+      "datePublished": "2024-01-01",
+      "dateModified": "2026-01-24",
+      "author": {
+        "@id": "https://polygen.ai/#organization"
+      },
+      "publisher": {
+        "@id": "https://polygen.ai/#organization"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "lowPrice": "0",
+        "highPrice": "99",
+        "priceCurrency": "USD",
+        "offerCount": 3,
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free Plan",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "5 generations per month, basic templates, OpenSCAD export",
+            "availability": "https://schema.org/InStock",
+            "url": "https://polygen.ai/pricing"
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro Plan",
+            "price": "19",
+            "priceCurrency": "USD",
+            "billingIncrement": "P1M",
+            "description": "100 generations per month, all templates, STL export, image-to-3D",
+            "availability": "https://schema.org/InStock",
+            "url": "https://polygen.ai/pricing"
+          },
+          {
+            "@type": "Offer",
+            "name": "Enterprise Plan",
+            "price": "99",
+            "priceCurrency": "USD",
+            "billingIncrement": "P1M",
+            "description": "Unlimited generations, API access, team features, custom templates",
+            "availability": "https://schema.org/InStock",
+            "url": "https://polygen.ai/pricing"
+          }
+        ]
+      },
+      "featureList": [
+        "Natural language to 3D model conversion",
+        "Image to 3D model generation",
+        "Multi-agent AI (Gemini + Claude)",
+        "Real-time 3D preview in browser",
+        "OpenSCAD parametric code export",
+        "STL file export for 3D printing",
+        "Design templates library",
+        "Iterative refinement"
+      ],
+      "screenshot": [
+        {
+          "@type": "ImageObject",
+          "url": "https://polygen.ai/screenshots/editor.png",
+          "caption": "PolyGen AI 3D Model Editor Interface"
+        },
+        {
+          "@type": "ImageObject",
+          "url": "https://polygen.ai/screenshots/preview.png",
+          "caption": "3D Preview with Real-time Rendering"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1250",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "review": [
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Alex Chen"
+          },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5",
+            "bestRating": "5"
+          },
+          "reviewBody": "PolyGen AI saved me hours of CAD work. I just describe what I need and get printable code."
+        }
+      ]
+    },
+    {
+      "@type": "Product",
+      "@id": "https://polygen.ai/#product",
+      "name": "PolyGen AI Pro",
+      "description": "Professional AI-powered 3D modeling subscription with unlimited potential for makers, designers, and businesses.",
+      "brand": {
+        "@id": "https://polygen.ai/#organization"
+      },
+      "category": "Software > Design Software > 3D Modeling",
+      "image": "https://polygen.ai/product-image.png",
+      "offers": {
+        "@type": "Offer",
+        "url": "https://polygen.ai/pricing",
+        "priceCurrency": "USD",
+        "price": "19.00",
+        "priceValidUntil": "2026-12-31",
+        "availability": "https://schema.org/InStock",
+        "itemCondition": "https://schema.org/NewCondition",
+        "seller": {
+          "@id": "https://polygen.ai/#organization"
+        }
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "1250",
+        "bestRating": "5"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://polygen.ai/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is PolyGen AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PolyGen AI is an AI-powered platform that converts text descriptions and images into 3D-printable models. Using advanced multi-agent AI technology with Gemini and Claude, it generates parametric OpenSCAD code that you can customize and export as STL files for 3D printing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does text-to-3D work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Simply describe what you want to create in plain English, like 'a coffee cup holder with space for a phone'. Our AI agents analyze your description, generate optimized OpenSCAD code, and provide a real-time 3D preview. You can then iterate on the design or export directly to STL."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What file formats does PolyGen AI support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PolyGen AI exports to OpenSCAD code format (.scad) which can be edited in any text editor, and STL format (.stl) which is compatible with all 3D printers and slicers like Cura, PrusaSlicer, and Simplify3D."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is there a free plan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! PolyGen AI offers a free plan with 5 generations per month, access to basic design templates, and OpenSCAD code export. No credit card required to get started."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "@id": "https://polygen.ai/#howto",
+      "name": "How to Create 3D Models with PolyGen AI",
+      "description": "Step-by-step guide to generating 3D-printable models from text descriptions using PolyGen AI.",
+      "totalTime": "PT5M",
+      "estimatedCost": {
+        "@type": "MonetaryAmount",
+        "currency": "USD",
+        "value": "0"
+      },
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Describe Your Model",
+          "text": "Tell the AI what you want to create in plain English. For example: 'A desk organizer with three compartments for pens and a slot for business cards.'",
+          "image": "https://polygen.ai/howto/step1.png"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Generate",
+          "text": "Click generate and watch as our multi-agent AI creates optimized OpenSCAD code for your design.",
+          "image": "https://polygen.ai/howto/step2.png"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Preview and Refine",
+          "text": "View your model in the 3D preview. Request changes like 'make it taller' or 'add rounded corners' to refine the design.",
+          "image": "https://polygen.ai/howto/step3.png"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 4,
+          "name": "Export",
+          "text": "Download the OpenSCAD code to customize further, or export directly to STL format for 3D printing.",
+          "image": "https://polygen.ai/howto/step4.png"
+        }
+      ]
+    }
+  ]
+}

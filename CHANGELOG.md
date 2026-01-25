@@ -5,6 +5,77 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-01-24
+
+### Added
+- **Complete SaaS Monetization Layer**
+  - User authentication with Supabase (email/password + Google OAuth)
+  - Subscription payments via Stripe (checkout, portal, webhooks)
+  - 3-tier pricing: Free (5/mo), Pro $19 (100/mo), Enterprise $99 (unlimited)
+  - Usage tracking and generation limits per tier
+
+- **New Pages & Components**
+  - `LandingPage.tsx` - Marketing homepage with hero, features, testimonials
+  - `PricingPage.tsx` - Interactive pricing table with plan comparison
+  - `AnalyticsDashboard.tsx` - User stats, usage tracking, subscription management
+  - `AuthModal.tsx` - Login/signup modal with Google OAuth
+  - `UsageLimitModal.tsx` - Upgrade prompt when limits reached
+  - `OnboardingTour.tsx` - 6-step guided tour for new users
+  - `FAQ.tsx` - SEO-optimized FAQ accordion (8 questions)
+  - `PrivacyPolicy.tsx` - Legal page
+  - `TermsOfService.tsx` - Legal page
+
+- **Growth Features**
+  - `ReferralSystem.tsx` - Refer-a-friend program with bonus generations
+  - `EmailCapture.tsx` - Waitlist/newsletter signup
+  - `ShareModel.tsx` - Social sharing for generated models
+
+- **Backend (Vercel Edge Functions)**
+  - `api/stripe/create-checkout.ts` - Stripe checkout session creation
+  - `api/stripe/create-portal.ts` - Customer portal for subscription management
+  - `api/stripe/webhook.ts` - Subscription lifecycle event handling
+  - `api/health.ts` - Health check endpoint for monitoring
+
+- **Services**
+  - `authService.ts` - Supabase auth integration with tier management
+  - `stripeService.ts` - Stripe API integration
+  - `analytics.ts` - Google Analytics 4 event tracking
+
+- **Database (Supabase)**
+  - `user_profiles` table with tier, usage limits, Stripe customer ID
+  - `generation_history` table for tracking all generations
+  - `referrals` table for tracking referral conversions
+  - `email_subscribers` table for newsletter signups
+  - Row Level Security (RLS) policies for data protection
+
+- **SEO & Marketing**
+  - Open Graph and Twitter Card meta tags
+  - JSON-LD structured data (SoftwareApplication, FAQPage, Organization)
+  - XML sitemap and robots.txt
+  - PWA manifest
+  - Product Hunt launch playbook with templates
+  - Email marketing sequences (welcome, onboarding, upgrade)
+  - Keyword research and content strategy
+
+- **Documentation**
+  - `DEPLOYMENT.md` - Complete deployment guide for Supabase, Stripe, Vercel
+  - `BUILD_SUMMARY.md` - Summary of all SaaS components built
+  - Pre-launch checklist
+
+### Changed
+- `App.tsx` now uses `AppRouter` for client-side routing
+- `index.tsx` initializes analytics and wraps app in `AuthProvider`
+- `index.html` updated with SEO meta tags and structured data
+- Header shows user auth state and dashboard link
+
+### Technical
+- Added dependencies: `@supabase/supabase-js`, `@stripe/stripe-js`
+- React Context for global auth state management
+- Vercel Edge Functions for serverless API
+- Google Analytics 4 integration with custom events
+
+---
+
 ## [2.2.0] - 2026-01-24
 
 ### Added

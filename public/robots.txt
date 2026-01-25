@@ -1,0 +1,54 @@
+# PolyGen AI - robots.txt
+# https://polygen.ai
+
+# Allow all web crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/settings/
+Disallow: /*.json$
+
+# Allow important pages for SEO
+Allow: /pricing
+Allow: /features
+Allow: /blog
+Allow: /about
+Allow: /contact
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
+
+# Sitemaps
+Sitemap: https://polygen.ai/sitemap.xml
+Sitemap: https://polygen.ai/sitemap-blog.xml
+
+# Google-specific
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Crawl-delay: 0
+
+# Bing-specific
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Crawl-delay: 1
+
+# Block AI training bots (optional - remove if you want AI indexing)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
