@@ -261,37 +261,55 @@ ${input.validationErrors.map(e => `- ${e}`).join('\n')}
 const EDIT_SYSTEM_PROMPT = `
 You are an OpenSCAD code editor. Apply precise modifications to existing code.
 
+## CRITICAL: PRESERVE DESIGN INTENT
+When editing, you MUST preserve the user's original design intent:
+- If they designed a mount, keep it functional as a mount
+- If parts need clearance from each other, maintain that clearance
+- If components attach to each other, keep them properly connected
+
 ## RULES FOR EDITING
-1. **PRESERVE STRUCTURE**: Keep existing code organization and formatting
+1. **PRESERVE RELATIONSHIPS**: When modifying one part, check how it affects OTHER parts
+   - If you change plate thickness, adjust anything that sits ON or IN the plate
+   - If you round edges, ensure attached components still have proper contact
+   - If you resize, proportionally adjust related features
 2. **MINIMAL CHANGES**: Only modify what's directly requested
-3. **VARIABLE SCOPE**: OpenSCAD variables are immutable - add new ones, don't reassign
-4. **COMMENTS**: Preserve existing comments, add notes for new changes
+3. **MAINTAIN CLEARANCES**: Don't let parts collide or intersect unintentionally
+4. **VARIABLE SCOPE**: OpenSCAD variables are immutable - add new ones, don't reassign
 5. **EPSILON**: Ensure eps = 0.01 exists if using boolean operations
 6. **NO LIBRARIES**: Pure OpenSCAD only - no include/use statements
 
+## BEFORE MAKING CHANGES - ASK YOURSELF:
+1. What other components depend on the part I'm changing?
+2. Will my change cause parts to overlap or lose clearance?
+3. Does my change preserve the functional purpose of the design?
+4. Are mounting points, holes, and attachments still accessible?
+
 ## COMMON EDIT PATTERNS
+
+### Shape Change (rounding, chamfering, streamlining):
+- KEEP the same overall bounding dimensions unless asked to resize
+- Adjust internal geometry to fit within the new shape
+- Ensure cutouts and attachments still have proper clearance
+- Example: "round the plate" → round the OUTLINE, don't change thickness
 
 ### Dimension Change:
 - Find the variable controlling the dimension
 - Update its value directly
-- Example: "make it wider" → change width = 50 to width = 70
+- CHECK: Does this affect other parts? Adjust them too!
 
 ### Add Feature:
 - Add new module if complex
-- For simple features, add directly to geometry
 - Ensure proper boolean operation (union for add, difference for cut)
+- Position relative to existing geometry
 
 ### Remove Feature:
 - Comment out or delete the feature
 - Clean up unused variables
 
-### Tolerance Adjustment:
-- Find clearance/tolerance variables
-- Adjust values (typically ±0.1-0.3mm for FDM)
-
 ## OUTPUT
 Return the COMPLETE modified SCAD file - not just the changed parts.
 Output ONLY valid OpenSCAD code, no markdown fences.
+Preserve ALL existing functionality while applying the requested change.
 `;
 
 /**
@@ -311,6 +329,14 @@ export async function editCode(
   const hasFn = /\$fn\s*=/.test(input.existingCode);
   const hasBooleans = /\b(difference|union)\s*\(/.test(input.existingCode);
 
+  // Extract component names from GST for relationship awareness
+  const componentNames: string[] = [];
+  function extractComponents(node: any) {
+    if (node?.name) componentNames.push(node.name);
+    if (node?.children) node.children.forEach(extractComponents);
+  }
+  extractComponents(input.existingGST?.root);
+
   // Build context-aware prompt
   let prompt = `## EXISTING GST (Design Specification)
 \`\`\`json
@@ -326,17 +352,25 @@ ${input.existingCode}
 - Epsilon defined: ${hasEpsilon ? 'YES' : 'NO - add eps = 0.01 if needed'}
 - Quality ($fn) defined: ${hasFn ? 'YES' : 'NO - add $fn = 64 for curves'}
 - Boolean operations: ${hasBooleans ? 'YES - ensure proper epsilon extension' : 'NO'}
+- Components in design: ${componentNames.join(', ') || 'unknown'}
 
 ## EDIT REQUEST
 ${input.editRequest}
+
+## CRITICAL REMINDERS
+- This design has ${componentNames.length} components that may depend on each other
+- When changing one part, CHECK if other parts need adjustment
+- PRESERVE the functional relationships between components
+- Don't let shape changes cause parts to overlap or lose clearance
 
 ## INSTRUCTIONS
 Apply the requested change using SYMBOLIC CORRECTION:
 1. Identify the relevant parameters/modules to modify
 2. Make MINIMAL changes - preserve existing structure
-3. If adding cutting geometry, extend by eps*2 past surfaces
-4. Ensure all variables are defined before use
-5. Maintain existing code style and comments
+3. CHECK: How does this change affect ${componentNames.slice(0, 3).join(', ')}${componentNames.length > 3 ? ', etc.' : ''}?
+4. If adding cutting geometry, extend by eps*2 past surfaces
+5. Ensure all variables are defined before use
+6. Maintain existing code style and comments
 
 Output the complete modified SCAD code with ALL changes applied.`;
 

@@ -107,11 +107,39 @@ Or use explicit translation in anchors:
 }
 
 ## STANDARDS (use these, don't ask)
-- Picatinny: top=20.6mm, base=21.2mm, height=9.6mm, 45° dovetail, slot=5.23mm
-- MOLLE: 25mm webbing width, 38mm row spacing
-- FEMALE = groove/slot (subtract), MALE = raised rail (add)
+
+### Picatinny Rail (MIL-STD-1913):
+- Top width: 21.2mm, Base width: 20.6mm
+- Height: 9.6mm minimum
+- Dovetail angle: 45°
+- Slot width: 5.23mm, Slot spacing: 10.01mm center-to-center
+- FEMALE (mount) = dovetail groove that grips rail
+- MALE (rail) = raised dovetail profile
+
+### MOLLE/PALS Webbing:
+- Webbing width: 25mm (1 inch)
+- Row height: 25mm
+- Stitch interval (horizontal): 38mm (1.5 inches)
+- Slot opening: ~38mm x 25mm
+- MALICE clips span 2-3 rows (50-75mm)
+- Load capacity: 30-40 lbs per column
+
+### MOLLE Clip Design:
+- Hook width: 25mm to fit webbing
+- Hook spacing: 38mm horizontal
+- Clip thickness: 4-5mm for rigidity
+- Retention: Use angled hooks or snap features
+
+### Quick Release Pins:
+- Pin diameter: 6mm or 6.35mm (1/4")
+- Detent ball: 3-4mm diameter
+- Pull ring: 15-20mm for gloved operation
+
+### General:
 - Screw clearance: M3=3.4mm, M4=4.5mm, M5=5.5mm
-- Minimum wall: 1.2mm, clearance: 0.2mm
+- Minimum wall: 1.2mm (3 perimeters at 0.4mm nozzle)
+- Fit clearance: 0.2mm normal, 0.4mm loose
+- TPU recommended for tactical mounts (95A shore)
 
 ## IF ASKING (max 2 questions, only when truly needed):
 {
