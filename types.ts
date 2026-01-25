@@ -151,6 +151,10 @@ export interface GeneratedAsset {
   sources?: string[];
   validationResult?: ValidationResult;
   smartFixes?: SmartQuickFix[];
+  // Teaching mode: educational explanations
+  conceptsUsed?: string[];
+  learningTips?: string[];
+  annotatedCode?: string; // Code with inline educational comments
 }
 
 // ============================================

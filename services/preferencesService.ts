@@ -22,6 +22,7 @@ export interface UserPreferences {
   defaultMaterial: string;
   enableWebSearch: boolean;     // Use Gemini grounding for reference data
   autoRender3D: boolean;        // Auto-render 3D preview
+  enableTeachingMode: boolean;  // Add educational comments to code
   recentDesigns: string[];      // Last 10 design descriptions
 }
 
@@ -45,6 +46,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   defaultMaterial: 'PLA',
   enableWebSearch: true,
   autoRender3D: false,
+  enableTeachingMode: true,  // On by default to help users learn
   recentDesigns: [],
 };
 

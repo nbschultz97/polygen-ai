@@ -10,121 +10,133 @@ import {
   CoderEditInput,
   CoderOutput
 } from '../types';
+import { buildValidationFeedback, buildRetryPrompt, ValidationFeedback } from './validationFeedbackBuilder';
 
-// System prompt for the Coder agent - Pure OpenSCAD (no BOSL2)
+// Extended CoderInput with validation feedback
+export interface EnhancedCoderInput extends CoderInput {
+  validationFeedback?: ValidationFeedback;
+}
+
+// System prompt for the Coder agent - Enhanced with OpenSCAD rules and GST mapping
 const CODER_SYSTEM_PROMPT = `
-You write OpenSCAD code for 3D printing. Output ONLY valid code, no markdown.
+You convert Geometric Structure Trees (GST) to OpenSCAD code for 3D printing.
+Output ONLY valid OpenSCAD code. No markdown, no explanations.
 
-RULES:
-- Standard OpenSCAD only (cube, cylinder, sphere, difference, union, hull, etc.)
-- NO libraries (no BOSL2, MCAD, include, use)
-- All dimensions as variables at top
-- $fn=64 for curves, $slop=0.1 for tolerances
-- Write clean, readable code like a human engineer would
+## CRITICAL OPENSCAD RULES
 
-STYLE:
-- Brief header comment with model name
-- Group related parameters together
-- Use descriptive variable names (rail_width not w1)
-- Modules for reusable parts
-- Minimal comments - code should be self-explanatory
-- NO section banners like "=== PARAMETERS ==="
-- NO excessive commenting on obvious operations
+### 1. Variable Immutability (MOST COMMON ERROR)
+Variables are compile-time constants. Define ALL variables at the TOP before use.
+WRONG: cube([width, height, depth]); width = 10;
+RIGHT: width = 10; cube([width, height, depth]);
 
-EXAMPLE STYLE:
-// Drone MOLLE Mount - chest carrier adapter
+### 2. Epsilon for Boolean Operations (REQUIRED)
+All difference() and union() operations need epsilon overlap to avoid rendering bugs.
+ALWAYS add: eps = 0.01;
+Cutting geometry must extend PAST surfaces: h = thickness + eps*2
 
-// Main dimensions
-mount_width = 60;
-mount_height = 80;
-thickness = 4;
+### 3. Transform Order (Right-to-Left)
+translate([10,0,0]) rotate([0,0,45]) cube(5);
+// 1. cube created, 2. rotated 45°, 3. translated
 
-// Picatinny interface (MIL-STD-1913)
-rail_top = 20.6;
-rail_base = 21.2;
-rail_height = 9.6;
+### 4. Standard Primitives Only
+NO libraries (no BOSL2, MCAD, include, use statements)
+Use: cube, sphere, cylinder, polyhedron, linear_extrude, rotate_extrude, hull, difference, union, intersection
 
+## GST TO OPENSCAD MAPPING
+
+### Component Types → OpenSCAD:
+- cuboid → cube([width, depth, height], center=true)
+- cylinder → cylinder(h=height, d=diameter, center=true, $fn=64)
+- sphere → sphere(d=diameter, $fn=64)
+- screw_hole → cylinder(h=depth+eps*2, d=diameter, $fn=32) [use in difference()]
+- rcube → use hull() with 8 corner spheres for rounded corners
+- tube → difference() { outer cylinder - inner cylinder }
+
+### Boolean Operations:
+GST booleanOp field maps to OpenSCAD:
+- "add" or no booleanOp → geometry goes in union() or directly
+- "subtract" → geometry goes inside difference() as cutter
+- "intersect" → geometry goes in intersection()
+
+### Example GST→OpenSCAD Conversion:
+GST:
+{
+  "root": {
+    "type": "union",
+    "children": [
+      { "type": "cuboid", "parameters": [{"name":"width","value":50},{"name":"depth","value":30},{"name":"height","value":10}] },
+      { "type": "screw_hole", "booleanOp": "subtract", "parameters": [{"name":"diameter","value":3.4},{"name":"depth","value":10}] }
+    ]
+  }
+}
+
+OpenSCAD:
+// Parameters from GST
+width = 50;
+depth = 30;
+height = 10;
+hole_diameter = 3.4;
+hole_depth = 10;
+
+// Settings
 $fn = 64;
-$slop = 0.1;
+eps = 0.01;
 
-module base_plate() {
-    cube([mount_width, mount_height, thickness], center=true);
-}
-
-module picatinny_groove() {
-    // Female dovetail - wider at bottom
-    linear_extrude(50)
-        polygon([[-rail_base/2, 0], [-rail_top/2, rail_height],
-                 [rail_top/2, rail_height], [rail_base/2, 0]]);
-}
-
+// Geometry
 difference() {
-    base_plate();
-    picatinny_groove();
+    cube([width, depth, height], center=true);  // cuboid (no booleanOp = positive)
+    cylinder(h=hole_depth+eps*2, d=hole_diameter, center=true);  // screw_hole (booleanOp: subtract)
 }
 
-## TACTICAL GEAR DOMAIN KNOWLEDGE
+## PARAMETER EXTRACTION
+1. Extract globalParameters → variables at top
+2. Extract each component's parameters → more variables
+3. Use descriptive names: base_width, hole_diameter (not w1, d)
 
-### MOLLE/PALS CLIPS (Malice-style)
-Real MOLLE clips hook BEHIND the webbing straps:
-- Webbing width: 25mm (1 inch)
-- Webbing gap: 12-15mm between rows
-- Clip design: Hook shape that slides DOWN through gap, then locks behind strap
-- Typical clip: 25mm wide body, 6mm hook depth, 3mm hook thickness
+## CODE STRUCTURE TEMPLATE
+// [Model Name] - [Brief description]
 
-module molle_clip(clip_width=25, hook_depth=6, thickness=3) {
-    // Main body that sits against vest
-    cube([clip_width, 20, thickness]);
-    // Hook that goes behind webbing
-    translate([0, 20-hook_depth, -15])
-        cube([clip_width, hook_depth, 15+thickness]);
-    // Retention lip
-    translate([0, 20-hook_depth, -15])
-        cube([clip_width, 2, 18]);
+// Global Parameters
+param1 = value1;  // from globalParameters
+param2 = value2;
+
+// Component Parameters
+comp1_width = value;  // from root.children[].parameters
+
+// Settings
+$fn = 64;
+eps = 0.01;
+
+// Modules (if needed for reuse)
+module component_name() { ... }
+
+// Main Geometry
+difference() {  // or union() based on GST root.type
+    // Positive geometry (no booleanOp or booleanOp: "add")
+    // Negative geometry (booleanOp: "subtract")
 }
 
-### PICATINNY RAIL (MIL-STD-1913)
-- Top width: 20.6mm
-- Base width: 21.2mm
-- Overall height: 9.6mm
-- Dovetail angle: 45 degrees
-- Slot: 5.23mm wide, 9.525mm spacing
+## MANUFACTURING CONSTRAINTS
+- Minimum wall thickness: 1.2mm
+- Holes need clearance: diameter + 0.2mm for normal fit
+- Use center=true for easier positioning
+- Add eps*2 to ALL cutting geometry heights
 
-FEMALE RAIL (groove that receives male rail):
-module picatinny_female(length=50) {
-    difference() {
-        cube([30, length, 15], center=true);
-        // Dovetail groove - WIDER at bottom, NARROW at top
-        translate([0, 0, 15/2 - 9.6/2])
-        linear_extrude(height=9.6+1)
-            polygon([
-                [-21.2/2, 0],   // bottom left (wide)
-                [-20.6/2, 9.6], // top left (narrow)
-                [20.6/2, 9.6],  // top right (narrow)
-                [21.2/2, 0]     // bottom right (wide)
-            ]);
-    }
-}
+## TACTICAL GEAR STANDARDS (if applicable)
+- Picatinny (MIL-STD-1913): top=20.6mm, base=21.2mm, height=9.6mm
+- MOLLE webbing: 25mm wide, 38mm row spacing
+- Screw clearance: M3=3.4mm, M4=4.5mm, M5=5.5mm
 
-MALE RAIL (raised rail with cross slots):
-module picatinny_male(length=50) {
-    linear_extrude(height=length)
-        polygon([
-            [-21.2/2, 0],
-            [-20.6/2, 9.6],
-            [20.6/2, 9.6],
-            [21.2/2, 0]
-        ]);
-}
+## ERROR PREVENTION CHECKLIST
+Before outputting code, verify:
+[ ] All variables defined BEFORE use
+[ ] eps = 0.01 is defined
+[ ] difference() cutters extend by eps*2
+[ ] All semicolons present
+[ ] All braces matched
+[ ] $fn set for smooth curves
 
-## CRITICAL: UNDERSTAND THE DESIGN
-- Read the GST description carefully
-- FEMALE rail = GROOVE that accepts a male rail
-- MALE rail = the RAISED dovetail shape
-- MOLLE clips hook BEHIND webbing, not in front
-
-## NOW EXECUTE
-Convert the GST to clean, printable OpenSCAD code.
+NOW: Convert the provided GST to clean, printable OpenSCAD code.
 `;
 
 // Quick reference for common operations
@@ -245,8 +257,46 @@ ${input.validationErrors.map(e => `- ${e}`).join('\n')}
   }
 }
 
+// Edit system prompt - more focused on precise modifications
+const EDIT_SYSTEM_PROMPT = `
+You are an OpenSCAD code editor. Apply precise modifications to existing code.
+
+## RULES FOR EDITING
+1. **PRESERVE STRUCTURE**: Keep existing code organization and formatting
+2. **MINIMAL CHANGES**: Only modify what's directly requested
+3. **VARIABLE SCOPE**: OpenSCAD variables are immutable - add new ones, don't reassign
+4. **COMMENTS**: Preserve existing comments, add notes for new changes
+5. **EPSILON**: Ensure eps = 0.01 exists if using boolean operations
+6. **NO LIBRARIES**: Pure OpenSCAD only - no include/use statements
+
+## COMMON EDIT PATTERNS
+
+### Dimension Change:
+- Find the variable controlling the dimension
+- Update its value directly
+- Example: "make it wider" → change width = 50 to width = 70
+
+### Add Feature:
+- Add new module if complex
+- For simple features, add directly to geometry
+- Ensure proper boolean operation (union for add, difference for cut)
+
+### Remove Feature:
+- Comment out or delete the feature
+- Clean up unused variables
+
+### Tolerance Adjustment:
+- Find clearance/tolerance variables
+- Adjust values (typically ±0.1-0.3mm for FDM)
+
+## OUTPUT
+Return the COMPLETE modified SCAD file - not just the changed parts.
+Output ONLY valid OpenSCAD code, no markdown fences.
+`;
+
 /**
  * Edit existing OpenSCAD code (Symbolic Correction)
+ * Enhanced with validation feedback awareness
  */
 export async function editCode(
   input: CoderEditInput,
@@ -256,31 +306,42 @@ export async function editCode(
     throw new DOMException('Request was aborted', 'AbortError');
   }
 
-  const prompt = `## EXISTING GST
+  // Analyze the existing code to provide context
+  const hasEpsilon = /\beps\s*=/.test(input.existingCode);
+  const hasFn = /\$fn\s*=/.test(input.existingCode);
+  const hasBooleans = /\b(difference|union)\s*\(/.test(input.existingCode);
+
+  // Build context-aware prompt
+  let prompt = `## EXISTING GST (Design Specification)
 \`\`\`json
 ${JSON.stringify(input.existingGST, null, 2)}
 \`\`\`
 
-## EXISTING CODE
+## EXISTING OPENSCAD CODE
 \`\`\`openscad
 ${input.existingCode}
 \`\`\`
+
+## CODE ANALYSIS
+- Epsilon defined: ${hasEpsilon ? 'YES' : 'NO - add eps = 0.01 if needed'}
+- Quality ($fn) defined: ${hasFn ? 'YES' : 'NO - add $fn = 64 for curves'}
+- Boolean operations: ${hasBooleans ? 'YES - ensure proper epsilon extension' : 'NO'}
 
 ## EDIT REQUEST
 ${input.editRequest}
 
 ## INSTRUCTIONS
-Apply SYMBOLIC CORRECTION:
-1. Modify ONLY the relevant variables or module parameters
-2. DO NOT rewrite the entire file structure
-3. Preserve comments and formatting
-4. If adding a new feature, add a new module
-5. Keep using pure OpenSCAD (no external libraries)
+Apply the requested change using SYMBOLIC CORRECTION:
+1. Identify the relevant parameters/modules to modify
+2. Make MINIMAL changes - preserve existing structure
+3. If adding cutting geometry, extend by eps*2 past surfaces
+4. Ensure all variables are defined before use
+5. Maintain existing code style and comments
 
-Output the complete modified SCAD code.`;
+Output the complete modified SCAD code with ALL changes applied.`;
 
   try {
-    const text = await callClaudeProxy(prompt, CODER_SYSTEM_PROMPT, abortSignal);
+    const text = await callClaudeProxy(prompt, EDIT_SYSTEM_PROMPT, abortSignal);
 
     if (abortSignal?.aborted) {
       throw new DOMException('Request was aborted', 'AbortError');

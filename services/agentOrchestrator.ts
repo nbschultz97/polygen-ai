@@ -1,6 +1,7 @@
 /**
  * Agent Orchestrator
  * Coordinates the multi-agent pipeline: Planner -> Coder -> Validator
+ * Enhanced with closed-loop validation feedback for reliable code generation
  */
 
 import { plannerService } from './plannerService';
@@ -8,6 +9,9 @@ import { coderService } from './coderService';
 import { validatorClient } from './validatorClient';
 import { analyzeForQuickFixes } from './quickFixAnalyzer';
 import { previewImageService } from './previewImageService';
+import { buildValidationFeedback, buildRetryPrompt } from './validationFeedbackBuilder';
+import { getErrorSummary, categorizeErrors } from './errorCategorizer';
+import { explainCode } from './codeExplainer';
 import {
   GeneratedAsset,
   GeometricStructureTree,
@@ -18,13 +22,14 @@ import {
   OrchestratorCallbacks
 } from '../types';
 
-const MAX_RETRY_ATTEMPTS = 2;
+const MAX_RETRY_ATTEMPTS = 3;  // Increased from 2 for better error recovery
 
 export interface OrchestratorInput {
   userPrompt: string;
   imageData?: ImageData;
   existingAsset?: GeneratedAsset;
   conversationHistory?: string[];
+  enableTeachingMode?: boolean;  // Enable educational annotations
   isEdit?: boolean;
 }
 
@@ -74,6 +79,14 @@ export async function orchestrateGeneration(
       const smartFixes = analyzeForQuickFixes(asset.gst, validation, coderOutput.scadCode);
       asset.smartFixes = smartFixes;
       callbacks.onSmartFixesGenerated(smartFixes);
+
+      // Apply teaching mode if enabled
+      if (input.enableTeachingMode) {
+        const explanation = explainCode(coderOutput.scadCode, true);
+        asset.conceptsUsed = explanation.conceptsUsed;
+        asset.learningTips = explanation.tips;
+        asset.annotatedCode = explanation.enhancedCode;
+      }
 
       callbacks.onStepChange('complete');
       return asset;
@@ -128,16 +141,42 @@ export async function orchestrateGeneration(
         });
     }
 
-    // Step 2: Coder Agent generates SCAD
+    // Step 2: Coder Agent generates SCAD with enhanced error recovery
     console.log('Orchestrator: Starting Coder agent');
     callbacks.onStepChange('coding');
 
+    let lastValidationFeedback: ReturnType<typeof buildValidationFeedback> | undefined;
+
     while (attempts < MAX_RETRY_ATTEMPTS) {
       try {
-        const coderOutput = await coderService.generateCode({
-          gst: asset.gst!,
-          validationErrors: attempts > 0 ? asset.validationResult?.errors : undefined
-        }, abortSignal);
+        // Build coder input with enhanced feedback on retries
+        let coderInput: { gst: GeometricStructureTree; validationErrors?: string[] } = {
+          gst: asset.gst!
+        };
+
+        // On retry, build comprehensive validation feedback
+        if (attempts > 0 && asset.validationResult && asset.scadCode) {
+          const feedback = buildValidationFeedback(
+            asset.validationResult.errors,
+            0, // exitCode - we don't have this currently, default to 0
+            asset.scadCode,
+            asset.gst!,
+            attempts,
+            MAX_RETRY_ATTEMPTS
+          );
+
+          lastValidationFeedback = feedback;
+
+          // Log error categories for debugging
+          console.log(`Orchestrator: Retry ${attempts} - Error categories: ${feedback.errorSummary}`);
+          console.log(`Orchestrator: Applying pitfalls: ${feedback.pitfallsIncluded.join(', ')}`);
+
+          // Pass the full prompt guidance as validation errors for now
+          // The coder service will use this enhanced context
+          coderInput.validationErrors = [feedback.promptGuidance];
+        }
+
+        const coderOutput = await coderService.generateCode(coderInput, abortSignal);
 
         if (abortSignal?.aborted) {
           throw new DOMException('Aborted', 'AbortError');
@@ -160,19 +199,31 @@ export async function orchestrateGeneration(
 
         // Success!
         if (validation.success) {
-          console.log('Orchestrator: Validation passed');
+          console.log(`Orchestrator: Validation passed on attempt ${attempts + 1}`);
 
           // Generate smart fixes
           const smartFixes = analyzeForQuickFixes(asset.gst!, validation, coderOutput.scadCode);
           asset.smartFixes = smartFixes;
           callbacks.onSmartFixesGenerated(smartFixes);
 
+          // Apply teaching mode if enabled
+          if (input.enableTeachingMode) {
+            console.log('Orchestrator: Generating educational annotations');
+            const explanation = explainCode(coderOutput.scadCode, true);
+            asset.conceptsUsed = explanation.conceptsUsed;
+            asset.learningTips = explanation.tips;
+            asset.annotatedCode = explanation.enhancedCode;
+          }
+
           callbacks.onStepChange('complete');
           return asset;
         }
 
-        // Validation failed - retry with error context
-        console.log(`Orchestrator: Validation failed (attempt ${attempts + 1}), retrying...`);
+        // Validation failed - analyze errors and retry
+        const errorCategories = categorizeErrors(validation.errors, 0, coderOutput.scadCode);
+        console.log(`Orchestrator: Validation failed (attempt ${attempts + 1}/${MAX_RETRY_ATTEMPTS})`);
+        console.log(`Orchestrator: Errors: ${getErrorSummary(errorCategories)}`);
+
         attempts++;
 
         if (attempts < MAX_RETRY_ATTEMPTS) {
@@ -190,6 +241,8 @@ export async function orchestrateGeneration(
         if (attempts >= MAX_RETRY_ATTEMPTS) {
           throw error;
         }
+
+        callbacks.onStepChange('coding');
       }
     }
 

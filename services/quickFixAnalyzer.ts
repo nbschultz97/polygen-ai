@@ -134,16 +134,57 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
 function analyzeValidation(validation: ValidationResult, gst: GeometricStructureTree): SmartQuickFix[] {
   const fixes: SmartQuickFix[] = [];
 
-  // Non-manifold geometry
+  // Non-manifold geometry - enhanced with specific issues
   if (!validation.isManifold) {
-    fixes.push({
-      id: 'fix-manifold',
-      label: 'Fix geometry',
-      description: 'Repair non-manifold (non-watertight) geometry',
-      prompt: 'Fix the non-manifold geometry by ensuring all boolean operations fully penetrate and there are no floating or disconnected pieces',
-      category: 'geometry',
-      relevance: 1.0
-    });
+    // Check for specific manifold issues from the extended validation
+    const hasBoundaryEdges = validation.warnings?.some(w => w.includes('boundary edge'));
+    const hasNonManifoldEdges = validation.warnings?.some(w => w.includes('non-manifold edge'));
+    const hasDegenerateTriangles = validation.warnings?.some(w => w.includes('degenerate triangle'));
+
+    if (hasBoundaryEdges) {
+      fixes.push({
+        id: 'fix-boundary-edges',
+        label: 'Close holes',
+        description: 'Mesh has open edges (not watertight)',
+        prompt: 'Fix the open edges by ensuring all boolean operations (difference, union) use epsilon overlap. Add eps = 0.01 and extend all cutting geometry by eps*2 past the surfaces being cut.',
+        category: 'geometry',
+        relevance: 1.0
+      });
+    }
+
+    if (hasNonManifoldEdges) {
+      fixes.push({
+        id: 'fix-nonmanifold-edges',
+        label: 'Fix overlapping faces',
+        description: 'Multiple faces share the same edge',
+        prompt: 'Fix the non-manifold geometry by separating overlapping faces. Check for coincident surfaces and add small offsets (eps = 0.01) between touching geometry.',
+        category: 'geometry',
+        relevance: 1.0
+      });
+    }
+
+    if (hasDegenerateTriangles) {
+      fixes.push({
+        id: 'fix-degenerate-triangles',
+        label: 'Fix thin geometry',
+        description: 'Model has zero-area triangles',
+        prompt: 'Fix degenerate triangles by ensuring all geometry has minimum thickness of 0.5mm. Remove any infinitely thin walls or zero-volume elements.',
+        category: 'geometry',
+        relevance: 0.95
+      });
+    }
+
+    // Generic manifold fix if no specific issue detected
+    if (!hasBoundaryEdges && !hasNonManifoldEdges && !hasDegenerateTriangles) {
+      fixes.push({
+        id: 'fix-manifold',
+        label: 'Fix geometry',
+        description: 'Repair non-manifold (non-watertight) geometry',
+        prompt: 'Fix the non-manifold geometry by ensuring all boolean operations fully penetrate and there are no floating or disconnected pieces',
+        category: 'geometry',
+        relevance: 1.0
+      });
+    }
   }
 
   // GST bounding box mismatch
