@@ -1,0 +1,487 @@
+{
+  "metadata": {
+    "project": "PolyGen AI",
+    "lastUpdated": "2026-01-24",
+    "notes": "Search volume estimates based on industry averages. Actual volumes may vary by region and season."
+  },
+  "primaryKeywords": [
+    {
+      "keyword": "text to 3D",
+      "searchVolume": 12100,
+      "difficulty": 65,
+      "cpc": 2.45,
+      "intent": "commercial",
+      "priority": "high",
+      "currentRanking": null,
+      "targetPage": "/"
+    },
+    {
+      "keyword": "text to 3D model",
+      "searchVolume": 8100,
+      "difficulty": 58,
+      "cpc": 2.80,
+      "intent": "commercial",
+      "priority": "high",
+      "currentRanking": null,
+      "targetPage": "/"
+    },
+    {
+      "keyword": "AI 3D model generator",
+      "searchVolume": 6600,
+      "difficulty": 52,
+      "cpc": 3.20,
+      "intent": "commercial",
+      "priority": "high",
+      "currentRanking": null,
+      "targetPage": "/"
+    },
+    {
+      "keyword": "AI 3D modeling",
+      "searchVolume": 5400,
+      "difficulty": 55,
+      "cpc": 2.90,
+      "intent": "informational",
+      "priority": "high",
+      "currentRanking": null,
+      "targetPage": "/features"
+    },
+    {
+      "keyword": "text to STL",
+      "searchVolume": 4400,
+      "difficulty": 45,
+      "cpc": 1.85,
+      "intent": "transactional",
+      "priority": "high",
+      "currentRanking": null,
+      "targetPage": "/"
+    },
+    {
+      "keyword": "3D model AI generator",
+      "searchVolume": 3600,
+      "difficulty": 48,
+      "cpc": 3.10,
+      "intent": "commercial",
+      "priority": "high",
+      "currentRanking": null,
+      "targetPage": "/"
+    },
+    {
+      "keyword": "AI CAD software",
+      "searchVolume": 2900,
+      "difficulty": 62,
+      "cpc": 4.50,
+      "intent": "commercial",
+      "priority": "medium",
+      "currentRanking": null,
+      "targetPage": "/features"
+    },
+    {
+      "keyword": "image to 3D model",
+      "searchVolume": 9900,
+      "difficulty": 68,
+      "cpc": 2.65,
+      "intent": "commercial",
+      "priority": "high",
+      "currentRanking": null,
+      "targetPage": "/"
+    },
+    {
+      "keyword": "OpenSCAD generator",
+      "searchVolume": 1900,
+      "difficulty": 32,
+      "cpc": 1.20,
+      "intent": "commercial",
+      "priority": "medium",
+      "currentRanking": null,
+      "targetPage": "/"
+    },
+    {
+      "keyword": "generative AI 3D",
+      "searchVolume": 2400,
+      "difficulty": 58,
+      "cpc": 3.40,
+      "intent": "informational",
+      "priority": "medium",
+      "currentRanking": null,
+      "targetPage": "/blog"
+    }
+  ],
+  "longTailKeywords": [
+    {
+      "keyword": "text to 3D model free",
+      "searchVolume": 3600,
+      "difficulty": 42,
+      "cpc": 1.80,
+      "intent": "transactional",
+      "priority": "high",
+      "targetPage": "/pricing"
+    },
+    {
+      "keyword": "convert text to 3D model online",
+      "searchVolume": 1600,
+      "difficulty": 38,
+      "cpc": 2.20,
+      "intent": "transactional",
+      "priority": "high",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "AI 3D model generator free online",
+      "searchVolume": 2900,
+      "difficulty": 45,
+      "cpc": 2.40,
+      "intent": "transactional",
+      "priority": "high",
+      "targetPage": "/pricing"
+    },
+    {
+      "keyword": "how to create 3D models with AI",
+      "searchVolume": 1300,
+      "difficulty": 35,
+      "cpc": 1.50,
+      "intent": "informational",
+      "priority": "medium",
+      "targetPage": "/blog/how-to-create-3d-models-with-ai"
+    },
+    {
+      "keyword": "best AI tool for 3D modeling",
+      "searchVolume": 880,
+      "difficulty": 52,
+      "cpc": 3.80,
+      "intent": "commercial",
+      "priority": "medium",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "generate STL from description",
+      "searchVolume": 720,
+      "difficulty": 28,
+      "cpc": 1.60,
+      "intent": "transactional",
+      "priority": "medium",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "AI powered CAD design",
+      "searchVolume": 590,
+      "difficulty": 48,
+      "cpc": 4.20,
+      "intent": "informational",
+      "priority": "low",
+      "targetPage": "/features"
+    },
+    {
+      "keyword": "text description to 3D print",
+      "searchVolume": 480,
+      "difficulty": 32,
+      "cpc": 1.90,
+      "intent": "transactional",
+      "priority": "medium",
+      "targetPage": "/use-cases/3d-printing"
+    },
+    {
+      "keyword": "natural language to CAD",
+      "searchVolume": 390,
+      "difficulty": 25,
+      "cpc": 2.80,
+      "intent": "commercial",
+      "priority": "low",
+      "targetPage": "/features"
+    },
+    {
+      "keyword": "AI OpenSCAD code generator",
+      "searchVolume": 260,
+      "difficulty": 22,
+      "cpc": 1.40,
+      "intent": "transactional",
+      "priority": "low",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "photo to 3D printable model",
+      "searchVolume": 1900,
+      "difficulty": 55,
+      "cpc": 2.10,
+      "intent": "transactional",
+      "priority": "high",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "image to STL converter AI",
+      "searchVolume": 1100,
+      "difficulty": 42,
+      "cpc": 1.75,
+      "intent": "transactional",
+      "priority": "medium",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "3D printing design tool for beginners",
+      "searchVolume": 1400,
+      "difficulty": 38,
+      "cpc": 2.30,
+      "intent": "informational",
+      "priority": "medium",
+      "targetPage": "/blog/3d-printing-beginners-guide"
+    },
+    {
+      "keyword": "parametric model generator AI",
+      "searchVolume": 320,
+      "difficulty": 30,
+      "cpc": 2.60,
+      "intent": "commercial",
+      "priority": "low",
+      "targetPage": "/features"
+    },
+    {
+      "keyword": "automated 3D modeling software",
+      "searchVolume": 540,
+      "difficulty": 45,
+      "cpc": 3.50,
+      "intent": "commercial",
+      "priority": "low",
+      "targetPage": "/"
+    }
+  ],
+  "relatedSearches": [
+    {
+      "keyword": "3D printing software",
+      "searchVolume": 27100,
+      "difficulty": 72,
+      "cpc": 2.80,
+      "intent": "informational",
+      "relevance": "high",
+      "targetPage": "/blog/best-3d-printing-software"
+    },
+    {
+      "keyword": "free 3D modeling software",
+      "searchVolume": 33100,
+      "difficulty": 75,
+      "cpc": 2.20,
+      "intent": "informational",
+      "relevance": "high",
+      "targetPage": "/blog/free-3d-modeling-software-comparison"
+    },
+    {
+      "keyword": "OpenSCAD tutorial",
+      "searchVolume": 6600,
+      "difficulty": 45,
+      "cpc": 0.80,
+      "intent": "informational",
+      "relevance": "high",
+      "targetPage": "/docs/openscad-basics"
+    },
+    {
+      "keyword": "STL file creator",
+      "searchVolume": 4400,
+      "difficulty": 55,
+      "cpc": 1.90,
+      "intent": "transactional",
+      "relevance": "high",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "3D design for beginners",
+      "searchVolume": 8100,
+      "difficulty": 58,
+      "cpc": 1.60,
+      "intent": "informational",
+      "relevance": "medium",
+      "targetPage": "/blog/3d-design-beginners"
+    },
+    {
+      "keyword": "CAD alternative",
+      "searchVolume": 5400,
+      "difficulty": 62,
+      "cpc": 4.80,
+      "intent": "commercial",
+      "relevance": "medium",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "parametric design software",
+      "searchVolume": 3600,
+      "difficulty": 55,
+      "cpc": 3.20,
+      "intent": "commercial",
+      "relevance": "medium",
+      "targetPage": "/features"
+    },
+    {
+      "keyword": "3D printer file generator",
+      "searchVolume": 1900,
+      "difficulty": 42,
+      "cpc": 1.70,
+      "intent": "transactional",
+      "relevance": "high",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "rapid prototyping software",
+      "searchVolume": 2400,
+      "difficulty": 58,
+      "cpc": 5.20,
+      "intent": "commercial",
+      "relevance": "medium",
+      "targetPage": "/use-cases/product-design"
+    },
+    {
+      "keyword": "AI design tools 2026",
+      "searchVolume": 1600,
+      "difficulty": 48,
+      "cpc": 3.40,
+      "intent": "informational",
+      "relevance": "medium",
+      "targetPage": "/blog/ai-design-tools-2026"
+    },
+    {
+      "keyword": "custom 3D model creator",
+      "searchVolume": 2900,
+      "difficulty": 52,
+      "cpc": 2.40,
+      "intent": "transactional",
+      "relevance": "high",
+      "targetPage": "/"
+    },
+    {
+      "keyword": "blender alternative for beginners",
+      "searchVolume": 1100,
+      "difficulty": 48,
+      "cpc": 2.10,
+      "intent": "commercial",
+      "relevance": "medium",
+      "targetPage": "/blog/blender-vs-polygen"
+    }
+  ],
+  "competitorKeywords": [
+    {
+      "keyword": "meshy AI",
+      "searchVolume": 8100,
+      "difficulty": 45,
+      "cpc": 2.80,
+      "competitor": "Meshy",
+      "opportunity": "Create comparison content"
+    },
+    {
+      "keyword": "kaedim 3D",
+      "searchVolume": 3600,
+      "difficulty": 38,
+      "cpc": 3.20,
+      "competitor": "Kaedim",
+      "opportunity": "Create comparison content"
+    },
+    {
+      "keyword": "alpha3d",
+      "searchVolume": 2400,
+      "difficulty": 42,
+      "cpc": 2.90,
+      "competitor": "Alpha3D",
+      "opportunity": "Create comparison content"
+    },
+    {
+      "keyword": "spline AI",
+      "searchVolume": 4400,
+      "difficulty": 52,
+      "cpc": 2.40,
+      "competitor": "Spline",
+      "opportunity": "Target 3D design audience"
+    },
+    {
+      "keyword": "Tinkercad alternative",
+      "searchVolume": 1300,
+      "difficulty": 35,
+      "cpc": 1.80,
+      "competitor": "Tinkercad",
+      "opportunity": "Target beginners"
+    }
+  ],
+  "seasonalKeywords": [
+    {
+      "keyword": "3D printed gifts",
+      "searchVolume": 14800,
+      "peakMonth": "November-December",
+      "difficulty": 58,
+      "targetPage": "/blog/3d-printed-gift-ideas"
+    },
+    {
+      "keyword": "custom 3D printed ornaments",
+      "searchVolume": 6600,
+      "peakMonth": "October-December",
+      "difficulty": 42,
+      "targetPage": "/blog/3d-printed-ornaments"
+    },
+    {
+      "keyword": "3D printed Valentine gifts",
+      "searchVolume": 2400,
+      "peakMonth": "January-February",
+      "difficulty": 35,
+      "targetPage": "/blog/valentines-3d-prints"
+    }
+  ],
+  "localizedKeywords": {
+    "de": [
+      "Text zu 3D Modell",
+      "KI 3D Modellierung",
+      "3D Druck Software"
+    ],
+    "fr": [
+      "texte vers 3D",
+      "modélisation 3D IA",
+      "générateur de modèle 3D"
+    ],
+    "es": [
+      "texto a 3D",
+      "modelado 3D con IA",
+      "generador de modelos 3D"
+    ],
+    "ja": [
+      "テキストから3D",
+      "AI 3Dモデリング",
+      "3Dモデル生成"
+    ]
+  },
+  "keywordClusters": [
+    {
+      "name": "Text to 3D Conversion",
+      "pillarPage": "/",
+      "keywords": [
+        "text to 3D",
+        "text to 3D model",
+        "text to STL",
+        "convert text to 3D model online",
+        "generate STL from description"
+      ]
+    },
+    {
+      "name": "AI 3D Modeling",
+      "pillarPage": "/features",
+      "keywords": [
+        "AI 3D model generator",
+        "AI 3D modeling",
+        "3D model AI generator",
+        "generative AI 3D",
+        "AI CAD software"
+      ]
+    },
+    {
+      "name": "Image to 3D",
+      "pillarPage": "/use-cases/image-to-3d",
+      "keywords": [
+        "image to 3D model",
+        "photo to 3D printable model",
+        "image to STL converter AI",
+        "picture to 3D model"
+      ]
+    },
+    {
+      "name": "3D Printing Beginners",
+      "pillarPage": "/blog/3d-printing-beginners-guide",
+      "keywords": [
+        "3D printing design tool for beginners",
+        "3D design for beginners",
+        "easy 3D modeling",
+        "3D printing for beginners"
+      ]
+    }
+  ]
+}
