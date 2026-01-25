@@ -5,6 +5,50 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-01-24
+
+### Added
+- **Closed-Loop Validation Feedback**: 3-attempt retry system with escalating guidance
+  - `errorCategorizer.ts`: Parses errors into 7 categories (syntax, undefined_var, csg_operation, empty_geometry, recursion, manifold, file_io)
+  - `openscadPitfalls.ts`: Database of 12 common OpenSCAD mistakes with bad/good examples
+  - `validationFeedbackBuilder.ts`: Builds retry prompts that escalate from basic to emergency simplification
+- **Teaching Mode**: Educational annotations for generated code
+  - `codeExplainer.ts`: Adds inline comments explaining OpenSCAD constructs
+  - Concept detection and learning tips
+  - Toggle in user preferences (on by default)
+- **Manifold Geometry Checking**: STL mesh quality analysis
+  - Detects boundary edges (open mesh)
+  - Detects non-manifold edges (multiple faces sharing edge)
+  - Identifies degenerate triangles (zero area)
+- **Auto-Preprocessing**: Automatic code fixes before validation
+  - Auto-injects `eps = 0.01` for boolean operations
+  - Auto-injects `$fn = 64` for smooth curves
+- **Component Type Taxonomy**: Standardized GST types mapped to OpenSCAD
+  - Primitives: cuboid, cylinder, sphere, cone
+  - Compound: tube, rcube (rounded cuboid), wedge
+  - Functional: screw_hole, counterbore, slot, chamfer, fillet
+- **Enhanced Tactical Standards**: Detailed specs for tactical gear
+  - Complete Picatinny rail dimensions (MIL-STD-1913)
+  - MOLLE/PALS webbing specs and clip design guidelines
+  - Quick release pin specifications
+
+### Fixed
+- **Edit Mode Component Preservation**: Edits now preserve relationships between components
+  - System checks how changes affect other parts
+  - Warns about clearance and dependency issues
+  - "Round the plate" no longer destroys attached clips
+
+### Changed
+- **Increased Retry Attempts**: 3 attempts (up from 2) with smarter feedback
+- **Enhanced Planner Prompt**: Full component taxonomy with parameter formats
+- **Enhanced Coder Prompt**: OpenSCAD rules, GST mapping, error prevention checklist
+- **CDN Fallbacks**: Added multiple OpenSCAD WASM CDN sources for better reliability
+
+### Technical
+- New services: `errorCategorizer.ts`, `openscadPitfalls.ts`, `validationFeedbackBuilder.ts`, `codeExplainer.ts`
+- Integration tests in `tests/integration/pipeline.test.ts`
+- Teaching mode preference in `preferencesService.ts`
+
 ## [2.1.0] - 2026-01-24
 
 ### Added

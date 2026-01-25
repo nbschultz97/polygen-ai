@@ -1,6 +1,6 @@
 # PolyGen AI
 
-**v2.1.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md)
+**v2.2.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md)
 
 A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natural language descriptions into printable OpenSCAD code using Google Gemini (Planner) and Anthropic Claude (Coder).
 
@@ -9,16 +9,24 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 ### Core
 - **Natural Language Input** - Describe what you want to create in plain English
 - **Image-to-3D** - Upload a photo and recreate it as a printable model
-- **OpenSCAD Code Generation** - Outputs parametric, printable-ready BOSL2-based OpenSCAD code
+- **OpenSCAD Code Generation** - Outputs parametric, printable-ready pure OpenSCAD code
 - **In-App 3D Preview** - View your model in the browser with Three.js
 - **STL Export** - Download STL files directly from the preview
 
+### v2.2 Reliable Code Generation
+- **Closed-Loop Validation** - 3-attempt retry system with escalating guidance
+- **Error Categorization** - Parses errors into 7 categories with suggested fixes
+- **Pitfall Database** - 12 common OpenSCAD mistakes with bad/good examples
+- **Auto-Preprocessing** - Injects epsilon and $fn if missing
+- **Manifold Checking** - Detects open edges and non-manifold geometry
+- **Teaching Mode** - Educational comments explain OpenSCAD concepts
+
 ### v2.0 Multi-Agent Pipeline
 - **Planner Agent (Gemini 3 Pro)** - Generates Geometric Structure Tree (GST) from natural language
-- **Coder Agent (Claude Sonnet)** - Converts GST to BOSL2-based OpenSCAD code
+- **Coder Agent (Claude Sonnet)** - Converts GST to pure OpenSCAD code
 - **Browser Validation** - WASM-based OpenSCAD compilation (fully serverless)
 - **Smart Quick Fixes** - Context-aware refinement suggestions based on GST component types
-- **Symbolic Correction** - Edit requests modify only relevant parameters, not full regeneration
+- **Symbolic Correction** - Edit requests preserve component relationships
 
 ### UX
 - **Design Templates** - 9 quick-start templates for common objects

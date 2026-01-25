@@ -56,12 +56,20 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
       };
     }
 
-    // List of CDNs to try with fallbacks
+    // List of CDNs to try with fallbacks - try multiple versions
     const candidates = [
+      // Try latest version first
+      { url: 'https://unpkg.com/openscad-wasm@latest/dist/', file: 'openscad.min.js' },
+      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@latest/dist/', file: 'openscad.min.js' },
+      // Specific versions that are known to work
+      { url: 'https://unpkg.com/openscad-wasm@0.0.4/dist/', file: 'openscad.min.js' },
+      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.4/dist/', file: 'openscad.min.js' },
+      // Legacy version fallbacks
       { url: 'https://unpkg.com/openscad-wasm@0.6.0/dist/', file: 'openscad.min.js' },
       { url: 'https://unpkg.com/openscad-wasm@0.6.0/dist/', file: 'openscad.js' },
       { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.6.0/dist/', file: 'openscad.min.js' },
-      { url: 'https://fastly.jsdelivr.net/npm/openscad-wasm@0.6.0/dist/', file: 'openscad.min.js' },
+      // Alternative CDNs
+      { url: 'https://esm.sh/openscad-wasm@latest/dist/', file: 'openscad.min.js' },
     ];
 
     const loadScript = async (baseUrl: string, filename: string): Promise<void> => {
