@@ -22,6 +22,16 @@ This document outlines planned features and improvements for PolyGen AI.
 - [x] Legal pages (Privacy, Terms)
 - [x] Onboarding tour
 
+### v2.2.0 - Reliable Code Generation (January 2026)
+- [x] Closed-loop validation (3-attempt retry system)
+- [x] Error categorization (7 error types)
+- [x] Pitfall database (12 common mistakes)
+- [x] Auto-preprocessing (epsilon, $fn injection)
+- [x] Manifold geometry checking
+- [x] Teaching mode with educational comments
+- [x] Component type taxonomy
+- [x] Enhanced tactical standards (Picatinny, MOLLE)
+
 ### v2.1.0 - Concept Preview (January 2026)
 - [x] AI-generated preview image during generation
 - [x] Fixed clarification loop issues
