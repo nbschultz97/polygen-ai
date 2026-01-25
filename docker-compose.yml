@@ -1,0 +1,49 @@
+# ============================================
+# PolyGen AI - Docker Compose Configuration
+# Use for local development
+# ============================================
+
+services:
+  # Development server with hot reload
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: polygen-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Preserve node_modules from container
+      - /app/node_modules
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=development
+      - VITE_HOST=0.0.0.0
+    stdin_open: true
+    tty: true
+
+  # Production build (for testing production build locally)
+  prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - GEMINI_API_KEY=${GEMINI_API_KEY}
+        - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3-pro-preview}
+        - CODER_MODEL=${CODER_MODEL:-claude-sonnet-4-20250514}
+        - THINKING_LEVEL=${THINKING_LEVEL:-high}
+        - USE_MULTI_AGENT=${USE_MULTI_AGENT:-true}
+    container_name: polygen-prod
+    ports:
+      - "8080:80"
+    profiles:
+      - production
+
+networks:
+  default:
+    name: polygen-network

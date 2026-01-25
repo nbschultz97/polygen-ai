@@ -7,10 +7,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build output
 dist
 dist-ssr
-*.local
+coverage
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
 
 # Claude Code
 .claude/
@@ -21,6 +30,7 @@ nul
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
 .DS_Store
 *.suo
@@ -28,3 +38,21 @@ nul
 *.njsproj
 *.sln
 *.sw?
+
+# Docker
+.docker/
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Vercel
+.vercel
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

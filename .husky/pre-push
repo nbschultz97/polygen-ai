@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+
+# PolyGen AI - Pre-push Hook
+# Runs type checking and tests before pushing
+
+echo "Running pre-push checks..."
+
+# Type check
+echo "Running TypeScript type check..."
+npm run typecheck
+if [ $? -ne 0 ]; then
+  echo "Type check failed. Push aborted."
+  exit 1
+fi
+
+# Run tests
+echo "Running tests..."
+npm run test:ci
+if [ $? -ne 0 ]; then
+  echo "Tests failed. Push aborted."
+  exit 1
+fi
+
+echo "All pre-push checks passed!"

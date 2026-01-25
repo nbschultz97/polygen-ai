@@ -1,0 +1,25 @@
+# PolyGen AI - Code Owners
+# These owners will be requested for review when changes are made to matching paths
+
+# Default owners for everything in the repo
+* @noah
+
+# CI/CD and DevOps configuration
+/.github/ @noah
+/Dockerfile @noah
+/docker-compose.yml @noah
+/docker/ @noah
+
+# Core application
+/App.tsx @noah
+/components/ @noah
+/services/ @noah
+
+# API routes
+/api/ @noah
+
+# Configuration files
+/vite.config.ts @noah
+/tsconfig.json @noah
+/tailwind.config.js @noah
+/eslint.config.js @noah

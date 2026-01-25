@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+# PolyGen AI - Pre-commit Hook
+# Runs lint-staged to check and fix staged files
+
+npx lint-staged

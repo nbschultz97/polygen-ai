@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+
+# Dependencies (installed in container)
+node_modules
+
+# Build artifacts
+dist
+coverage
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Editor/IDE
+.vscode
+.idea
+*.sw?
+
+# Documentation
+*.md
+!README.md
+
+# Tests (not needed in production)
+tests/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+vitest.config.ts
+
+# Development files
+.husky
+.prettierrc
+.prettierignore
+eslint.config.js
+
+# Logs
+*.log
+logs
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug
+debug.log
+
+# Claude
+.claude/
+
+# GitHub
+.github/
+
+# Windows artifacts
+nul

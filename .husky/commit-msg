@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+
+# PolyGen AI - Commit Message Hook
+# Validates commit message format follows conventional commits
+
+commit_msg=$(cat "$1")
+
+# Conventional commit pattern
+pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,72}"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo ""
+  echo "ERROR: Invalid commit message format!"
+  echo ""
+  echo "Commit message must follow Conventional Commits format:"
+  echo "  <type>(<scope>): <description>"
+  echo ""
+  echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo ""
+  echo "Examples:"
+  echo "  feat(planner): add support for complex geometries"
+  echo "  fix(coder): resolve parsing error in SCAD output"
+  echo "  docs: update README with new API endpoints"
+  echo ""
+  echo "Your commit message:"
+  echo "  $commit_msg"
+  echo ""
+  exit 1
+fi

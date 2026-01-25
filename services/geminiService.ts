@@ -5,7 +5,7 @@ import { SpecData, GeneratedAsset, ClarificationQuestion } from "../types";
 import { loadPreferences, getPreferencesForPrompt, addRecentDesign } from "./preferencesService";
 
 // App Version - update this when making changes
-export const APP_VERSION = "2.1.0";
+export const APP_VERSION = "2.2.0";
 export const APP_BUILD_DATE = "2026-01-24";
 
 // Configuration - can be overridden via environment variables
