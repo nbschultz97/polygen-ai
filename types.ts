@@ -143,6 +143,7 @@ export interface GeneratedAsset {
   scadCode?: string;
   spec?: SpecData;
   gst?: GeometricStructureTree;
+  previewImageUrl?: string;
   specSummary?: string[];
   questions?: string[];
   clarifications?: ClarificationQuestion[];
@@ -216,6 +217,7 @@ export interface CoderOutput {
 export interface OrchestratorCallbacks {
   onStepChange: (step: WorkflowStep) => void;
   onGSTGenerated: (gst: GeometricStructureTree) => void;
+  onPreviewImageGenerated?: (imageUrl: string) => void;
   onCodeGenerated: (code: string) => void;
   onValidationComplete: (result: ValidationResult) => void;
   onSmartFixesGenerated: (fixes: SmartQuickFix[]) => void;

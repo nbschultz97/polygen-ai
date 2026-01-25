@@ -47,6 +47,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [attachedImage, setAttachedImage] = useState<ImageData | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [conceptPreview, setConceptPreview] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -127,6 +128,11 @@ const App: React.FC = () => {
       setCurrentAsset(prev => prev ? { ...prev, clarifications: undefined } : null);
     }
 
+    // Clear concept preview for fresh generation (unless editing existing code)
+    if (!currentAsset?.scadCode) {
+      setConceptPreview(null);
+    }
+
     setWorkflowStep('processing');
 
     try {
@@ -144,7 +150,14 @@ const App: React.FC = () => {
           },
           {
             onStepChange: (step) => setWorkflowStep(step),
-            onGSTGenerated: (gst) => console.log('GST generated:', gst.name),
+            onGSTGenerated: (gst) => {
+              console.log('GST generated:', gst.name);
+              setConceptPreview(null); // Clear old preview when new GST is generated
+            },
+            onPreviewImageGenerated: (imageUrl) => {
+              console.log('Preview image generated');
+              setConceptPreview(imageUrl);
+            },
             onCodeGenerated: (code) => console.log('Code generated:', code.length, 'chars'),
             onValidationComplete: (result) => {
               if (result.success) {
@@ -629,6 +642,33 @@ const App: React.FC = () => {
                     )}
                     Generate Code
                   </button>
+                </div>
+              </div>
+            ) : conceptPreview ? (
+              /* Concept Preview State - Shows AI-generated preview during coding */
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div className="max-w-md">
+                  <div className="mb-4">
+                    <img
+                      src={conceptPreview}
+                      alt="Concept preview"
+                      className="w-64 h-64 object-contain rounded-xl border border-white/[0.1] shadow-lg mx-auto"
+                    />
+                  </div>
+                  <h2 className="text-sm font-medium text-white mb-1">Concept Preview</h2>
+                  <p className="text-xs text-gray-500 mb-3">
+                    AI-generated concept of your design
+                  </p>
+                  {['planning', 'coding', 'validating'].includes(workflowStep) && (
+                    <div className="flex items-center justify-center gap-2 text-violet-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-xs">
+                        {workflowStep === 'planning' && 'Planning structure...'}
+                        {workflowStep === 'coding' && 'Generating code...'}
+                        {workflowStep === 'validating' && 'Validating model...'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

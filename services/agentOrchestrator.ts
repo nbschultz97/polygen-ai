@@ -7,6 +7,7 @@ import { plannerService } from './plannerService';
 import { coderService } from './coderService';
 import { validatorClient } from './validatorClient';
 import { analyzeForQuickFixes } from './quickFixAnalyzer';
+import { previewImageService } from './previewImageService';
 import {
   GeneratedAsset,
   GeometricStructureTree,
@@ -112,6 +113,19 @@ export async function orchestrateGeneration(
     // Notify GST generated (with null check)
     if (plannerOutput.gst) {
       callbacks.onGSTGenerated(plannerOutput.gst);
+
+      // Start preview image generation in parallel (non-blocking)
+      previewImageService.generatePreviewImage(plannerOutput.gst, abortSignal)
+        .then((imageUrl) => {
+          if (imageUrl && !abortSignal?.aborted) {
+            asset.previewImageUrl = imageUrl;
+            callbacks.onPreviewImageGenerated?.(imageUrl);
+            console.log('Orchestrator: Preview image generated');
+          }
+        })
+        .catch((err) => {
+          console.log('Orchestrator: Preview image skipped:', err.message);
+        });
     }
 
     // Step 2: Coder Agent generates SCAD

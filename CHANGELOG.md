@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.0] - 2026-01-24
 
+### Added
+- **Concept Preview**: AI-generated preview image shows in right panel while code is being generated
+  - Uses Gemini Imagen to create visual concept from GST structure
+  - Displays during planning/coding phase for immediate visual feedback
+
 ### Fixed
 - **Clarification Loop**: Planner no longer asks repetitive questions; uses industry standards by default
 - **Clarifications UI**: Panel now clears when user responds instead of persisting
