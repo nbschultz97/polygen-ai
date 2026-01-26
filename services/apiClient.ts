@@ -10,7 +10,7 @@ import { supabase } from './authService';
  */
 export async function getAuthToken(): Promise<string | null> {
   try {
-    const { data: { session } } = await supabase.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || null;
   } catch (error) {
     console.error('Failed to get auth token:', error);
