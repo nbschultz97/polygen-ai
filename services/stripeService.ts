@@ -3,12 +3,14 @@
  * Handles subscription payments and checkout
  */
 
-// Price IDs - these will be set in your Stripe dashboard
+import { getAuthToken } from './apiClient';
+
+// Price IDs from Stripe dashboard
 export const STRIPE_PRICES = {
-  pro_monthly: import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID || 'price_pro_monthly',
-  pro_yearly: import.meta.env.VITE_STRIPE_PRO_YEARLY_PRICE_ID || 'price_pro_yearly',
-  enterprise_monthly: import.meta.env.VITE_STRIPE_ENTERPRISE_MONTHLY_PRICE_ID || 'price_enterprise_monthly',
-  enterprise_yearly: import.meta.env.VITE_STRIPE_ENTERPRISE_YEARLY_PRICE_ID || 'price_enterprise_yearly'
+  pro_monthly: 'price_1StvSH2F3wOoNwibyk0SrBei',
+  pro_yearly: 'price_1StvSH2F3wOoNwibyk0SrBei', // TODO: Create yearly price in Stripe
+  enterprise_monthly: 'price_1StvSa2F3wOoNwibbsM0WOac',
+  enterprise_yearly: 'price_1StvSa2F3wOoNwibbsM0WOac' // TODO: Create yearly price in Stripe
 };
 
 export interface PricingPlan {
@@ -43,8 +45,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: 'pro',
     name: 'Pro',
     description: 'For makers and hobbyists',
-    monthlyPrice: 19,
-    yearlyPrice: 190,
+    monthlyPrice: 9.99,
+    yearlyPrice: 99.99,
     features: [
       '100 generations per month',
       'All design templates',
@@ -62,8 +64,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: 'enterprise',
     name: 'Enterprise',
     description: 'For teams and businesses',
-    monthlyPrice: 99,
-    yearlyPrice: 990,
+    monthlyPrice: 29.99,
+    yearlyPrice: 299.99,
     features: [
       'Unlimited generations',
       'All Pro features',
@@ -82,24 +84,26 @@ export const PRICING_PLANS: PricingPlan[] = [
  * Create Stripe Checkout session
  */
 export async function createCheckoutSession(
-  priceId: string,
-  userId: string,
-  customerEmail: string,
+  tier: 'pro' | 'enterprise',
   successUrl?: string,
   cancelUrl?: string
 ): Promise<{ url: string | null; error: string | null }> {
   try {
-    const response = await fetch('/api/stripe/create-checkout', {
+    const token = await getAuthToken();
+    if (!token) {
+      return { url: null, error: 'Please log in to subscribe' };
+    }
+
+    const response = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        priceId,
-        userId,
-        customerEmail,
-        successUrl: successUrl || `${window.location.origin}/dashboard?success=true`,
-        cancelUrl: cancelUrl || `${window.location.origin}/pricing?canceled=true`
+        tier,
+        successUrl: successUrl || `${window.location.origin}/app?payment=success`,
+        cancelUrl: cancelUrl || `${window.location.origin}/pricing?payment=cancelled`
       })
     });
 
@@ -123,14 +127,20 @@ export async function createPortalSession(
   customerId: string
 ): Promise<{ url: string | null; error: string | null }> {
   try {
-    const response = await fetch('/api/stripe/create-portal', {
+    const token = await getAuthToken();
+    if (!token) {
+      return { url: null, error: 'Please log in to manage subscription' };
+    }
+
+    const response = await fetch('/api/stripe/portal', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         customerId,
-        returnUrl: `${window.location.origin}/dashboard`
+        returnUrl: `${window.location.origin}/app`
       })
     });
 
@@ -175,12 +185,8 @@ export async function getSubscriptionStatus(
 /**
  * Redirect to checkout
  */
-export async function redirectToCheckout(
-  priceId: string,
-  userId: string,
-  customerEmail: string
-): Promise<void> {
-  const { url, error } = await createCheckoutSession(priceId, userId, customerEmail);
+export async function redirectToCheckout(tier: 'pro' | 'enterprise'): Promise<void> {
+  const { url, error } = await createCheckoutSession(tier);
 
   if (error) {
     throw new Error(error);

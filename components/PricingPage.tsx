@@ -30,8 +30,7 @@ export default function PricingPage({ onClose }: PricingPageProps) {
     setLoading(plan.id);
 
     try {
-      const priceId = billingInterval === 'monthly' ? plan.priceIdMonthly : plan.priceIdYearly;
-      await redirectToCheckout(priceId, user.id, user.email!);
+      await redirectToCheckout(plan.id as 'pro' | 'enterprise');
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Failed to start checkout. Please try again.');
