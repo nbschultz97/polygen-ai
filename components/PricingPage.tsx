@@ -147,7 +147,7 @@ export default function PricingPage({ onClose }: PricingPageProps) {
                 <div className="mb-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-white">
-                      ${price.toFixed(0)}
+                      ${price === 0 ? '0' : price.toFixed(2)}
                     </span>
                     {plan.monthlyPrice > 0 && (
                       <span className="text-gray-500">/month</span>
@@ -155,7 +155,7 @@ export default function PricingPage({ onClose }: PricingPageProps) {
                   </div>
                   {billingInterval === 'yearly' && plan.yearlyPrice > 0 && (
                     <p className="text-sm text-gray-500 mt-1">
-                      ${plan.yearlyPrice} billed annually
+                      ${plan.yearlyPrice.toFixed(2)} billed annually
                     </p>
                   )}
                 </div>
