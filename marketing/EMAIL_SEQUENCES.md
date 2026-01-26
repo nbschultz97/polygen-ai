@@ -29,7 +29,7 @@ Here are some ideas to try:
 - "A phone stand with adjustable angle"
 - "A wall hook for keys"
 
-👉 [Create Your First Model](https://polygen.ai/app)
+👉 [Create Your First Model](https://polygen-ai.vercel.app/app)
 
 Happy creating!
 
@@ -62,7 +62,7 @@ After generating, say "make it taller" or "add a hole for cables" instead of des
 
 You've used {{generations_used}}/5 generations this month.
 
-👉 [Continue Creating](https://polygen.ai/app)
+👉 [Continue Creating](https://polygen-ai.vercel.app/app)
 
 Noah
 ```
@@ -99,7 +99,7 @@ What will you create?
 
 You've used {{generations_used}}/5 generations this month.
 
-👉 [Get Inspired](https://polygen.ai/app)
+👉 [Get Inspired](https://polygen-ai.vercel.app/app)
 
 Noah
 ```
@@ -119,7 +119,7 @@ Quick reminder of what you can create:
 
 Your free tier resets on the 1st, so use them while you can!
 
-👉 [Use Your Free Generations](https://polygen.ai/app)
+👉 [Use Your Free Generations](https://polygen-ai.vercel.app/app)
 
 Noah
 
@@ -150,7 +150,7 @@ You have {{generations_remaining}} generation(s) left this month.
 
 All for just $19/month (or $190/year - save $38).
 
-👉 [Upgrade to Pro](https://polygen.ai/pricing)
+👉 [Upgrade to Pro](https://polygen-ai.vercel.app/pricing)
 
 Happy creating,
 Noah
@@ -174,7 +174,7 @@ Bad news: You'll have to wait until the 1st to get more... unless you upgrade.
 
 **Limited time:** Use code KEEPCREATING for 20% off your first month.
 
-👉 [Upgrade Now](https://polygen.ai/pricing?code=KEEPCREATING)
+👉 [Upgrade Now](https://polygen-ai.vercel.app/pricing?code=KEEPCREATING)
 
 Noah
 
@@ -208,7 +208,7 @@ Here's what you now have access to:
 2. **Batch similar designs** - Create variations quickly
 3. **Save your favorites** - Export OpenSCAD code for later editing
 
-👉 [Start Creating](https://polygen.ai/app)
+👉 [Start Creating](https://polygen-ai.vercel.app/app)
 
 Thank you for your support!
 
@@ -238,7 +238,7 @@ Great for:
 - Creating custom versions of existing objects
 - Turning drawings into 3D models
 
-👉 [Try Image-to-3D](https://polygen.ai/app)
+👉 [Try Image-to-3D](https://polygen-ai.vercel.app/app)
 
 What will you recreate?
 
@@ -273,7 +273,7 @@ Here are some new things you might want to try:
 
 You still have {{generations_remaining}} generations available this month.
 
-👉 [Jump Back In](https://polygen.ai/app)
+👉 [Jump Back In](https://polygen-ai.vercel.app/app)
 
 If something's not working or you have feedback, just reply to this email. I read everything.
 
@@ -296,7 +296,7 @@ If you're not getting value, you can cancel anytime from your dashboard. No hard
 
 But if you want to keep creating, I'd love to hear what you're working on. Reply to this email and share!
 
-👉 [Continue Creating](https://polygen.ai/app)
+👉 [Continue Creating](https://polygen-ai.vercel.app/app)
 
 Noah
 ```
@@ -345,7 +345,7 @@ I wanted to reach out personally. As a former Pro user, I'd love to have you bac
 
 Just use code WELCOME_BACK at checkout.
 
-👉 [Reactivate Pro](https://polygen.ai/pricing?code=WELCOME_BACK)
+👉 [Reactivate Pro](https://polygen-ai.vercel.app/pricing?code=WELCOME_BACK)
 
 No pressure - the offer is valid for 7 days if you decide to return.
 

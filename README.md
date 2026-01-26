@@ -8,7 +8,7 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 
 ## Live Demo
 
-🚀 Coming soon at [polygen.ai](https://polygen.ai)
+🚀 Live at [polygen-ai.vercel.app](https://polygen-ai.vercel.app)
 
 ## Features
 

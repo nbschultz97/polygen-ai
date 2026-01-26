@@ -185,7 +185,7 @@ export default function TermsOfService({ onBack }: TermsOfServiceProps) {
             </p>
             <div className="flex items-center gap-2 text-violet-400">
               <Mail className="w-4 h-4" />
-              <a href="mailto:legal@polygen.ai" className="hover:underline">legal@polygen.ai</a>
+              <a href="mailto:legal@polygenai.com" className="hover:underline">legal@polygenai.com</a>
             </div>
           </section>
         </div>

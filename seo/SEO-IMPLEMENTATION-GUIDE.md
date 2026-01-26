@@ -85,8 +85,8 @@ Add to the component or create a separate HTML head:
 ```html
 <title>Pricing - PolyGen AI | Free, Pro & Enterprise Plans</title>
 <meta name="description" content="Simple, transparent pricing for PolyGen AI. Start free with 5 generations/month. Pro plan $19/mo for 100 generations. Enterprise unlimited at $99/mo.">
-<link rel="canonical" href="https://polygen.ai/pricing">
-<meta property="og:url" content="https://polygen.ai/pricing">
+<link rel="canonical" href="https://polygen-ai.vercel.app/pricing">
+<meta property="og:url" content="https://polygen-ai.vercel.app/pricing">
 <meta property="og:title" content="PolyGen AI Pricing - Start Free">
 ```
 
@@ -95,7 +95,7 @@ Add to the component or create a separate HTML head:
 ```html
 <title>Features - PolyGen AI | Text to 3D, Image to 3D, STL Export</title>
 <meta name="description" content="Explore PolyGen AI features: natural language input, image-to-3D conversion, multi-agent AI, real-time 3D preview, OpenSCAD & STL export.">
-<link rel="canonical" href="https://polygen.ai/features">
+<link rel="canonical" href="https://polygen-ai.vercel.app/features">
 ```
 
 ### For Blog Posts
@@ -103,7 +103,7 @@ Add to the component or create a separate HTML head:
 ```html
 <title>[Post Title] | PolyGen AI Blog</title>
 <meta name="description" content="[155 character summary of the post]">
-<link rel="canonical" href="https://polygen.ai/blog/[slug]">
+<link rel="canonical" href="https://polygen-ai.vercel.app/blog/[slug]">
 <meta property="og:type" content="article">
 <meta property="article:published_time" content="2026-01-24">
 <meta property="article:author" content="PolyGen AI Team">
@@ -136,8 +136,8 @@ interface SEOProps {
 export default function SEO({
   title = 'PolyGen AI - Text to 3D Model Generator',
   description = 'Transform text descriptions into 3D-printable models with AI.',
-  canonical = 'https://polygen.ai/',
-  ogImage = 'https://polygen.ai/og-image.png',
+  canonical = 'https://polygen-ai.vercel.app/',
+  ogImage = 'https://polygen-ai.vercel.app/og-image.png',
   type = 'website'
 }: SEOProps) {
   return (
@@ -171,7 +171,7 @@ Usage:
 <SEO
   title="Pricing - PolyGen AI | Free, Pro & Enterprise Plans"
   description="Simple, transparent pricing..."
-  canonical="https://polygen.ai/pricing"
+  canonical="https://polygen-ai.vercel.app/pricing"
 />
 ```
 

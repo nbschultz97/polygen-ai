@@ -407,7 +407,7 @@ Co-create content with complementary tools.
 
 ---
 
-*Ready to create your first AI-generated 3D model? [Try PolyGen AI free](https://polygen.ai) - no credit card required.*
+*Ready to create your first AI-generated 3D model? [Try PolyGen AI free](https://polygen-ai.vercel.app) - no credit card required.*
 ```
 
 ### Comparison Post Template

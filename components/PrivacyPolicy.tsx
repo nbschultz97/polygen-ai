@@ -118,7 +118,7 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
               <li>Withdraw consent</li>
             </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              To exercise these rights, contact us at privacy@polygen.ai.
+              To exercise these rights, contact us at privacy@polygenai.com.
             </p>
           </section>
 
@@ -164,7 +164,7 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
             </p>
             <div className="flex items-center gap-2 text-violet-400">
               <Mail className="w-4 h-4" />
-              <a href="mailto:privacy@polygen.ai" className="hover:underline">privacy@polygen.ai</a>
+              <a href="mailto:privacy@polygenai.com" className="hover:underline">privacy@polygenai.com</a>
             </div>
           </section>
         </div>

@@ -210,7 +210,7 @@ export default function PricingPage({ onClose }: PricingPageProps) {
           <p className="text-gray-500 text-sm">
             All plans include SSL encryption, GDPR compliance, and 99.9% uptime SLA.
             <br />
-            Questions? Email us at <a href="mailto:support@polygen.ai" className="text-violet-400 hover:underline">support@polygen.ai</a>
+            Questions? Email us at <a href="mailto:support@polygenai.com" className="text-violet-400 hover:underline">support@polygenai.com</a>
           </p>
         </div>
 
