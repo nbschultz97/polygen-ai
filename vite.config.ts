@@ -12,11 +12,13 @@ export default defineConfig(({ mode }) => {
       GEMINI_MODEL: fileEnv.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash',
       CODER_MODEL: fileEnv.CODER_MODEL || process.env.CODER_MODEL || 'claude-sonnet-4-20250514',
       USE_MULTI_AGENT: fileEnv.USE_MULTI_AGENT || process.env.USE_MULTI_AGENT || 'false',
-      // Supabase - support both VITE_ and NEXT_PUBLIC_ (Vercel integration) prefixes
+      // Supabase - support all naming conventions from Vercel integration
       SUPABASE_URL: fileEnv.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL ||
-                    fileEnv.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+                    fileEnv.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL ||
+                    fileEnv.SUPABASE_URL || process.env.SUPABASE_URL || '',
       SUPABASE_ANON_KEY: fileEnv.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY ||
-                         fileEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                         fileEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+                         fileEnv.SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '',
     };
     return {
       server: {
