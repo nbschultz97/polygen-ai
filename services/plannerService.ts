@@ -251,11 +251,9 @@ ${input.userPrompt}`
 
   try {
     const model = process.env.GEMINI_MODEL || 'gemini-1.5-pro';
-    const thinkingLevel = process.env.THINKING_LEVEL || 'high';
 
     const config: any = {
       systemInstruction: PLANNER_SYSTEM_PROMPT,
-      thinkingConfig: { thinkingLevel },
       responseMimeType: 'application/json',
       temperature: 0.7
     };

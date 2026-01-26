@@ -583,7 +583,6 @@ ${userPrompt}
         // Build config - note: can't use responseMimeType with tools
         const config: any = {
             systemInstruction: POLYGEN_AUTHOR_SYSTEM_PROMPT,
-            thinkingConfig: { thinkingLevel: THINKING_LEVEL },
             temperature: TEMPERATURE,
         };
 
