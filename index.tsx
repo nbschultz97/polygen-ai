@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import AppRouter from './components/AppRouter';
 import { AuthProvider } from './components/AuthContext';
 import { initializeAnalytics } from './services/analytics';
 
@@ -16,7 +16,7 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <AppRouter />
     </AuthProvider>
   </React.StrictMode>
 );

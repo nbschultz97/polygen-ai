@@ -9,7 +9,39 @@ import { createClient, User, Session, AuthError } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Check if Supabase is configured
+const isSupabaseConfigured = supabaseUrl && supabaseAnonKey &&
+  supabaseUrl !== '' && supabaseAnonKey !== '' &&
+  supabaseUrl.includes('supabase');
+
+// Create a mock client that returns null/empty for all operations when not configured
+const mockSupabase = {
+  auth: {
+    getSession: async () => ({ data: { session: null }, error: null }),
+    getUser: async () => ({ data: { user: null }, error: null }),
+    signUp: async () => ({ data: { user: null, session: null }, error: { message: 'Auth not configured' } }),
+    signInWithPassword: async () => ({ data: { user: null, session: null }, error: { message: 'Auth not configured' } }),
+    signInWithOAuth: async () => ({ error: { message: 'Auth not configured' } }),
+    signOut: async () => ({ error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+  },
+  from: () => ({
+    insert: async () => ({ error: { message: 'Database not configured' } }),
+    select: () => ({
+      eq: () => ({
+        single: async () => ({ data: null, error: { message: 'Database not configured' } })
+      })
+    }),
+    update: () => ({
+      eq: async () => ({ error: { message: 'Database not configured' } })
+    })
+  }),
+  rpc: async () => ({ error: { message: 'Database not configured' } })
+};
+
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : mockSupabase as any;
 
 export interface UserProfile {
   id: string;
