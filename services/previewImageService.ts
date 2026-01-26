@@ -1,18 +1,10 @@
 /**
  * Preview Image Service
  * Generates concept images from GST using Gemini's image generation
+ * Uses secure server-side proxy - API key never exposed to frontend
  */
 
-import { GoogleGenAI } from "@google/genai";
 import { GeometricStructureTree } from '../types';
-
-const getClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY not set");
-  }
-  return new GoogleGenAI({ apiKey });
-};
 
 /**
  * Convert GST to an image generation prompt
@@ -75,13 +67,12 @@ function extractComponentTypes(component: any, types: string[] = []): string[] {
 
 /**
  * Generate a preview image from a GST
+ * Uses secure server-side proxy
  */
 export async function generatePreviewImage(
   gst: GeometricStructureTree,
   abortSignal?: AbortSignal
 ): Promise<string | null> {
-  const ai = getClient();
-
   if (abortSignal?.aborted) {
     return null;
   }
@@ -90,28 +81,33 @@ export async function generatePreviewImage(
   console.log('Image generation prompt:', prompt);
 
   try {
-    // Use Gemini's image generation model
-    const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-002',
-      prompt: prompt,
-      config: {
+    // Call secure server-side proxy
+    const response = await fetch('/api/gemini-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: prompt,
         numberOfImages: 1,
-        aspectRatio: '1:1',
-        outputMimeType: 'image/png'
-      }
+        aspectRatio: '1:1'
+      }),
+      signal: abortSignal
     });
 
     if (abortSignal?.aborted) {
       return null;
     }
 
-    // Extract base64 image from response
-    if (response.generatedImages && response.generatedImages.length > 0) {
-      const image = response.generatedImages[0];
-      if (image.image?.imageBytes) {
-        // Convert to data URL
-        return `data:image/png;base64,${image.image.imageBytes}`;
-      }
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.log('Image generation skipped:', errorData.error);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.imageBase64) {
+      return `data:image/png;base64,${data.imageBase64}`;
     }
 
     console.log('No image generated');
@@ -126,9 +122,10 @@ export async function generatePreviewImage(
 
 /**
  * Check if image generation is available
+ * Returns true - actual availability is determined server-side
  */
 export function isImageGenAvailable(): boolean {
-  return !!(process.env.GEMINI_API_KEY || process.env.API_KEY);
+  return true; // Server will return error if not configured
 }
 
 export const previewImageService = {

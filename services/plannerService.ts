@@ -1,9 +1,9 @@
 /**
  * Planner Service
- * Interfaces with Gemini 3 Pro to generate Geometric Structure Trees (GST)
+ * Interfaces with Gemini via secure server-side proxy to generate Geometric Structure Trees (GST)
+ * API key is never exposed to the frontend
  */
 
-import { GoogleGenAI } from "@google/genai";
 import {
   GeometricStructureTree,
   SpecData,
@@ -196,22 +196,14 @@ Or use explicit translation in anchors:
 - [ ] Subtractive geometry is marked with booleanOp: "subtract"
 `;
 
-const getClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY not set");
-  }
-  return new GoogleGenAI({ apiKey });
-};
-
 /**
  * Generate a Geometric Structure Tree from user prompt
+ * Uses secure server-side proxy - API key never exposed to browser
  */
 export async function generateGST(
   input: PlannerInput,
   abortSignal?: AbortSignal
 ): Promise<PlannerOutput> {
-  const ai = getClient();
   const prefs = loadPreferences();
   const prefsContext = getPreferencesForPrompt();
 
@@ -220,55 +212,51 @@ export async function generateGST(
     throw new DOMException('Request was aborted', 'AbortError');
   }
 
-  // Build content parts
-  const parts: any[] = [];
-
-  // Add image if provided
+  // Build the prompt
+  let prompt: string;
   if (input.imageData) {
-    parts.push({
-      inlineData: {
-        mimeType: input.imageData.mimeType,
-        data: input.imageData.base64
-      }
-    });
-    parts.push({
-      text: `REFERENCE IMAGE ATTACHED: Analyze this image and create a 3D printable version.
+    prompt = `REFERENCE IMAGE ATTACHED: Analyze this image and create a 3D printable version.
 Estimate dimensions from context.
 
 ${prefsContext}
 
 USER REQUEST:
-${input.userPrompt}`
-    });
+${input.userPrompt}`;
   } else {
-    parts.push({
-      text: `${prefsContext}
+    prompt = `${prefsContext}
 
 USER REQUEST:
-${input.userPrompt}`
-    });
+${input.userPrompt}`;
   }
 
   try {
-    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-
-    const config: any = {
-      systemInstruction: PLANNER_SYSTEM_PROMPT,
-      responseMimeType: 'application/json',
-      temperature: 0.7
-    };
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: [{ role: 'user', parts }],
-      config
+    // Call secure server-side proxy
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        imageData: input.imageData,
+        systemInstruction: PLANNER_SYSTEM_PROMPT,
+        responseMimeType: 'application/json',
+        temperature: 0.7
+      }),
+      signal: abortSignal
     });
 
     if (abortSignal?.aborted) {
       throw new DOMException('Request was aborted', 'AbortError');
     }
 
-    const text = response.text || "";
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.text || "";
     return parsePlannerResponse(text);
 
   } catch (error) {

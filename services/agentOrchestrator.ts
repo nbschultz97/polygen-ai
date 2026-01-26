@@ -264,19 +264,16 @@ export async function orchestrateGeneration(
 
 /**
  * Check if the multi-agent pipeline is available
- * Requires Gemini API key and Claude proxy (available when deployed)
+ * API keys are server-side only; availability determined by USE_MULTI_AGENT flag
  */
 export function isMultiAgentAvailable(): boolean {
-  const hasGemini = !!(process.env.GEMINI_API_KEY || process.env.API_KEY);
-  // Claude is available via /api/claude proxy in deployed environments
-  // In development, it depends on whether the proxy is running
-  const hasClaudeProxy = process.env.USE_MULTI_AGENT === 'true';
-
-  return hasGemini && hasClaudeProxy;
+  // API keys are checked server-side in /api/gemini and /api/claude
+  // Frontend just checks if multi-agent mode is enabled
+  return process.env.USE_MULTI_AGENT === 'true';
 }
 
 /**
- * Get status of all agents (serverless - all browser-based)
+ * Get status of all agents (serverless - API keys are server-side)
  */
 export function getAgentStatus(): {
   planner: { available: boolean; model: string };
@@ -285,11 +282,11 @@ export function getAgentStatus(): {
 } {
   return {
     planner: {
-      available: !!(process.env.GEMINI_API_KEY || process.env.API_KEY),
+      available: true, // Actual availability checked server-side
       model: process.env.GEMINI_MODEL || 'gemini-2.0-flash'
     },
     coder: {
-      available: coderService.isCoderAvailable(),
+      available: process.env.USE_MULTI_AGENT === 'true',
       model: process.env.CODER_MODEL || 'claude-sonnet-4-20250514'
     },
     validator: {

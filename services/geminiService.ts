@@ -1,25 +1,18 @@
+/**
+ * Gemini Service - Single-agent mode
+ * Uses secure server-side proxy - API key never exposed to frontend
+ */
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { validateScadCode } from "./scadValidation";
 import { SpecData, GeneratedAsset, ClarificationQuestion } from "../types";
 import { loadPreferences, getPreferencesForPrompt, addRecentDesign } from "./preferencesService";
 
 // App Version - update this when making changes
 export const APP_VERSION = "3.0.0";
-export const APP_BUILD_DATE = "2026-01-24";
+export const APP_BUILD_DATE = "2026-01-26";
 
-// Configuration - can be overridden via environment variables
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-const THINKING_LEVEL = process.env.THINKING_LEVEL || 'high'; // Gemini 3 uses thinking_level: low, medium, high
+// Configuration
 const TEMPERATURE = 0.7; // Balanced creativity vs consistency
-
-const getClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY environment variable is not set. Please set GEMINI_API_KEY in your .env.local file.");
-  }
-  return new GoogleGenAI({ apiKey });
-};
 
 // --- POLYGEN STANDARD LIBRARY (KERNEL) ---
 const SCAD_KERNEL = `
@@ -506,7 +499,6 @@ export const processArchitectRequest = async (
     abortSignal?: AbortSignal,
     imageData?: ImageData
 ): Promise<GeneratedAsset> => {
-  const ai = getClient();
   const maxRetries = 2;
   let attempt = 0;
 
@@ -580,26 +572,28 @@ ${userPrompt}
     }
 
     try {
-        // Build config - note: can't use responseMimeType with tools
-        const config: any = {
+        // Build the prompt from messages
+        const lastUserMessage = messages[messages.length - 1];
+        const promptText = lastUserMessage.parts.find((p: any) => p.text)?.text || "";
+        const promptImage = lastUserMessage.parts.find((p: any) => p.inlineData);
+
+        // Call secure server-side proxy
+        const response = await fetch('/api/gemini', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: promptText,
+            imageData: promptImage?.inlineData ? {
+              base64: promptImage.inlineData.data,
+              mimeType: promptImage.inlineData.mimeType
+            } : undefined,
             systemInstruction: POLYGEN_AUTHOR_SYSTEM_PROMPT,
-            temperature: TEMPERATURE,
-        };
-
-        // Gemini doesn't allow tools + JSON mode together
-        // When web search is disabled, enforce JSON response mode
-        // When enabled, rely on system prompt for JSON formatting
-        if (prefs.enableWebSearch) {
-            config.tools = [{ googleSearch: {} }];
-            // Can't use responseMimeType with tools - system prompt handles JSON
-        } else {
-            config.responseMimeType = 'application/json';
-        }
-
-        const response = await ai.models.generateContent({
-            model: GEMINI_MODEL,
-            contents: messages as any,
-            config,
+            responseMimeType: prefs.enableWebSearch ? undefined : 'application/json',
+            temperature: TEMPERATURE
+          }),
+          signal: abortSignal
         });
 
         // Check if aborted after response
@@ -607,7 +601,13 @@ ${userPrompt}
           throw new DOMException('Request was aborted', 'AbortError');
         }
 
-        const text = response.text || "";
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const text = data.text || "";
         const result = parsePolyGenResponse(text, currentAsset);
         
         // If we got code, validate it
@@ -632,8 +632,8 @@ ${userPrompt}
             }
         }
 
-        // Add search sources
-        const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        // Add search sources (from raw Gemini response if available)
+        const chunks = data.raw?.candidates?.[0]?.groundingMetadata?.groundingChunks;
         const sources: string[] = [];
         if (chunks) {
             chunks.forEach((chunk: any) => { if (chunk.web?.uri) sources.push(chunk.web.uri); });
