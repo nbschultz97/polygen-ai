@@ -137,18 +137,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
     const textToSend = overrideInput || input;
     if ((!textToSend.trim() && !attachedImage) || workflowStep === 'processing') return;
 
-    // Check auth
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    // Check usage limits
-    const usage = await canGenerate();
-    if (!usage.allowed) {
-      setUsageInfo({ remaining: usage.remaining, limit: usage.limit });
-      setShowLimitModal(true);
-      return;
+    // Check usage limits only if user is logged in
+    if (user) {
+      const usage = await canGenerate();
+      if (!usage.allowed) {
+        setUsageInfo({ remaining: usage.remaining, limit: usage.limit });
+        setShowLimitModal(true);
+        return;
+      }
     }
 
     const sanitizedInput = textToSend
@@ -221,8 +217,8 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
         if (abortControllerRef.current?.signal.aborted) return;
         setCurrentAsset(asset);
 
-        // Record generation usage
-        if (asset.scadCode) {
+        // Record generation usage (only if logged in)
+        if (asset.scadCode && user) {
           await recordGeneration();
           const newUsage = await canGenerate();
           setUsageInfo({ remaining: newUsage.remaining, limit: newUsage.limit });
@@ -245,10 +241,12 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
           setWorkflowStep('complete');
           setMessages(prev => [...prev, { role: 'model', text: "Done! Your OpenSCAD code is ready. Click **Open in OpenSCAD** to edit and render it." }]);
 
-          // Record generation usage
-          await recordGeneration();
-          const newUsage = await canGenerate();
-          setUsageInfo({ remaining: newUsage.remaining, limit: newUsage.limit });
+          // Record generation usage (only if logged in)
+          if (user) {
+            await recordGeneration();
+            const newUsage = await canGenerate();
+            setUsageInfo({ remaining: newUsage.remaining, limit: newUsage.limit });
+          }
         } else if (asset.questions && asset.questions.length > 0) {
           setWorkflowStep('spec-review');
           setMessages(prev => [...prev, { role: 'model', text: "I have a few questions to finalize the design:" }]);
