@@ -97,6 +97,11 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
     }
   };
 
+  const handleTryDemo = () => {
+    // Allow users to try the app without signing in
+    onStartApp();
+  };
+
   return (
     <div className="min-h-screen bg-[#09090b] text-white">
       {/* Header */}
@@ -137,16 +142,13 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
             ) : (
               <>
                 <button
-                  onClick={() => {
-                    setAuthMode('login');
-                    setShowAuth(true);
-                  }}
+                  onClick={handleTryDemo}
                   className="px-4 py-2 text-gray-400 hover:text-white text-sm font-medium transition-colors"
                 >
-                  Sign in
+                  Try Demo
                 </button>
                 <button
-                  onClick={handleGetStarted}
+                  onClick={handleTryDemo}
                   className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   Get Started
@@ -179,10 +181,10 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
-              onClick={handleGetStarted}
+              onClick={handleTryDemo}
               className="group flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all"
             >
-              Start Creating
+              Try Demo Free
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
@@ -193,16 +195,25 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
             </button>
           </div>
 
-          {/* Demo Preview */}
+          {/* Demo Preview - Example Output */}
           <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent z-10"></div>
-            <div className="aspect-video bg-white/[0.03] border border-white/[0.1] rounded-2xl overflow-hidden">
-              <div className="w-full h-full flex items-center justify-center">
-                <button className="group flex items-center gap-3 px-6 py-3 bg-white/[0.06] hover:bg-white/[0.1] rounded-full transition-colors">
-                  <div className="w-12 h-12 bg-violet-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Play className="w-5 h-5 text-white ml-1" />
-                  </div>
-                  <span className="text-white font-medium">Watch Demo</span>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent z-10 pointer-events-none"></div>
+            <div className="aspect-video bg-white/[0.03] border border-white/[0.1] rounded-2xl overflow-hidden p-8">
+              <div className="w-full h-full flex flex-col items-center justify-center gap-6">
+                <div className="text-center">
+                  <p className="text-gray-400 text-sm mb-2">Example prompt:</p>
+                  <p className="text-white text-lg">"A desk organizer with 3 pen slots and a phone stand"</p>
+                </div>
+                <div className="flex items-center gap-2 text-violet-400">
+                  <Sparkles className="w-5 h-5" />
+                  <span>AI generates OpenSCAD code in seconds</span>
+                </div>
+                <button
+                  onClick={handleTryDemo}
+                  className="group flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all"
+                >
+                  Try It Now
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </div>
@@ -315,14 +326,14 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
             Join thousands of makers using PolyGen AI to bring their ideas to life.
           </p>
           <button
-            onClick={handleGetStarted}
+            onClick={handleTryDemo}
             className="group inline-flex items-center gap-2 px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all text-lg"
           >
-            Get Started Free
+            Try Demo Free
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
           <p className="mt-4 text-gray-500 text-sm">
-            No credit card required. 5 free generations per month.
+            No account required. Try it now.
           </p>
         </div>
       </section>
