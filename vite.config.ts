@@ -12,6 +12,11 @@ export default defineConfig(({ mode }) => {
       GEMINI_MODEL: fileEnv.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash',
       CODER_MODEL: fileEnv.CODER_MODEL || process.env.CODER_MODEL || 'claude-sonnet-4-20250514',
       USE_MULTI_AGENT: fileEnv.USE_MULTI_AGENT || process.env.USE_MULTI_AGENT || 'false',
+      // Supabase - support both VITE_ and NEXT_PUBLIC_ (Vercel integration) prefixes
+      SUPABASE_URL: fileEnv.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL ||
+                    fileEnv.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      SUPABASE_ANON_KEY: fileEnv.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY ||
+                         fileEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
     };
     return {
       server: {
@@ -41,6 +46,11 @@ export default defineConfig(({ mode }) => {
         'process.env.GEMINI_MODEL': JSON.stringify(env.GEMINI_MODEL),
         'process.env.CODER_MODEL': JSON.stringify(env.CODER_MODEL),
         'process.env.USE_MULTI_AGENT': JSON.stringify(env.USE_MULTI_AGENT),
+        // Supabase (public keys only - safe to expose)
+        'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.SUPABASE_URL),
+        'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.SUPABASE_ANON_KEY),
+        'import.meta.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(env.SUPABASE_URL),
+        'import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(env.SUPABASE_ANON_KEY),
       },
       resolve: {
         alias: {
