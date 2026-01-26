@@ -50,9 +50,7 @@ export default async function handler(req: Request): Promise<Response> {
     const priceId = PRICE_IDS[tier as keyof typeof PRICE_IDS];
 
     // Initialize Stripe
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: '2024-12-18.acacia'
-    });
+    const stripe = new Stripe(stripeKey);
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({

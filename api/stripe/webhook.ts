@@ -92,9 +92,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response('Server configuration error', { status: 500 });
   }
 
-  const stripe = new Stripe(stripeKey, {
-    apiVersion: '2024-12-18.acacia'
-  });
+  const stripe = new Stripe(stripeKey);
 
   const body = await req.text();
   const signature = req.headers.get('stripe-signature');

@@ -37,9 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
       return authError('Customer ID required', 400);
     }
 
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: '2024-12-18.acacia'
-    });
+    const stripe = new Stripe(stripeKey);
 
     const origin = req.headers.get('origin') || '';
     const session = await stripe.billingPortal.sessions.create({
