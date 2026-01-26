@@ -162,21 +162,21 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
+      <section className="pt-24 md:pt-32 pb-12 md:pb-20 px-4 md:px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/20 rounded-full text-violet-400 text-sm mb-8">
-            <Zap className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/20 rounded-full text-violet-400 text-xs md:text-sm mb-6 md:mb-8">
+            <Zap className="w-3 h-3 md:w-4 md:h-4" />
             Powered by Multi-Agent AI
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 leading-tight">
             Turn words into
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
               {' '}3D models
             </span>
           </h1>
 
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
+          <p className="text-base md:text-xl text-gray-400 max-w-2xl mx-auto mb-8 md:mb-10 px-2">
             Describe what you want to create in plain English. PolyGen AI generates
             printable OpenSCAD code using advanced AI agents.
           </p>
@@ -228,27 +228,59 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 px-6 bg-white/[0.01]">
+      {/* How It Works - Moved up for visibility */}
+      <section className="py-16 md:py-20 px-4 md:px-6 bg-white/[0.01]">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Everything you need to create</h2>
-            <p className="text-gray-400 max-w-xl mx-auto">
+          <div className="text-center mb-10 md:mb-16">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">How it works</h2>
+            <p className="text-gray-400 max-w-xl mx-auto text-sm md:text-base">
+              Three simple steps from idea to printable model.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
+            {[
+              { image: '/images/marketing/icon-describe.png', title: 'Describe', desc: 'Tell the AI what you want to create in plain English or upload an image.' },
+              { image: '/images/marketing/icon-generate.png', title: 'Generate', desc: 'Our multi-agent AI creates optimized OpenSCAD code for your design.' },
+              { image: '/images/marketing/icon-export.png', title: 'Export', desc: 'Preview in 3D, download the code, or export directly to STL for printing.' }
+            ].map((item, index) => (
+              <div key={index} className="text-center">
+                <div className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-4 md:mb-6 rounded-xl md:rounded-2xl overflow-hidden bg-violet-500/10 border border-violet-500/20">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h3 className="text-lg md:text-xl font-semibold text-white mb-2 md:mb-3">{item.title}</h3>
+                <p className="text-gray-500 text-sm md:text-base px-2">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-16 md:py-20 px-4 md:px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10 md:mb-16">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">Everything you need to create</h2>
+            <p className="text-gray-400 max-w-xl mx-auto text-sm md:text-base">
               From natural language to 3D-printable models in seconds.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {FEATURES.map((feature, index) => (
               <div
                 key={index}
-                className="p-6 bg-white/[0.02] border border-white/[0.06] rounded-xl hover:bg-white/[0.04] transition-colors"
+                className="p-4 md:p-6 bg-white/[0.02] border border-white/[0.06] rounded-xl hover:bg-white/[0.04] transition-colors"
               >
-                <div className="w-12 h-12 bg-violet-500/10 rounded-xl flex items-center justify-center text-violet-400 mb-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-violet-500/10 rounded-xl flex items-center justify-center text-violet-400 mb-3 md:mb-4">
                   {feature.icon}
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-500 text-sm">{feature.description}</p>
+                <h3 className="text-base md:text-lg font-semibold text-white mb-2">{feature.title}</h3>
+                <p className="text-gray-500 text-xs md:text-sm">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -256,63 +288,31 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
       </section>
 
       {/* Showcase Section */}
-      <section className="py-20 px-6">
+      <section className="py-16 md:py-20 px-4 md:px-6 bg-white/[0.01]">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Create anything you can imagine</h2>
-            <p className="text-gray-400 max-w-xl mx-auto">
+          <div className="text-center mb-10 md:mb-16">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">Create anything you can imagine</h2>
+            <p className="text-gray-400 max-w-xl mx-auto text-sm md:text-base">
               From precision gears to intricate lattice structures - PolyGen AI handles complex geometry with ease.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
             {[
               { image: '/images/marketing/v2-openscad-gears.png', title: 'Mechanical Parts', desc: 'Precision gears, threads, and mechanisms' },
               { image: '/images/marketing/v2-openscad-lattice.png', title: 'Complex Geometry', desc: 'Lattice structures and mathematical shapes' },
               { image: '/images/marketing/v2-openscad-enclosure.png', title: 'Functional Designs', desc: 'Enclosures, brackets, and housings' }
             ].map((item, index) => (
               <div key={index} className="group">
-                <div className="aspect-square bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden mb-4 group-hover:border-violet-500/30 transition-colors">
+                <div className="aspect-square bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden mb-3 md:mb-4 group-hover:border-violet-500/30 transition-colors">
                   <img
                     src={item.image}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-1">{item.title}</h3>
-                <p className="text-gray-500 text-sm">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-20 px-6 bg-white/[0.01]">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">How it works</h2>
-            <p className="text-gray-400 max-w-xl mx-auto">
-              Three simple steps from idea to printable model.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { image: '/images/marketing/icon-describe.png', title: 'Describe', desc: 'Tell the AI what you want to create in plain English or upload an image.' },
-              { image: '/images/marketing/icon-generate.png', title: 'Generate', desc: 'Our multi-agent AI creates optimized OpenSCAD code for your design.' },
-              { image: '/images/marketing/icon-export.png', title: 'Export', desc: 'Preview in 3D, download the code, or export directly to STL for printing.' }
-            ].map((item, index) => (
-              <div key={index} className="text-center">
-                <div className="w-32 h-32 mx-auto mb-6 rounded-2xl overflow-hidden bg-violet-500/10 border border-violet-500/20">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
-                <p className="text-gray-500">{item.desc}</p>
+                <h3 className="text-base md:text-lg font-semibold text-white mb-1">{item.title}</h3>
+                <p className="text-gray-500 text-xs md:text-sm">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -320,20 +320,20 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="py-20 px-6 bg-white/[0.01]">
+      <section id="testimonials" className="py-16 md:py-20 px-4 md:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Loved by makers</h2>
-            <p className="text-gray-400 max-w-xl mx-auto">
+          <div className="text-center mb-10 md:mb-16">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">Loved by makers</h2>
+            <p className="text-gray-400 max-w-xl mx-auto text-sm md:text-base">
               See what our users are saying about PolyGen AI.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {TESTIMONIALS.map((testimonial, index) => (
               <div
                 key={index}
-                className="p-6 bg-white/[0.02] border border-white/[0.06] rounded-xl"
+                className="p-4 md:p-6 bg-white/[0.02] border border-white/[0.06] rounded-xl"
               >
                 <div className="flex gap-1 mb-4">
                   {[...Array(5)].map((_, i) => (
@@ -360,22 +360,22 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
       <FAQ />
 
       {/* CTA Section */}
-      <section className="py-20 px-6 bg-white/[0.01]">
+      <section className="py-16 md:py-20 px-4 md:px-6 bg-white/[0.01]">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">
             Ready to start creating?
           </h2>
-          <p className="text-gray-400 mb-8">
+          <p className="text-gray-400 mb-6 md:mb-8 text-sm md:text-base">
             Join thousands of makers using PolyGen AI to bring their ideas to life.
           </p>
           <button
             onClick={handleTryDemo}
-            className="group inline-flex items-center gap-2 px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all text-lg"
+            className="group inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all text-base md:text-lg"
           >
             Try Demo Free
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
           </button>
-          <p className="mt-4 text-gray-500 text-sm">
+          <p className="mt-3 md:mt-4 text-gray-500 text-xs md:text-sm">
             No account required. Try it now.
           </p>
         </div>
