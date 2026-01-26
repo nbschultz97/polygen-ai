@@ -197,11 +197,16 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
             </button>
           </div>
 
-          {/* Demo Preview - Example Output */}
+          {/* Demo Preview - Hero Image */}
           <div className="mt-16 relative">
             <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent z-10 pointer-events-none"></div>
-            <div className="aspect-video bg-white/[0.03] border border-white/[0.1] rounded-2xl overflow-hidden p-8">
-              <div className="w-full h-full flex flex-col items-center justify-center gap-6">
+            <div className="aspect-video bg-white/[0.03] border border-white/[0.1] rounded-2xl overflow-hidden relative">
+              <img
+                src="/images/marketing/v2-openscad-hero.png"
+                alt="Complex 3D printed parts created with PolyGen AI"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/50 to-transparent flex flex-col items-center justify-end pb-8 gap-4">
                 <div className="text-center">
                   <p className="text-gray-400 text-sm mb-2">Example prompt:</p>
                   <p className="text-white text-lg">"A desk organizer with 3 pen slots and a phone stand"</p>
@@ -250,8 +255,40 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* Showcase Section */}
       <section className="py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold mb-4">Create anything you can imagine</h2>
+            <p className="text-gray-400 max-w-xl mx-auto">
+              From precision gears to intricate lattice structures - PolyGen AI handles complex geometry with ease.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { image: '/images/marketing/v2-openscad-gears.png', title: 'Mechanical Parts', desc: 'Precision gears, threads, and mechanisms' },
+              { image: '/images/marketing/v2-openscad-lattice.png', title: 'Complex Geometry', desc: 'Lattice structures and mathematical shapes' },
+              { image: '/images/marketing/v2-openscad-enclosure.png', title: 'Functional Designs', desc: 'Enclosures, brackets, and housings' }
+            ].map((item, index) => (
+              <div key={index} className="group">
+                <div className="aspect-square bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden mb-4 group-hover:border-violet-500/30 transition-colors">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-1">{item.title}</h3>
+                <p className="text-gray-500 text-sm">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-20 px-6 bg-white/[0.01]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">How it works</h2>
@@ -262,13 +299,17 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
 
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { step: '1', title: 'Describe', desc: 'Tell the AI what you want to create in plain English or upload an image.' },
-              { step: '2', title: 'Generate', desc: 'Our multi-agent AI creates optimized OpenSCAD code for your design.' },
-              { step: '3', title: 'Export', desc: 'Preview in 3D, download the code, or export directly to STL for printing.' }
+              { image: '/images/marketing/icon-describe.png', title: 'Describe', desc: 'Tell the AI what you want to create in plain English or upload an image.' },
+              { image: '/images/marketing/icon-generate.png', title: 'Generate', desc: 'Our multi-agent AI creates optimized OpenSCAD code for your design.' },
+              { image: '/images/marketing/icon-export.png', title: 'Export', desc: 'Preview in 3D, download the code, or export directly to STL for printing.' }
             ].map((item, index) => (
               <div key={index} className="text-center">
-                <div className="w-16 h-16 bg-violet-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6">
-                  {item.step}
+                <div className="w-32 h-32 mx-auto mb-6 rounded-2xl overflow-hidden bg-violet-500/10 border border-violet-500/20">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
                 <p className="text-gray-500">{item.desc}</p>
