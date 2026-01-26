@@ -250,7 +250,7 @@ ${input.userPrompt}`
   }
 
   try {
-    const model = process.env.GEMINI_MODEL || 'gemini-3-pro-preview';
+    const model = process.env.GEMINI_MODEL || 'gemini-1.5-pro';
     const thinkingLevel = process.env.THINKING_LEVEL || 'high';
 
     const config: any = {
