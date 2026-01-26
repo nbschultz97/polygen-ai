@@ -137,14 +137,23 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
     const textToSend = overrideInput || input;
     if ((!textToSend.trim() && !attachedImage) || workflowStep === 'processing') return;
 
-    // Check usage limits only if user is logged in
-    if (user) {
-      const usage = await canGenerate();
-      if (!usage.allowed) {
-        setUsageInfo({ remaining: usage.remaining, limit: usage.limit });
-        setShowLimitModal(true);
-        return;
-      }
+    // SECURITY: Require authentication for all generations
+    // This prevents anonymous API abuse
+    if (!user) {
+      // Show error message prompting login
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: 'Please sign in to generate 3D models. Your designs will be saved and you get 5 free generations to start!'
+      }]);
+      return;
+    }
+
+    // Check usage limits
+    const usage = await canGenerate();
+    if (!usage.allowed) {
+      setUsageInfo({ remaining: usage.remaining, limit: usage.limit });
+      setShowLimitModal(true);
+      return;
     }
 
     const sanitizedInput = textToSend

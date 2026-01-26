@@ -2,9 +2,11 @@
  * Preview Image Service
  * Generates concept images from GST using Gemini's image generation
  * Uses secure server-side proxy - API key never exposed to frontend
+ * SECURITY: All requests require authentication
  */
 
 import { GeometricStructureTree } from '../types';
+import { getAuthToken } from './apiClient';
 
 /**
  * Convert GST to an image generation prompt
@@ -81,11 +83,19 @@ export async function generatePreviewImage(
   console.log('Image generation prompt:', prompt);
 
   try {
-    // Call secure server-side proxy
+    // Get auth token for authenticated request
+    const token = await getAuthToken();
+    if (!token) {
+      console.log('Image generation skipped: not authenticated');
+      return null;
+    }
+
+    // Call secure server-side proxy with authentication
     const response = await fetch('/api/gemini-image', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         prompt: prompt,

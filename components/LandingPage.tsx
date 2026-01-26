@@ -98,8 +98,10 @@ export default function LandingPage({ onStartApp, onShowPricing, onShowPrivacy, 
   };
 
   const handleTryDemo = () => {
-    // Allow users to try the app without signing in
-    onStartApp();
+    // SECURITY: Require signup to use the app
+    // This prevents anonymous API abuse
+    setAuthMode('signup');
+    setShowAuth(true);
   };
 
   return (

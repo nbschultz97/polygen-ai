@@ -1,12 +1,22 @@
 /**
  * Vercel Edge Function - Gemini Image Generation Proxy
  * Proxies requests to Google's Imagen API
- * API key is stored server-side, never exposed to frontend
+ *
+ * SECURITY:
+ * - API key is stored server-side, never exposed to frontend
+ * - Requires authentication via JWT token
+ * - Rate limited per IP address
+ * - Validates input size to prevent abuse
  */
+
+import { verifyAuth, incrementUsage, authError } from './lib/auth';
 
 export const config = {
   runtime: 'edge',
 };
+
+// Input validation limits
+const MAX_PROMPT_LENGTH = 5000; // 5K characters max for image prompts
 
 interface ImageGenRequest {
   prompt: string;
@@ -23,6 +33,14 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 
+  // ============================================
+  // SECURITY: Verify authentication & rate limit
+  // ============================================
+  const auth = await verifyAuth(req);
+  if (!auth.success) {
+    return authError(auth.error || 'Unauthorized', auth.status || 401);
+  }
+
   // Check for API key
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -35,13 +53,31 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const body: ImageGenRequest = await req.json();
 
-    // Validate request
-    if (!body.prompt) {
+    // ============================================
+    // SECURITY: Input validation
+    // ============================================
+    if (!body.prompt || typeof body.prompt !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'Missing prompt' }),
+        JSON.stringify({ error: 'Missing or invalid prompt' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    if (body.prompt.length > MAX_PROMPT_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Prompt too long (max ${MAX_PROMPT_LENGTH} characters)` }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate numberOfImages
+    const numberOfImages = Math.min(Math.max(body.numberOfImages || 1, 1), 4);
+
+    // Validate aspectRatio
+    const validAspectRatios = ['1:1', '16:9', '9:16', '4:3', '3:4'];
+    const aspectRatio = validAspectRatios.includes(body.aspectRatio || '')
+      ? body.aspectRatio
+      : '1:1';
 
     // Call Imagen API
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
@@ -54,8 +90,8 @@ export default async function handler(req: Request): Promise<Response> {
       body: JSON.stringify({
         prompt: body.prompt,
         config: {
-          numberOfImages: body.numberOfImages || 1,
-          aspectRatio: body.aspectRatio || '1:1',
+          numberOfImages,
+          aspectRatio,
           outputMimeType: 'image/png'
         }
       }),
@@ -69,6 +105,13 @@ export default async function handler(req: Request): Promise<Response> {
         JSON.stringify({ error: data.error?.message || 'Image generation failed' }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // ============================================
+    // SECURITY: Increment usage counter
+    // ============================================
+    if (auth.user?.id) {
+      await incrementUsage(auth.user.id);
     }
 
     // Extract image data

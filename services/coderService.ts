@@ -2,6 +2,7 @@
  * Coder Service
  * Generates OpenSCAD code from GST using Claude API (via server proxy)
  * Uses pure OpenSCAD primitives (no BOSL2) for WASM compatibility
+ * SECURITY: All requests require authentication
  */
 
 import {
@@ -11,6 +12,7 @@ import {
   CoderOutput
 } from '../types';
 import { buildValidationFeedback, buildRetryPrompt, ValidationFeedback } from './validationFeedbackBuilder';
+import { getAuthToken } from './apiClient';
 
 // Extended CoderInput with validation feedback
 export interface EnhancedCoderInput extends CoderInput {
@@ -169,16 +171,24 @@ export function isCoderAvailable(): boolean {
 
 /**
  * Call Claude API via server proxy
+ * SECURITY: Requires authentication
  */
 async function callClaudeProxy(
   prompt: string,
   systemPrompt: string,
   abortSignal?: AbortSignal
 ): Promise<string> {
+  // Get auth token for authenticated request
+  const token = await getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
   const response = await fetch('/api/claude', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({
       model: process.env.CODER_MODEL || DEFAULT_MODEL,

@@ -1,11 +1,13 @@
 /**
  * Gemini Service - Single-agent mode
  * Uses secure server-side proxy - API key never exposed to frontend
+ * SECURITY: All requests require authentication
  */
 
 import { validateScadCode } from "./scadValidation";
 import { SpecData, GeneratedAsset, ClarificationQuestion } from "../types";
 import { loadPreferences, getPreferencesForPrompt, addRecentDesign } from "./preferencesService";
+import { getAuthToken } from './apiClient';
 
 // App Version - update this when making changes
 export const APP_VERSION = "3.0.0";
@@ -577,11 +579,18 @@ ${userPrompt}
         const promptText = lastUserMessage.parts.find((p: any) => p.text)?.text || "";
         const promptImage = lastUserMessage.parts.find((p: any) => p.inlineData);
 
-        // Call secure server-side proxy
+        // Get auth token for authenticated request
+        const token = await getAuthToken();
+        if (!token) {
+          throw new Error('Authentication required. Please log in.');
+        }
+
+        // Call secure server-side proxy with authentication
         const response = await fetch('/api/gemini', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             prompt: promptText,

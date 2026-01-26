@@ -1,12 +1,24 @@
 /**
  * Vercel Edge Function - Gemini API Proxy
  * Proxies requests to Google's Generative AI API
- * API key is stored server-side, never exposed to frontend
+ *
+ * SECURITY:
+ * - API key is stored server-side, never exposed to frontend
+ * - Requires authentication via JWT token
+ * - Rate limited per IP address
+ * - Validates input size to prevent abuse
  */
+
+import { verifyAuth, incrementUsage, authError } from './lib/auth';
 
 export const config = {
   runtime: 'edge',
 };
+
+// Input validation limits
+const MAX_PROMPT_LENGTH = 50000; // 50K characters max
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB max
+const VALID_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 interface GeminiRequest {
   model?: string;
@@ -29,6 +41,14 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 
+  // ============================================
+  // SECURITY: Verify authentication & rate limit
+  // ============================================
+  const auth = await verifyAuth(req);
+  if (!auth.success) {
+    return authError(auth.error || 'Unauthorized', auth.status || 401);
+  }
+
   // Check for API key
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -41,12 +61,45 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const body: GeminiRequest = await req.json();
 
-    // Validate request
-    if (!body.prompt) {
+    // ============================================
+    // SECURITY: Input validation
+    // ============================================
+    if (!body.prompt || typeof body.prompt !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'Missing prompt' }),
+        JSON.stringify({ error: 'Missing or invalid prompt' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    if (body.prompt.length > MAX_PROMPT_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Prompt too long (max ${MAX_PROMPT_LENGTH} characters)` }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate image if provided
+    if (body.imageData) {
+      if (!body.imageData.base64 || !body.imageData.mimeType) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid image data' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (body.imageData.base64.length > MAX_IMAGE_SIZE) {
+        return new Response(
+          JSON.stringify({ error: `Image too large (max ${MAX_IMAGE_SIZE / 1024 / 1024}MB)` }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!VALID_MIME_TYPES.includes(body.imageData.mimeType)) {
+        return new Response(
+          JSON.stringify({ error: `Invalid image format. Allowed: ${VALID_MIME_TYPES.join(', ')}` }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const model = body.model || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
@@ -106,6 +159,13 @@ export default async function handler(req: Request): Promise<Response> {
         JSON.stringify({ error: data.error?.message || 'Gemini API error' }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // ============================================
+    // SECURITY: Increment usage counter
+    // ============================================
+    if (auth.user?.id) {
+      await incrementUsage(auth.user.id);
     }
 
     // Extract text from response

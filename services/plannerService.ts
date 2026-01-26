@@ -2,6 +2,7 @@
  * Planner Service
  * Interfaces with Gemini via secure server-side proxy to generate Geometric Structure Trees (GST)
  * API key is never exposed to the frontend
+ * SECURITY: All requests require authentication
  */
 
 import {
@@ -13,6 +14,7 @@ import {
   ImageData
 } from '../types';
 import { loadPreferences, getPreferencesForPrompt } from './preferencesService';
+import { getAuthToken } from './apiClient';
 
 // System prompt for the Planner agent - Enhanced with Component Type Taxonomy
 const PLANNER_SYSTEM_PROMPT = `
@@ -230,11 +232,18 @@ ${input.userPrompt}`;
   }
 
   try {
-    // Call secure server-side proxy
+    // Get auth token for authenticated request
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    // Call secure server-side proxy with authentication
     const response = await fetch('/api/gemini', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         prompt,
