@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
     const fileEnv = loadEnv(mode, '.', '');
     const env = {
       GEMINI_API_KEY: fileEnv.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
-      GEMINI_MODEL: fileEnv.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-1.5-pro',
+      GEMINI_MODEL: fileEnv.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash',
       THINKING_LEVEL: fileEnv.THINKING_LEVEL || process.env.THINKING_LEVEL || 'high',
       ANTHROPIC_API_KEY: fileEnv.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || '',
       CODER_MODEL: fileEnv.CODER_MODEL || process.env.CODER_MODEL || 'claude-sonnet-4-20250514',

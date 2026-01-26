@@ -286,7 +286,7 @@ export function getAgentStatus(): {
   return {
     planner: {
       available: !!(process.env.GEMINI_API_KEY || process.env.API_KEY),
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-pro'
+      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash'
     },
     coder: {
       available: coderService.isCoderAvailable(),

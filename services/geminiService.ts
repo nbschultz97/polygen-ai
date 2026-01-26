@@ -9,7 +9,7 @@ export const APP_VERSION = "3.0.0";
 export const APP_BUILD_DATE = "2026-01-24";
 
 // Configuration - can be overridden via environment variables
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-pro';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 const THINKING_LEVEL = process.env.THINKING_LEVEL || 'high'; // Gemini 3 uses thinking_level: low, medium, high
 const TEMPERATURE = 0.7; // Balanced creativity vs consistency
 
