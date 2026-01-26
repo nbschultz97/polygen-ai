@@ -52,24 +52,25 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
       isLoading = false;
       return {
         OpenSCAD: globalScope.OpenSCAD,
-        baseUrl: globalScope.OPENSCAD_BASE_URL || 'https://unpkg.com/openscad-wasm@0.6.0/dist/',
+        baseUrl: globalScope.OPENSCAD_BASE_URL || 'https://unpkg.com/openscad-wasm@0.0.4/web/',
       };
     }
 
-    // List of CDNs to try with fallbacks - try multiple versions
+    // List of CDNs to try with fallbacks
+    // Package structure: openscad-wasm@0.0.4 uses ./web/openscad.js for browsers
     const candidates = [
-      // Try latest version first
-      { url: 'https://unpkg.com/openscad-wasm@latest/dist/', file: 'openscad.min.js' },
-      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@latest/dist/', file: 'openscad.min.js' },
-      // Specific versions that are known to work
-      { url: 'https://unpkg.com/openscad-wasm@0.0.4/dist/', file: 'openscad.min.js' },
-      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.4/dist/', file: 'openscad.min.js' },
-      // Legacy version fallbacks
-      { url: 'https://unpkg.com/openscad-wasm@0.6.0/dist/', file: 'openscad.min.js' },
-      { url: 'https://unpkg.com/openscad-wasm@0.6.0/dist/', file: 'openscad.js' },
-      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.6.0/dist/', file: 'openscad.min.js' },
-      // Alternative CDNs
-      { url: 'https://esm.sh/openscad-wasm@latest/dist/', file: 'openscad.min.js' },
+      // Current version with correct paths (v0.0.4 uses /web/ folder for browser builds)
+      { url: 'https://unpkg.com/openscad-wasm@0.0.4/', file: 'web/openscad.js' },
+      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.4/', file: 'web/openscad.js' },
+      // Latest tag
+      { url: 'https://unpkg.com/openscad-wasm@latest/', file: 'web/openscad.js' },
+      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@latest/', file: 'web/openscad.js' },
+      // Root entry point fallback
+      { url: 'https://unpkg.com/openscad-wasm@0.0.4/', file: 'openscad.js' },
+      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.4/', file: 'openscad.js' },
+      // Older versions
+      { url: 'https://unpkg.com/openscad-wasm@0.0.3/', file: 'web/openscad.js' },
+      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.3/', file: 'web/openscad.js' },
     ];
 
     const loadScript = async (baseUrl: string, filename: string): Promise<void> => {
@@ -141,7 +142,12 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
       try {
         await loadScript(candidate.url, candidate.file);
         isLoading = false;
-        return { OpenSCAD: globalScope.OpenSCAD, baseUrl: candidate.url };
+        // Calculate baseUrl for WASM files - they're in the same folder as the JS file
+        const wasmBaseUrl = candidate.file.includes('/')
+          ? candidate.url + candidate.file.substring(0, candidate.file.lastIndexOf('/') + 1)
+          : candidate.url;
+        console.log(`OpenSCAD loaded from ${candidate.url}${candidate.file}, WASM base: ${wasmBaseUrl}`);
+        return { OpenSCAD: globalScope.OpenSCAD, baseUrl: wasmBaseUrl };
       } catch (e) {
         lastError = e as Error;
         console.warn(`Failed to load from ${candidate.url}${candidate.file}`, e);
