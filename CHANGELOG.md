@@ -5,6 +5,26 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-01-26
+
+### Changed
+
+- **Multi-Agent Pipeline Default**: Now uses Gemini (Planner) → GST → Claude (Coder) by default for 75% success rate vs 44% unified
+- **Improved Clarification Questions**: AI now asks follow-up questions for multi-part assemblies even with tactical/military terms (Picatinny, MOLLE)
+- **Auto-Render on Generation**: 3D preview automatically renders when code is first generated
+- **Auto-Switch to 3D View**: Switches to preview tab after successful generation
+
+### Fixed
+
+- **Complex Designs**: Requests like "Picatinny mount + plate + MOLLE clips" now ask clarifying questions instead of generating rectangles
+- **Re-render After Edits**: Users can now regenerate 3D preview after editing code
+
+### Technical
+
+- Updated agentOrchestrator.test.ts mocks for multi-agent pipeline
+
+---
+
 ## [3.1.0] - 2026-01-26
 
 ### Added
