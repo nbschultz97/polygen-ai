@@ -5,6 +5,23 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.1] - 2026-01-27
+
+### Fixed
+
+- **Code Extraction Robustness**: Improved `extractScadCode()` to find code blocks anywhere in Claude's response using regex matching. Previously only handled code at start/end of response, causing syntax errors when Claude output explanations first
+- **Triangle Count Validation**: Added 1M triangle cap and file-size cross-validation. Previously, malformed STL headers could report 892M triangles despite small actual file size
+- **Warning on Corrected Triangle Count**: Now surfaces a warning to users when triangle count is corrected, indicating potential STL parsing issues
+
+### Technical
+
+- Enhanced regex in `extractScadCode()`: now uses `/```(?:openscad|scad)?\s*\n([\s\S]*?)```/` to find code blocks anywhere in text
+- Added fallback heuristic to detect code start by looking for OpenSCAD patterns (comments, variable assignments, module declarations)
+- Added `triangleCountCorrected` flag in scadValidation.ts to track when sanity check modifies the value
+- All 118 tests passing
+
+---
+
 ## [3.3.0] - 2026-01-27
 
 ### Added
