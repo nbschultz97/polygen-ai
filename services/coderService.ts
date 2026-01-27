@@ -5,9 +5,9 @@
  * SECURITY: All requests require authentication
  */
 
-import type { CoderInput, CoderEditInput, CoderOutput } from '../types';
-import type { ValidationFeedback } from './validationFeedbackBuilder';
+import type { CoderEditInput, CoderInput, CoderOutput } from '../types';
 import { getAuthToken } from './apiClient';
+import type { ValidationFeedback } from './validationFeedbackBuilder';
 
 // Extended CoderInput with validation feedback
 export interface EnhancedCoderInput extends CoderInput {
@@ -418,8 +418,18 @@ ${input.validationErrors.map((e) => `- ${e}`).join('\n')}
       throw new DOMException('Request was aborted', 'AbortError');
     }
 
+    // Post-process to ensure mandatory library is present if tactical modules are used
+    let code = extractScadCode(text);
+    if (
+      (code.includes('picatinny_') || code.includes('molle_')) &&
+      !code.includes('libraries/tactical.scad')
+    ) {
+      console.log('Tactical Guard: Auto-injecting missing tactical library import');
+      code = `use <libraries/tactical.scad>\n\n${code}`;
+    }
+
     return {
-      scadCode: extractScadCode(text),
+      scadCode: code,
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -449,7 +459,7 @@ When editing, you MUST preserve the user's original design intent:
 3. **MAINTAIN CLEARANCES**: Don't let parts collide or intersect unintentionally
 4. **VARIABLE SCOPE**: OpenSCAD variables are immutable - add new ones, don't reassign
 5. **EPSILON**: Ensure eps = 0.01 exists if using boolean operations
-6. **NO LIBRARIES**: Pure OpenSCAD only - no include/use statements
+6. **TACTICAL LIBRARY**: Use \`use <libraries/tactical.scad>\` if working with Picatinny/MOLLE/Military gear. DO NOT redefine these modules.
 
 ## BEFORE MAKING CHANGES - ASK YOURSELF:
 1. What other components depend on the part I'm changing?
@@ -581,8 +591,20 @@ Output the complete modified SCAD code with ALL changes applied.`;
       throw new DOMException('Request was aborted', 'AbortError');
     }
 
+    // Post-process to ensure mandatory library is present if tactical modules are used
+    let code = extractScadCode(text);
+    if (
+      (code.includes('picatinny_') || code.includes('molle_')) &&
+      !code.includes('libraries/tactical.scad')
+    ) {
+      console.log(
+        'Tactical Guard: Auto-injecting missing tactical library import into edited code'
+      );
+      code = `use <libraries/tactical.scad>\n\n${code}`;
+    }
+
     return {
-      scadCode: extractScadCode(text),
+      scadCode: code,
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {

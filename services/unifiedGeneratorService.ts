@@ -215,7 +215,7 @@ Before output, verify:
 [ ] All semicolons present
 [ ] All braces matched
 [ ] $fn set for curves
-[ ] No include/use statements
+[ ] use <libraries/tactical.scad> present if using picatinny_/molle_ modules
 `;
 
 // Edit system prompt
@@ -228,7 +228,7 @@ You are an OpenSCAD code editor. Apply precise modifications to existing code.
 3. Maintain clearances - don't let parts collide
 4. Variables are immutable - add new ones, don't reassign
 5. Keep eps = 0.01 for boolean operations
-6. NO libraries - pure OpenSCAD only
+6. KEEP existing use <libraries/tactical.scad> if present; ADD it if using picatinny_/molle_ modules
 
 ## BEFORE EDITING - ASK YOURSELF
 1. What other components depend on this part?
@@ -521,7 +521,16 @@ Generate the OpenSCAD code for this design. Output ONLY valid SCAD code unless y
     }
 
     // Extract clean SCAD code
-    const scadCode = extractScadCode(text);
+    let scadCode = extractScadCode(text);
+
+    // Tactical Guard: Auto-inject library if tactical modules are used but library is missing
+    if (
+      (scadCode.includes('picatinny_') || scadCode.includes('molle_')) &&
+      !scadCode.includes('libraries/tactical.scad')
+    ) {
+      console.log('Tactical Guard: Auto-injecting missing tactical library import');
+      scadCode = `use <libraries/tactical.scad>\n\n${scadCode}`;
+    }
 
     return {
       needsClarification: false,
