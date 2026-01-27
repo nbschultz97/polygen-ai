@@ -6,7 +6,7 @@
 
 import type { GeometricStructureTree, ImageData } from '../types';
 import { getAuthToken } from './apiClient';
-import { loadPreferences, getPreferencesForPrompt } from './preferencesService';
+import { getPreferencesForPrompt, loadPreferences } from './preferencesService';
 import { streamClaudeResponse } from './streamingClient';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
@@ -147,6 +147,76 @@ module step_hole(d, h, steps=3) {
 }
 Example usage comment:
 // Using step_hole - graduated diameter enables printing without supports
+
+### Female Picatinny Rail Mount (MIL-STD-1913)
+// Use female_picatinny for: weapon attachments, drone mounts, tactical accessories
+// Creates a RECEIVER that accepts a standard male Picatinny rail
+module female_picatinny_rail(slots = 5, height = 15) {
+    // MIL-STD-1913 Picatinny specs (verified)
+    slot_pitch = 10.01;        // Center-to-center distance
+    groove_top = 21.2;         // Top of dovetail (wider)
+    groove_base = 20.6;        // Base of dovetail (narrower)
+    groove_depth = 9.6;        // Depth of dovetail groove
+    rail_width = 22;           // Overall width including walls
+    
+    length = slots * slot_pitch;
+    
+    difference() {
+        // Solid block
+        cube([length, rail_width, height], center=true);
+        
+        // Dovetail groove running along X axis, opening on TOP (Z+)
+        translate([0, 0, height/2 - groove_depth/2 + eps])
+            linear_extrude(height = groove_depth + eps, scale = groove_top/groove_base)
+                square([length + eps*2, groove_base], center=true);
+    }
+}
+Example usage comment:
+// Female Picatinny rail - MIL-STD-1913 dovetail accepts standard weapon/drone rails
+
+### MOLLE Clip (TW-PL-507F)
+// Use molle_clip for: plate carrier attachments, tactical pouches, gear mounting
+// Creates a clip that weaves through 25mm MOLLE webbing
+module molle_clip(width = 28, height = 40) {
+    // MOLLE/PALS specs (MIL-C-43950A derived)
+    webbing = 25;              // Webbing width
+    row_spacing = 25;          // Vertical row spacing
+    hook_depth = 10;           // How far hook extends
+    wall = 3;                  // Wall thickness
+    gap = 3;                   // Gap for webbing thickness
+    
+    difference() {
+        union() {
+            // Vertical spine (attaches to base plate)
+            cube([width, wall, height], center=true);
+            
+            // Top hook extending BACKWARD (toward plate carrier body)
+            translate([0, -hook_depth/2 - wall/2, height/2 - row_spacing/2])
+                cube([width, hook_depth, row_spacing], center=true);
+            
+            // Bottom hook extending BACKWARD
+            translate([0, -hook_depth/2 - wall/2, -height/2 + row_spacing/2])
+                cube([width, hook_depth, row_spacing], center=true);
+        }
+        
+        // Slot for webbing to pass through (top hook)
+        translate([0, -hook_depth/2, height/2 - row_spacing/2])
+            cube([webbing, hook_depth + wall + eps*2, gap], center=true);
+        
+        // Slot for webbing to pass through (bottom hook)
+        translate([0, -hook_depth/2, -height/2 + row_spacing/2])
+            cube([webbing, hook_depth + wall + eps*2, gap], center=true);
+    }
+}
+Example usage comment:
+// MOLLE clip - weaves through 25mm webbing, hooks backward to lock onto plate carrier
+
+## TACTICAL EQUIPMENT ASSEMBLY RULES
+When building plate carrier adapters (Picatinny + MOLLE):
+1. MOLLE clips hook TOWARD the body (negative Y direction if body is at -Y)
+2. Picatinny groove opens AWAY from body (positive Z or Y, opposite to MOLLE)
+3. Base plate connects both - clips on INBOARD side, rail on OUTBOARD side
+4. Always use these reference modules - do NOT improvise the geometry
 
 ## INDUSTRY STANDARDS (use these, don't ask)
 
