@@ -1,4 +1,5 @@
 import { loadOpenSCAD, cleanupInstance } from './openscadLoader';
+import { isTacticalModule, generateTacticalRecoveryPrompt } from './errorCategorizer';
 
 /**
  * Validation configuration options
@@ -604,6 +605,29 @@ export const validateScadCode = async (
         volume = calculateVolume(triangles);
       } catch (manifoldErr) {
         console.warn('Manifold check skipped:', manifoldErr);
+      }
+    }
+
+    // $L_{sig}$ Protocol: Check for unknown tactical module warnings
+    // OpenSCAD continues execution but ignores unknown modules - treat as failure for tactical libs
+    const unknownModulePattern = /unknown module ['"]?(\w+)['"]?/i;
+    for (const warning of successWarnings) {
+      const match = warning.match(unknownModulePattern);
+      if (match) {
+        const moduleName = match[1];
+        if (isTacticalModule(moduleName)) {
+          const recoveryPrompt = generateTacticalRecoveryPrompt(moduleName);
+          console.log(
+            `$L_{sig}$ Protocol: Unknown tactical module '${moduleName}' - returning failure with recovery info`
+          );
+          return {
+            success: false,
+            error: `Unknown tactical module '${moduleName}'. ${recoveryPrompt || 'Check tactical.scad for available modules.'}`,
+            exitCode,
+            rawErrorLog: errorLog,
+            warnings: successWarnings,
+          };
+        }
       }
     }
 

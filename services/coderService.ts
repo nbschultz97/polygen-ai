@@ -494,7 +494,22 @@ When editing, you MUST preserve the user's original design intent:
 3. **MAINTAIN CLEARANCES**: Don't let parts collide or intersect unintentionally
 4. **VARIABLE SCOPE**: OpenSCAD variables are immutable - add new ones, don't reassign
 5. **EPSILON**: Ensure eps = 0.01 exists if using boolean operations
-6. **TACTICAL LIBRARY**: Use \`use <libraries/tactical.scad>\` if working with Picatinny/MOLLE/Military gear. DO NOT redefine these modules.
+6. **TACTICAL LIBRARY**: For Picatinny/MOLLE/Military gear, use ONLY these pre-built modules:
+   \`\`\`
+   use <libraries/tactical.scad>
+
+   // AVAILABLE MODULES (use ONLY these - NO OTHERS EXIST!):
+   picatinny_rail(slots=5, height=15, with_slots=true)     // Female receiver
+   picatinny_rail_male(slots=5, with_slots=true)          // Male rail
+   picatinny_groove(length=50)                             // Subtraction primitive
+   molle_clip(width=28, height=40, rows=1)                // MOLLE hook clip
+   molle_adapter_plate(plate_width=80, plate_height=60, plate_thickness=5, clip_columns=2)
+   picatinny_molle_adapter(slots=5, plate_width=80, plate_height=50, clip_columns=2) // COMPLETE ADAPTER!
+   rcube(size=[x,y,z], r=2)                                // Rounded cube
+   counterbore(shaft_d, shaft_depth, head_d, head_depth)  // Screw hole
+   tube(od, id, h)                                         // Hollow cylinder
+   \`\`\`
+   ⚠️ DO NOT invent modules like 'picatinny_dovetail_female' - they don't exist!
 
 ## BEFORE MAKING CHANGES - ASK YOURSELF:
 1. What other components depend on the part I'm changing?
