@@ -1,5 +1,6 @@
 // This service manages the loading and initialization of the OpenSCAD WASM engine.
 // It uses a singleton pattern with proper cleanup to prevent memory leaks.
+// Uses ES module dynamic import since openscad-wasm is an ES module.
 
 interface OpenSCADInstance {
   FS: {
@@ -16,8 +17,14 @@ interface OpenSCADLoader {
   baseUrl: string;
 }
 
+// Type for the openscad-wasm ES module export
+interface OpenSCADModule {
+  createOpenSCAD: (options?: any) => Promise<OpenSCADInstance>;
+}
+
 let openScadPromise: Promise<OpenSCADLoader> | null = null;
 let isLoading = false;
+let _cachedModule: OpenSCADModule | null = null;
 
 export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
   // Return existing promise if loading or loaded
@@ -44,136 +51,67 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
   isLoading = true;
 
   openScadPromise = (async () => {
-    const globalScope = window as any;
+    try {
+      // Use ES module dynamic import - Vite handles this properly
+      // This imports from node_modules/openscad-wasm which is bundled by Vite
+      const module = (await import('openscad-wasm')) as unknown as OpenSCADModule;
+      _cachedModule = module;
 
-    // 1. Check if already loaded by another part of the app
-    if (globalScope.OpenSCAD) {
-      isLoading = false;
-      return {
-        OpenSCAD: globalScope.OpenSCAD,
-        baseUrl: globalScope.OPENSCAD_BASE_URL || 'https://unpkg.com/openscad-wasm@0.0.4/web/',
+      // Wrap createOpenSCAD to match expected interface
+      const OpenSCAD = async (options: any): Promise<OpenSCADInstance> => {
+        return module.createOpenSCAD(options);
       };
-    }
 
-    // List of CDNs to try with fallbacks
-    // Package structure: openscad-wasm@0.0.4 uses ./web/openscad.js for browsers
-    const candidates = [
-      // Self-hosted (Priority 1)
-      { url: '/wasm/', file: 'openscad.js' },
-      // Current version with correct paths
-      { url: 'https://unpkg.com/openscad-wasm@0.0.4/', file: 'web/openscad.js' },
-      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.4/', file: 'web/openscad.js' },
-      // Latest tag
-      { url: 'https://unpkg.com/openscad-wasm@latest/', file: 'web/openscad.js' },
-      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@latest/', file: 'web/openscad.js' },
-      // Root entry point fallback
-      { url: 'https://unpkg.com/openscad-wasm@0.0.4/', file: 'openscad.js' },
-      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.4/', file: 'openscad.js' },
-      // Older versions
-      { url: 'https://unpkg.com/openscad-wasm@0.0.3/', file: 'web/openscad.js' },
-      { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.3/', file: 'web/openscad.js' },
-    ];
+      isLoading = false;
+      console.log('OpenSCAD loaded via ES module import');
 
-    const loadScript = async (baseUrl: string, filename: string): Promise<void> => {
-      return new Promise<void>((resolve, reject) => {
-        // Safe environment cleanup for UMD compatibility
-        const props = ['define', 'module', 'exports', 'require'];
-        const backup: Record<string, any> = {};
+      return {
+        OpenSCAD,
+        baseUrl: '', // Not needed for ES module import - Vite handles asset paths
+      };
+    } catch (importError) {
+      console.warn('ES module import failed, trying CDN fallback:', importError);
 
-        props.forEach((p) => {
-          if (globalScope[p] !== undefined) {
-            backup[p] = globalScope[p];
-            try {
-              globalScope[p] = undefined;
-            } catch (e) {
-              /* ignore */
-            }
-          }
-        });
+      // Fallback: Try loading via CDN with script type="module"
+      const cdnUrls = [
+        'https://esm.sh/openscad-wasm@0.0.4',
+        'https://cdn.skypack.dev/openscad-wasm@0.0.4',
+      ];
 
-        const script = document.createElement('script');
-        script.src = `${baseUrl}${filename}?t=${Date.now()}`;
-        script.async = true;
-        script.crossOrigin = 'anonymous';
+      for (const url of cdnUrls) {
+        try {
+          const module = (await import(/* @vite-ignore */ url)) as OpenSCADModule;
+          _cachedModule = module;
 
-        const cleanup = () => {
-          props.forEach((p) => {
-            if (backup[p] !== undefined) {
-              try {
-                globalScope[p] = backup[p];
-              } catch (e) {
-                /* ignore */
-              }
-            }
-          });
-        };
+          const OpenSCAD = async (options: any): Promise<OpenSCADInstance> => {
+            return module.createOpenSCAD(options);
+          };
 
-        const timeoutId = setTimeout(() => {
-          cleanup();
-          script.remove();
-          reject(new Error(`Timeout loading from ${baseUrl}`));
-        }, 15000);
+          isLoading = false;
+          console.log(`OpenSCAD loaded from CDN: ${url}`);
 
-        script.onload = () => {
-          clearTimeout(timeoutId);
-          cleanup();
-
-          if (globalScope.OpenSCAD) {
-            globalScope.OPENSCAD_BASE_URL = baseUrl;
-            resolve();
-          } else if (globalScope.Module && typeof globalScope.Module === 'function') {
-            globalScope.OpenSCAD = globalScope.Module;
-            globalScope.OPENSCAD_BASE_URL = baseUrl;
-            resolve();
-          } else if (window['OpenSCAD']) {
-            globalScope.OpenSCAD = window['OpenSCAD'];
-            globalScope.OPENSCAD_BASE_URL = baseUrl;
-            resolve();
-          } else {
-            reject(new Error('Script loaded but OpenSCAD factory not found.'));
-          }
-        };
-
-        script.onerror = () => {
-          clearTimeout(timeoutId);
-          cleanup();
-          script.remove();
-          reject(new Error(`Network error at ${baseUrl}`));
-        };
-
-        document.head.appendChild(script);
-      });
-    };
-
-    // Try each CDN candidate
-    let lastError: Error | null = null;
-    for (const candidate of candidates) {
-      try {
-        await loadScript(candidate.url, candidate.file);
-        isLoading = false;
-        // Calculate baseUrl for WASM files - they're in the same folder as the JS file
-        const wasmBaseUrl = candidate.file.includes('/')
-          ? candidate.url + candidate.file.substring(0, candidate.file.lastIndexOf('/') + 1)
-          : candidate.url;
-        console.log(
-          `OpenSCAD loaded from ${candidate.url}${candidate.file}, WASM base: ${wasmBaseUrl}`
-        );
-        return { OpenSCAD: globalScope.OpenSCAD, baseUrl: wasmBaseUrl };
-      } catch (e) {
-        lastError = e as Error;
-        console.warn(`Failed to load from ${candidate.url}${candidate.file}`, e);
+          return {
+            OpenSCAD,
+            baseUrl: url.substring(0, url.lastIndexOf('/') + 1),
+          };
+        } catch (cdnError) {
+          console.warn(`Failed to load from ${url}:`, cdnError);
+        }
       }
+
+      // Reset state on failure so it can be retried
+      openScadPromise = null;
+      isLoading = false;
+
+      throw new Error(`OpenSCAD engine could not be loaded.
+
+The ES module import failed. This may be due to:
+- Missing openscad-wasm package (run: npm install openscad-wasm)
+- Build/bundling issues with Vite
+- Network restrictions blocking ESM CDNs
+
+Original error: ${importError instanceof Error ? importError.message : 'Unknown error'}`);
     }
-
-    // Reset state on failure so it can be retried
-    openScadPromise = null;
-    isLoading = false;
-
-    throw new Error(`OpenSCAD engine could not be retrieved.
-
-Details: ${lastError?.message || 'Unknown network error'}.
-
-Please check your internet connection. If you are on a strict network (like a corporate VPN), they may be blocking access to 'unpkg.com' or 'jsdelivr.net'.`);
   })();
 
   return openScadPromise;
@@ -187,16 +125,24 @@ export const createOpenSCADInstance = async (options: {
   onPrint?: (text: string) => void;
   onPrintErr?: (text: string) => void;
 }): Promise<OpenSCADInstance> => {
-  const { OpenSCAD, baseUrl } = await loadOpenSCAD();
+  const { OpenSCAD } = await loadOpenSCAD();
 
-  const instance = await OpenSCAD({
+  // createOpenSCAD returns OpenSCADInstance with high-level API
+  // We need getInstance() to access the low-level FS and callMain interface
+  const wrapper = await OpenSCAD({
     noInitialRun: true,
-    locateFile: (path: string) => `${baseUrl}${path}`,
     print: options.onPrint || (() => {}),
     printErr: options.onPrintErr || (() => {}),
   });
 
-  return instance;
+  // The wrapper has renderToStl() and getInstance()
+  // getInstance() returns the low-level OpenSCAD with FS and callMain
+  if ('getInstance' in wrapper && typeof wrapper.getInstance === 'function') {
+    return wrapper.getInstance() as OpenSCADInstance;
+  }
+
+  // Fallback: if it's already the low-level instance
+  return wrapper as OpenSCADInstance;
 };
 
 /**
@@ -211,12 +157,12 @@ export const cleanupInstance = (instance: OpenSCADInstance): void => {
     if (instance.FS.unlink) {
       try {
         instance.FS.unlink('/input.scad');
-      } catch (e) {
+      } catch {
         /* file may not exist */
       }
       try {
         instance.FS.unlink('/output.stl');
-      } catch (e) {
+      } catch {
         /* file may not exist */
       }
     }
@@ -231,13 +177,5 @@ export const cleanupInstance = (instance: OpenSCADInstance): void => {
 export const resetLoader = (): void => {
   openScadPromise = null;
   isLoading = false;
-
-  // Clean up global references
-  const globalScope = window as any;
-  if (globalScope.OpenSCAD) {
-    delete globalScope.OpenSCAD;
-  }
-  if (globalScope.OPENSCAD_BASE_URL) {
-    delete globalScope.OPENSCAD_BASE_URL;
-  }
+  _cachedModule = null;
 };
