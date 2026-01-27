@@ -97,7 +97,11 @@ difference() {
 }
 
 ## MICRO-LIB (Common Patterns)
-These are reusable modules that solve common 3D printing challenges.
+These are VERIFIED modules. When you need these patterns:
+1. COPY the module definition EXACTLY as shown below
+2. DO NOT improvise or modify the geometry
+3. Only change parameter VALUES, not the module structure
+
 TEACHING MODE: When using these helpers, add a comment explaining WHY you chose them.
 This helps users learn CAD design principles.
 
