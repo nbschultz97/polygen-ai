@@ -19,7 +19,7 @@
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
+    "@anthropic-ai/sdk": "^0.71.2",
     "@google/genai": "^1.38.0",
     "@supabase/supabase-js": "^2.93.1",
     "lucide-react": "^0.563.0",
@@ -29,8 +29,8 @@
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.0",
     "stripe": "^17.5.0",
-    "three": "0.160.0",
-    "three-stdlib": "2.29.4"
+    "three": "0.182.0",
+    "three-stdlib": "2.36.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.5.0",
