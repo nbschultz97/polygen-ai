@@ -602,7 +602,20 @@ export const validateScadCode = async (
 
         // Calculate physical properties for SOTA benchmarking (Sd and Sv metrics)
         boundingBox = calculateBoundingBox(triangles) ?? undefined; // null -> undefined
-        volume = calculateVolume(triangles);
+        const rawVolume = calculateVolume(triangles);
+
+        // Volume sanity check - must be positive and realistic for 3D printing
+        // Maximum reasonable volume: 1m³ = 1e9 mm³ (huge industrial part)
+        // Minimum reasonable volume: 1mm³ (tiny feature)
+        const MAX_VOLUME = 1e9;
+        const MIN_VOLUME = 1;
+        if (Number.isFinite(rawVolume) && rawVolume >= MIN_VOLUME && rawVolume <= MAX_VOLUME) {
+          volume = rawVolume;
+        } else {
+          console.warn(
+            `Volume ${rawVolume?.toExponential(2)} failed sanity check (valid: ${MIN_VOLUME}-${MAX_VOLUME}mm³), discarding`
+          );
+        }
       } catch (manifoldErr) {
         console.warn('Manifold check skipped:', manifoldErr);
       }

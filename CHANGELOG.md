@@ -5,6 +5,21 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.6] - 2026-01-27
+
+### Fixed
+
+- **Critical: WASM Heap Corruption in Volume Calculation**: Volume values were being parsed from corrupt WASM heap memory, resulting in physically impossible values (e.g., `9.08e+95 mm³` instead of ~50,000 mm³). Added sanity checking to reject volumes outside the valid range (1 mm³ to 1 m³). This complements the existing bounding box sanity check that was already filtering corrupt coordinate data
+
+### Technical
+
+- Added volume sanity check to `scadValidation.worker.ts` (Web Worker path)
+- Added volume sanity check to `scadValidation.ts` (main thread fallback path)
+- Valid volume range: 1 mm³ (MIN_VOLUME) to 1e9 mm³ (MAX_VOLUME = 1 cubic meter)
+- Corrupt volumes are now logged and discarded rather than reported in validation results
+
+---
+
 ## [3.5.5] - 2026-01-27
 
 ### Added
