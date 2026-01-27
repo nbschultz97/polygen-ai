@@ -8,6 +8,7 @@ import type { OrchestratorInput } from '../../services/agentOrchestrator';
 import {
   getAgentStatus,
   isMultiAgentAvailable,
+  needsFullRegeneration,
   orchestrateGeneration,
 } from '../../services/agentOrchestrator';
 import {
@@ -423,6 +424,54 @@ describe('Agent Orchestrator', () => {
         }),
         undefined
       );
+    });
+  });
+
+  describe('needsFullRegeneration', () => {
+    it('should detect "not right" phrases', () => {
+      expect(needsFullRegeneration('not right at all')).toBe(true);
+      expect(needsFullRegeneration('thats not right')).toBe(true);
+      expect(needsFullRegeneration("that's not right")).toBe(true);
+    });
+
+    it('should detect "completely wrong" phrases', () => {
+      expect(needsFullRegeneration('completely wrong')).toBe(true);
+      expect(needsFullRegeneration('this is completely wrong')).toBe(true);
+    });
+
+    it('should detect "start over" and "try again" phrases', () => {
+      expect(needsFullRegeneration('start over')).toBe(true);
+      expect(needsFullRegeneration('try again')).toBe(true);
+      expect(needsFullRegeneration('from scratch')).toBe(true);
+      expect(needsFullRegeneration('redo this')).toBe(true);
+      expect(needsFullRegeneration('regenerate')).toBe(true);
+    });
+
+    it('should detect "not what I wanted" phrases', () => {
+      expect(needsFullRegeneration("that's not what I asked for")).toBe(true);
+      expect(needsFullRegeneration('not what i wanted')).toBe(true);
+      expect(needsFullRegeneration('not what I meant')).toBe(true);
+    });
+
+    it('should detect other dissatisfaction phrases', () => {
+      expect(needsFullRegeneration('all wrong')).toBe(true);
+      expect(needsFullRegeneration('way off')).toBe(true);
+      expect(needsFullRegeneration('nothing like what I asked')).toBe(true);
+      expect(needsFullRegeneration('totally different')).toBe(true);
+    });
+
+    it('should NOT trigger for normal edit requests', () => {
+      expect(needsFullRegeneration('make it bigger')).toBe(false);
+      expect(needsFullRegeneration('add holes')).toBe(false);
+      expect(needsFullRegeneration('change the color')).toBe(false);
+      expect(needsFullRegeneration('round the edges')).toBe(false);
+      expect(needsFullRegeneration('increase the height to 20mm')).toBe(false);
+    });
+
+    it('should be case insensitive', () => {
+      expect(needsFullRegeneration('NOT RIGHT')).toBe(true);
+      expect(needsFullRegeneration('Try Again')).toBe(true);
+      expect(needsFullRegeneration('COMPLETELY WRONG')).toBe(true);
     });
   });
 });

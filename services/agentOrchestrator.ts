@@ -37,6 +37,32 @@ const USE_MULTI_AGENT = !USE_UNIFIED_ONLY;
 const MAX_RETRY_ATTEMPTS = 3; // Increased from 2 for better error recovery
 
 /**
+ * Detect if user is fundamentally unhappy and needs complete redesign
+ * These phrases indicate edit mode should be bypassed for full regeneration
+ * Exported for testing
+ */
+export function needsFullRegeneration(prompt: string): boolean {
+  const redesignPhrases = [
+    /not right/i,
+    /completely wrong/i,
+    /doesn'?t look right/i,
+    /try again/i,
+    /start over/i,
+    /from scratch/i,
+    /redo/i,
+    /regenerate/i,
+    /wrong (design|shape|model)/i,
+    /that'?s not what/i,
+    /not what i (asked|wanted|meant)/i,
+    /nothing like/i,
+    /totally different/i,
+    /all wrong/i,
+    /way off/i,
+  ];
+  return redesignPhrases.some((pattern) => pattern.test(prompt));
+}
+
+/**
  * Helper to add a history entry to an asset
  * Maintains undo/redo capability by tracking code versions
  */
@@ -116,13 +142,41 @@ export interface OrchestratorInput {
 
 /**
  * Main orchestration function - uses unified or multi-agent pipeline
+ * SOTA Complexity Router: Forces Multi-Agent (GST) pipeline for complex designs
+ * Source: Sadik et al. (2025) - GST improves fidelity from 44.6% to 75.6%
  */
 export async function orchestrateGeneration(
   input: OrchestratorInput,
   callbacks: OrchestratorCallbacks,
   abortSignal?: AbortSignal
 ): Promise<GeneratedAsset> {
-  // Use unified pipeline by default (faster, more reliable)
+  // SOTA Complexity Router: Detect complex requests that need structural planning
+  // These keywords indicate designs that benefit from GST intermediate format
+  // Semantic complexity detection:
+  // - "assembly", "parts": Explicit multi-object request
+  // - "mechanism", "gear", "hinge": Functional parts needing precise fit
+  // - "housing", "enclosure", "case": Complex internal volumes
+  // - "bracket", "mount", "adapter", "joint": Constraint-driven geometry
+  // - "picatinny", "molle", "rail": Tactical equipment with MIL-STD specs
+  // - "multi": Explicit request for multiple items
+  const complexityKeywords =
+    /assembly|parts|mechanism|gear|hinge|housing|enclosure|case|bracket|mount|adapter|joint|contact|fit|connect|multi|picatinny|molle|rail/i;
+  const isComplexAssembly = complexityKeywords.test(input.userPrompt);
+
+  // Force multi-agent if complex, overriding default unified pipeline
+  // RATIONALE: This fixes the "Picatinny Adapter" failure case by ensuring
+  // a structural plan (GST) is created before coding
+  if (USE_UNIFIED_PIPELINE && isComplexAssembly) {
+    console.log(
+      'Orchestrator: Complex request detected - switching to high-fidelity Multi-Agent pipeline (GST-enforced)'
+    );
+    console.log(
+      `Orchestrator: Matched complexity keywords in: "${input.userPrompt.slice(0, 100)}..."`
+    );
+    return orchestrateMultiAgent(input, callbacks, abortSignal);
+  }
+
+  // Use unified pipeline by default (faster, more reliable for simple designs)
   if (USE_UNIFIED_PIPELINE) {
     return orchestrateUnified(input, callbacks, abortSignal);
   }
@@ -147,17 +201,23 @@ async function orchestrateUnified(
     console.log('Orchestrator: Using unified Claude pipeline');
     callbacks.onStepChange('coding');
 
+    // Detect if user needs full redesign instead of edit
+    const forceFullRegeneration = needsFullRegeneration(input.userPrompt);
+    if (forceFullRegeneration && input.isEdit) {
+      console.log('Orchestrator: Detected fundamental dissatisfaction - forcing full regeneration');
+    }
+
     while (attempts < MAX_RETRY_ATTEMPTS) {
       try {
         const result = await unifiedGeneratorService.generate(
           {
             userPrompt: input.userPrompt,
             imageData: input.imageData,
-            existingCode: asset.scadCode,
-            existingGST: asset.gst,
+            existingCode: forceFullRegeneration ? undefined : asset.scadCode,
+            existingGST: forceFullRegeneration ? undefined : asset.gst,
             conversationHistory: input.conversationHistory,
             validationErrors: attempts > 0 ? asset.validationResult?.errors : undefined,
-            isEdit: input.isEdit && !!asset.scadCode,
+            isEdit: input.isEdit && !!asset.scadCode && !forceFullRegeneration,
             // Enable streaming if callback is provided
             onChunk: callbacks.onCodeChunk,
             useStreaming: !!callbacks.onCodeChunk,
@@ -298,8 +358,14 @@ async function orchestrateMultiAgent(
   try {
     // ============================================
     // EDIT MODE: Skip Planner, go directly to Coder
+    // UNLESS user is fundamentally unhappy (needs full redesign)
     // ============================================
-    if (input.isEdit && asset.gst && asset.scadCode) {
+    const forceFullRegeneration = needsFullRegeneration(input.userPrompt);
+    if (forceFullRegeneration && input.isEdit) {
+      console.log('Orchestrator: Detected fundamental dissatisfaction - bypassing edit mode');
+    }
+
+    if (input.isEdit && asset.gst && asset.scadCode && !forceFullRegeneration) {
       console.log('Orchestrator: Edit mode - using symbolic correction');
       callbacks.onStepChange('coding');
 
@@ -581,6 +647,7 @@ export const agentOrchestrator = {
   undoHistory,
   redoHistory,
   navigateHistory,
+  needsFullRegeneration,
 };
 
 export default agentOrchestrator;

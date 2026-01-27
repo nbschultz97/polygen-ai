@@ -120,9 +120,18 @@ difference() {  // or union() based on GST root.type
 - Add eps*2 to ALL cutting geometry heights
 
 ## TACTICAL GEAR STANDARDS (if applicable)
-- Picatinny (MIL-STD-1913): top=20.6mm, base=21.2mm, height=9.6mm
-- MOLLE webbing: 25mm wide, 38mm row spacing
+- Picatinny (MIL-STD-1913):
+  - Slot width: 5.23mm, slot spacing: 10.01mm center-to-center
+  - Rail width: top=20.6mm (narrower), base=21.2mm (wider), height=9.6mm
+  - FEMALE mount: dovetail groove that GRIPS a male rail (wider at bottom, narrower at top)
+  - MALE mount: dovetail ridge that FITS IN a female mount (narrower at top, wider at base)
+- MOLLE webbing:
+  - Webbing width: 25mm, row spacing: 38mm
+  - Clips should be hook-shaped (inverted J) to slide behind and grip webbing
+  - NOT just rectangular blocks with cuts!
 - Screw clearance: M3=3.4mm, M4=4.5mm, M5=5.5mm
+
+IMPORTANT: When asked for "female Picatinny", create a GROOVE that is WIDER at the bottom (21.2mm) and NARROWER at the top (20.6mm). This creates the dovetail that grips a male rail.
 
 ## ERROR PREVENTION CHECKLIST
 Before outputting code, verify:
@@ -237,6 +246,51 @@ module counterbore(shaft_d, shaft_depth, head_d, head_depth) {
         cylinder(h=shaft_depth + eps, d=shaft_d, center=false);
         translate([0, 0, shaft_depth - head_depth])
             cylinder(h=head_depth + eps, d=head_d, center=false);
+    }
+}
+
+### Pattern: Female Picatinny Groove (MIL-STD-1913)
+// Creates a dovetail groove to grip a male Picatinny rail
+// The groove is wider at the bottom (21.2mm) than top (20.6mm)
+module picatinny_groove(length) {
+    groove_top = 20.6;      // Top width (narrower)
+    groove_bottom = 21.2;   // Bottom width (wider)
+    groove_depth = 11.43;   // Y-dimension
+    groove_height = 5.31;   // Z-dimension
+
+    // Dovetail profile: trapezoid wider at bottom
+    linear_extrude(height = length, center = true)
+        polygon([
+            [-groove_top/2, 0],          // top left
+            [groove_top/2, 0],           // top right
+            [groove_bottom/2, -groove_height],  // bottom right
+            [-groove_bottom/2, -groove_height]  // bottom left
+        ]);
+}
+
+### Pattern: MOLLE Clip (Hook Style)
+// Creates a clip that hooks over 25mm MOLLE webbing
+// Shape is like an inverted "J" that slides behind webbing
+module molle_clip(width = 28, height = 40) {
+    webbing_width = 25;     // MOLLE webbing is 25mm wide
+    webbing_gap = 4;        // Clearance for webbing thickness
+    hook_depth = 12;        // How far hook extends back
+    hook_height = 20;       // Height of hook section
+    wall = 3;               // Wall thickness
+
+    difference() {
+        union() {
+            // Vertical spine (attaches to plate)
+            cube([width, wall, height], center=true);
+
+            // Top hook - extends backward and down
+            translate([0, -hook_depth/2, height/2 - hook_height/2])
+                cube([width, hook_depth, hook_height], center=true);
+        }
+
+        // Cut the gap for webbing to slide through
+        translate([0, -hook_depth + wall/2, height/2 - hook_height + webbing_gap])
+            cube([webbing_width, hook_depth, webbing_gap + eps], center=true);
     }
 }
 

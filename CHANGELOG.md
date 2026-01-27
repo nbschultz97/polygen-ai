@@ -5,6 +5,29 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2026-01-27
+
+### Fixed
+
+- **Edit Mode Ignoring Fundamental Dissatisfaction**: When users said "not right at all" or similar phrases, the system kept making minor edits instead of regenerating. Now detects these phrases and triggers full redesign
+- **MOLLE Clips Wrong Geometry**: Generated MOLLE clips were just rectangular blocks with cuts, not actual hook-style clips. Added proper MOLLE clip module pattern to Coder prompt
+- **Female Picatinny Groove Orientation**: Dovetail groove was oriented incorrectly. Added proper female Picatinny groove module with correct dimensions (21.2mm base, 20.6mm top)
+- **STL Triangle Count Garbage Data**: 757M triangle count was being reported due to malformed STL parsing. Added sanity check to validate triangle count against actual file size
+
+### Added
+
+- **needsFullRegeneration Detection**: New function detects phrases like "not right", "start over", "completely wrong", "try again" to bypass edit mode and trigger full regeneration
+- **Tactical Gear Module Patterns**: Added `picatinny_groove()` and `molle_clip()` module patterns to Coder system prompt with proper MIL-STD-1913 and MOLLE dimensions
+
+### Technical
+
+- Added `needsFullRegeneration()` function to agentOrchestrator.ts with 15 pattern matchers
+- Both unified and multi-agent pipelines now check for dissatisfaction before entering edit mode
+- Added STL triangle count sanity check: validates against file size, caps at 10M, estimates from actual size if mismatch
+- Added 7 new tests for `needsFullRegeneration()` detection
+
+---
+
 ## [3.2.1] - 2026-01-26
 
 ### Fixed

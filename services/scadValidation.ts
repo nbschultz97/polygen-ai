@@ -493,6 +493,17 @@ export const validateScadCode = async (
     if (stlData.length >= 84) {
       const view = new DataView(stlData.buffer, stlData.byteOffset, stlData.byteLength);
       triangleCount = view.getUint32(80, true); // little-endian
+
+      // Sanity check: each triangle is 50 bytes, plus 84-byte header
+      // If the claimed count doesn't match actual file size, STL is malformed
+      const expectedSize = 84 + triangleCount * 50;
+      if (triangleCount > 10000000 || expectedSize > stlData.length + 100) {
+        // 10M triangles or size mismatch = likely garbage data
+        console.warn(
+          `STL triangle count ${triangleCount} seems invalid (file size: ${stlData.length}, expected: ${expectedSize})`
+        );
+        triangleCount = Math.floor((stlData.length - 84) / 50); // Estimate from actual size
+      }
     }
 
     // Check for warnings in error log even on success
