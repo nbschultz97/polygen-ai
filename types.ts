@@ -117,6 +117,8 @@ export interface ValidationResult {
   isManifold: boolean;
   gstMatch?: boolean;
   gstDeviationPercent?: number;
+  /** Mesh volume in mm³ for Volumetric Similarity (Sv) - SOTA benchmark */
+  volume?: number;
 }
 
 // ============================================
@@ -221,6 +223,8 @@ export interface CoderEditInput {
   existingGST: GeometricStructureTree;
   existingCode: string;
   editRequest: string;
+  /** Previous validation errors to help the coder understand what needs fixing */
+  validationErrors?: string[];
 }
 
 export interface CoderOutput {

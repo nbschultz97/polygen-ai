@@ -5,6 +5,28 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.2] - 2026-01-26
+
+### Fixed
+
+- **Clarification Questions Persisting**: Fixed race condition where clarification questions stayed visible after user answered them
+- **3D Preview Not Rendering**: Fixed timing issue where view switched to 3D before code was ready, causing empty renders
+- **Edit Mode Error Detection**: Edit mode now detects vague error reports ("doesn't work", "broken") and reviews code for common issues
+- **Validation Error Passing**: Edit mode now receives previous validation errors to help fix specific issues
+
+### Changed
+
+- **Enhanced Planner Questions**: Planner now asks 3-4 specific questions for multi-part assemblies with examples (e.g., "How many Picatinny slots? 3-slot, 5-slot?")
+- **Moved View Switch**: Auto-switch to 3D view now happens after asset is set, preventing empty previews
+
+### Technical
+
+- Added `validationErrors` field to `CoderEditInput` type
+- Orchestrator passes validation errors to edit mode coder
+- Fixed async state race condition in MainApp.tsx clarification clearing
+
+---
+
 ## [3.1.1] - 2026-01-26
 
 ### Changed

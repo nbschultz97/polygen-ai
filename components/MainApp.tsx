@@ -215,6 +215,12 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
       const imageToSend = attachedImage;
       clearAttachedImage();
 
+      // Clear clarifications synchronously for the asset we'll pass to orchestrator
+      // This avoids race condition with async state update
+      const assetForOrchestrator = currentAsset
+        ? { ...currentAsset, clarifications: undefined }
+        : undefined;
+
       if (currentAsset?.clarifications) {
         setCurrentAsset((prev) => (prev ? { ...prev, clarifications: undefined } : null));
       }
@@ -235,7 +241,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
           const asset = await orchestrateGeneration(
             {
               userPrompt: sanitizedInput,
-              existingAsset: currentAsset || undefined,
+              existingAsset: assetForOrchestrator,
               isEdit: !!currentAsset?.scadCode,
               imageData: imageToSend || undefined,
               conversationHistory: history,
@@ -267,11 +273,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                       text: 'Done! Your 3D model is rendering now. Switch to the **3D Preview** tab to see it.',
                     },
                   ]);
-                  // Auto-switch to 3D view on successful generation
-                  setViewMode('3d');
-                  if (isMobile) {
-                    setMobileTab('preview');
-                  }
+                  // Note: View switch moved to after setCurrentAsset to avoid race condition
                 } else {
                   setMessages((prev) => [
                     ...prev,
@@ -293,6 +295,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
 
           if (abortControllerRef.current?.signal.aborted) return;
           setCurrentAsset(asset);
+
+          // Auto-switch to 3D view AFTER asset is set (avoids race condition)
+          if (asset.scadCode && !asset.clarifications) {
+            setViewMode('3d');
+            if (isMobile) {
+              setMobileTab('preview');
+            }
+          }
 
           // Record generation usage (only if logged in)
           if (asset.scadCode && user) {

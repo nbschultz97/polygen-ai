@@ -450,6 +450,33 @@ export async function editCode(
   extractComponents(input.existingGST?.root);
 
   // Build context-aware prompt
+  const validationSection = input.validationErrors?.length
+    ? `\n## PREVIOUS VALIDATION ERRORS (must fix these!)
+${input.validationErrors.map((e) => `- ${e}`).join('\n')}
+`
+    : '';
+
+  // Detect vague error reports like "doesn't work", "broken", etc.
+  const vagueErrorPhrases = /doesn'?t work|broken|error|fail|wrong|bad|not working|issue/i;
+  const isVagueErrorReport =
+    vagueErrorPhrases.test(input.editRequest) && !input.validationErrors?.length;
+
+  const vagueErrorWarning = isVagueErrorReport
+    ? `
+## ⚠️ VAGUE ERROR REPORT DETECTED
+The user says "${input.editRequest}" but no specific errors were provided.
+When editing:
+1. Review the code for common OpenSCAD issues:
+   - Variables used before definition
+   - Missing semicolons or braces
+   - eps not defined for difference() operations
+   - Module/function calls with wrong number of arguments
+2. Ensure proper $fn is set for curves
+3. Check that difference() cutters extend past surfaces
+4. Verify all variable names match their definitions
+`
+    : '';
+
   const prompt = `## EXISTING GST (Design Specification)
 \`\`\`json
 ${JSON.stringify(input.existingGST, null, 2)}
@@ -459,7 +486,7 @@ ${JSON.stringify(input.existingGST, null, 2)}
 \`\`\`openscad
 ${input.existingCode}
 \`\`\`
-
+${validationSection}${vagueErrorWarning}
 ## CODE ANALYSIS
 - Epsilon defined: ${hasEpsilon ? 'YES' : 'NO - add eps = 0.01 if needed'}
 - Quality ($fn) defined: ${hasFn ? 'YES' : 'NO - add $fn = 64 for curves'}

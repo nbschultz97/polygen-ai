@@ -303,11 +303,18 @@ async function orchestrateMultiAgent(
       console.log('Orchestrator: Edit mode - using symbolic correction');
       callbacks.onStepChange('coding');
 
+      // Pass previous validation errors if available to help the coder fix issues
+      const validationErrors =
+        asset.validationResult && !asset.validationResult.success
+          ? asset.validationResult.errors
+          : undefined;
+
       const coderOutput = await coderService.editCode(
         {
           existingGST: asset.gst,
           existingCode: asset.scadCode,
           editRequest: input.userPrompt,
+          validationErrors,
         },
         abortSignal
       );
