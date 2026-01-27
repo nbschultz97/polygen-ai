@@ -188,35 +188,62 @@ function parseSTLBinary(data: Uint8Array): Triangle[] {
 
 /**
  * Calculate bounding box for Dimensional Accuracy (Sd) check
+ * Enhanced with subnormal value detection to catch WASM heap corruption
  */
 function calculateBoundingBox(triangles: Triangle[]): {
   min: [number, number, number];
   max: [number, number, number];
-} {
-  // Sanity limit: 10,000mm = 10 meters - models larger than this are likely corrupt
-  const SANITY_LIMIT = 10000;
+} | null {
+  // Sanity limits for coordinate values
+  const MAX_COORD = 10000; // 10 meters - models larger than this are likely corrupt
+  const MIN_COORD = 1e-6; // 1 micron - values smaller than this are likely WASM garbage
 
   const min: [number, number, number] = [Infinity, Infinity, Infinity];
   const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+
+  let validCoordCount = 0;
 
   for (const tri of triangles) {
     for (const v of [tri.v1, tri.v2, tri.v3]) {
       for (let i = 0; i < 3; i++) {
         const coord = v[i];
-        // Skip NaN, Infinity, or insane values (WASM heap corruption)
-        if (!Number.isFinite(coord) || Math.abs(coord) > SANITY_LIMIT) {
+        // Skip invalid values:
+        // - NaN, Infinity
+        // - Too large (> 10m)
+        // - Subnormal/denormalized (WASM heap garbage like 8.48e-33)
+        if (
+          !Number.isFinite(coord) ||
+          Math.abs(coord) > MAX_COORD ||
+          (coord !== 0 && Math.abs(coord) < MIN_COORD)
+        ) {
           continue;
         }
         min[i] = Math.min(min[i], coord);
         max[i] = Math.max(max[i], coord);
+        validCoordCount++;
       }
     }
   }
 
   // Handle empty mesh or all-corrupt values case
-  if (min[0] === Infinity) {
-    console.warn('[Worker] Bounding box calculation failed: no valid coordinates found');
-    return { min: [0, 0, 0], max: [0, 0, 0] };
+  if (min[0] === Infinity || validCoordCount < 9) {
+    // Need at least 3 triangles worth of valid coords
+    console.warn(
+      `[Worker] Bounding box calculation failed: only ${validCoordCount} valid coordinates found`
+    );
+    return null;
+  }
+
+  // Final sanity check: dimensions should be realistic for 3D printing
+  // Minimum dimension of 0.1mm, maximum of 10m
+  const dims = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+  const hasRealisticDimensions = dims.every((d) => d >= 0.1 && d <= MAX_COORD);
+
+  if (!hasRealisticDimensions) {
+    console.warn(
+      `[Worker] Bounding box has unrealistic dimensions: ${dims.map((d) => d.toFixed(2)).join('x')}mm`
+    );
+    return null;
   }
 
   return { min, max };
@@ -403,7 +430,7 @@ async function validateInWorker(
     if (triangleCount > 0 && triangleCount < 100000) {
       try {
         const triangles = parseSTLBinary(stlData);
-        boundingBox = calculateBoundingBox(triangles);
+        boundingBox = calculateBoundingBox(triangles) ?? undefined; // null -> undefined
       } catch (e) {
         console.warn('[Worker] Bounding box calculation failed:', e);
       }

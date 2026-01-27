@@ -69,7 +69,31 @@ Cutters must extend PAST surfaces: h = thickness + eps*2
 translate([10,0,0]) rotate([0,0,45]) cube(5);
 // 1. cube created, 2. rotated 45°, 3. translated
 
-### 4. Standard Primitives + Built-in Library
+### 4. ATOMIC LMP - Module Encapsulation (CRITICAL)
+Each component MUST be wrapped in its own module with LOCAL variables.
+This prevents 'Variable Shadowing' bugs in complex assemblies.
+
+WRONG: Variables leak and cause conflicts
+\`\`\`
+width = 50;
+cube([width, 10, 5]);
+cylinder(h=width, d=10);  // Reuses 'width' - ambiguous!
+\`\`\`
+
+RIGHT: Atomic modules with local scope
+\`\`\`
+module base_plate() {
+    w = 50; d = 10; h = 5;
+    cube([w, d, h], center=true);
+}
+module post() {
+    h = 50; d = 10;  // Different 'h', no conflict
+    cylinder(h=h, d=d, center=true);
+}
+union() { base_plate(); translate([0,0,2.5]) post(); }
+\`\`\`
+
+### 5. Standard Primitives + Built-in Library
 Use built-in primitives: cube, sphere, cylinder, polyhedron, linear_extrude, rotate_extrude, hull, difference, union, intersection
 
 For tactical/military equipment, USE the built-in tactical library:

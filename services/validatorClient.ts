@@ -135,6 +135,51 @@ function calculateDimensionalAccuracy(
   return { match, maxDeviation, deviations, feedback };
 }
 
+// SOTA Vision ROI Gating thresholds
+// Only trigger expensive Vision checks when outcome is uncertain
+const VISION_ROI_LOW_THRESHOLD = 0.8; // Below this = clear fail, skip vision
+const VISION_ROI_HIGH_THRESHOLD = 0.95; // Above this = clear pass, skip vision
+
+/**
+ * SOTA: Calculate Success Probability (P_succ)
+ * Formula: P_succ = M * (0.65 * Sv + 0.35 * Sd)
+ *
+ * Where:
+ * - M = manifold indicator (1 if manifold, 0 otherwise)
+ * - Sv = volumetric similarity (0-1)
+ * - Sd = dimensional similarity (min of x,y,z accuracies, 0-1)
+ *
+ * Used for Vision ROI Gating: only call Vision when 0.8 <= P_succ <= 0.95
+ */
+function calculatePsucc(isManifold: boolean, sv: number, sd: number): number {
+  const M = isManifold ? 1 : 0;
+  const pSucc = M * (0.65 * sv + 0.35 * sd);
+  return Math.max(0, Math.min(1, pSucc)); // Clamp to [0, 1]
+}
+
+/**
+ * Check if Vision critique is warranted based on P_succ ROI gating
+ * Only trigger vision when outcome is uncertain (0.8 <= P_succ <= 0.95)
+ */
+function shouldTriggerVision(pSucc: number): { trigger: boolean; reason: string } {
+  if (pSucc < VISION_ROI_LOW_THRESHOLD) {
+    return {
+      trigger: false,
+      reason: `P_succ=${pSucc.toFixed(2)} < 0.8: Clear geometric fail, vision skipped`,
+    };
+  }
+  if (pSucc > VISION_ROI_HIGH_THRESHOLD) {
+    return {
+      trigger: false,
+      reason: `P_succ=${pSucc.toFixed(2)} > 0.95: Clear geometric pass, vision skipped`,
+    };
+  }
+  return {
+    trigger: true,
+    reason: `P_succ=${pSucc.toFixed(2)} in [0.8, 0.95]: Uncertain, triggering vision`,
+  };
+}
+
 /**
  * Auto-inject epsilon if missing from code with boolean operations
  */
@@ -245,6 +290,10 @@ export async function validate(input: {
     let gstMatch = true;
     const criticFeedback: string[] = [];
 
+    // SOTA P_succ scoring variables
+    let sv = 1.0; // Default to perfect if no comparison possible
+    let sd = 1.0; // Default to perfect if no comparison possible
+
     // SOTA Active Critic: Compare generated geometry to GST target dimensions
     // Implements Sd formula: Sd = 1 - |Dg - Dt| / Dg
     // Triggers retry on >20% mismatch (Sd < 0.8)
@@ -252,6 +301,10 @@ export async function validate(input: {
       const dimCritic = calculateDimensionalAccuracy(validBoundingBox, input.gst.boundingBox);
 
       validationResult.gstDeviationPercent = dimCritic.maxDeviation;
+
+      // Sd is the minimum of all axis accuracies
+      sd = Math.min(dimCritic.deviations.x, dimCritic.deviations.y, dimCritic.deviations.z);
+      validationResult.sd = sd;
 
       if (!dimCritic.match) {
         gstMatch = false;
@@ -264,14 +317,44 @@ export async function validate(input: {
       }
     }
 
-    // SOTA Active Critic: Compare generated volume to GST target volume
-    // Implements Sv formula: Sv = 1 - |Vgen - Vtarget| / Vtarget
-    // Triggers retry on >20% mismatch (Sv < 0.8)
-    // Note: GST doesn't have explicit volume, so we'd need to calculate it from bounding box
-    // For now, we just log the volume for diagnostics
-    if (result.volume && result.success) {
-      console.log(`Active Critic: Generated volume = ${result.volume.toFixed(0)}mm³`);
+    // SOTA Active Critic: Calculate Volumetric Similarity (Sv)
+    // Using bounding box volume as proxy since mesh volume may not always be available
+    if (input.gst?.boundingBox && validBoundingBox && result.success) {
+      // Calculate bounding box volumes
+      const genDims = [
+        validBoundingBox.max[0] - validBoundingBox.min[0],
+        validBoundingBox.max[1] - validBoundingBox.min[1],
+        validBoundingBox.max[2] - validBoundingBox.min[2],
+      ];
+      const targetDims = [
+        input.gst.boundingBox.max[0] - input.gst.boundingBox.min[0],
+        input.gst.boundingBox.max[1] - input.gst.boundingBox.min[1],
+        input.gst.boundingBox.max[2] - input.gst.boundingBox.min[2],
+      ];
+
+      const genVolume = genDims[0] * genDims[1] * genDims[2];
+      const targetVolume = targetDims[0] * targetDims[1] * targetDims[2];
+
+      if (targetVolume > 0) {
+        sv = Math.max(0, 1 - Math.abs(genVolume - targetVolume) / targetVolume);
+        validationResult.sv = sv;
+        console.log(
+          `Active Critic: Sv=${sv.toFixed(2)} (gen=${genVolume.toFixed(0)}mm³, target=${targetVolume.toFixed(0)}mm³)`
+        );
+      }
     }
+
+    // Log actual mesh volume if available
+    if (result.volume && result.success) {
+      console.log(`Active Critic: Mesh volume = ${result.volume.toFixed(0)}mm³`);
+    }
+
+    // SOTA: Calculate P_succ = M * (0.65 * Sv + 0.35 * Sd)
+    const pSucc = calculatePsucc(validationResult.isManifold, sv, sd);
+    validationResult.pSucc = pSucc;
+    console.log(
+      `Active Critic: P_succ=${pSucc.toFixed(2)} (M=${validationResult.isManifold ? 1 : 0}, Sv=${sv.toFixed(2)}, Sd=${sd.toFixed(2)})`
+    );
 
     // Set final GST match status
     validationResult.gstMatch = gstMatch;
@@ -329,8 +412,9 @@ export async function validateWithVisualCritic(
     abortSignal?: AbortSignal;
   },
   renderScreenshot?: string,
-  originalRequest?: string
-): Promise<ValidationResult & { visualCritique?: VisualCritiqueResult }> {
+  originalRequest?: string,
+  options?: { forceVision?: boolean } // Allow forcing vision for testing
+): Promise<ValidationResult & { visualCritique?: VisualCritiqueResult; visionSkipped?: boolean }> {
   // First, run standard geometric validation
   const geometricResult = await validate(input);
 
@@ -344,8 +428,22 @@ export async function validateWithVisualCritic(
     return geometricResult;
   }
 
+  // SOTA Vision ROI Gating: Only trigger vision when P_succ is between 0.8 and 0.95
+  // This saves expensive VLM calls when the outcome is already clear
+  const pSucc = geometricResult.pSucc ?? 1.0;
+  const visionDecision = shouldTriggerVision(pSucc);
+
+  if (!visionDecision.trigger && !options?.forceVision) {
+    console.log(`Vision ROI Gating: ${visionDecision.reason}`);
+    return {
+      ...geometricResult,
+      visionSkipped: true,
+      warnings: [...geometricResult.warnings, `[Vision] ${visionDecision.reason}`],
+    };
+  }
+
   // Run visual critique
-  console.log('Running Visual Critic analysis...');
+  console.log(`Running Visual Critic analysis... (P_succ=${pSucc.toFixed(2)})`);
   const visualCritique = await visualCriticService.critiqueRender(
     renderScreenshot,
     originalRequest,

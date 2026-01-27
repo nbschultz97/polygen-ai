@@ -76,6 +76,15 @@ const ERROR_PATTERNS: Array<{
     suggestedFix: 'Define the module before calling it, or use a standard OpenSCAD primitive.',
     pitfallRef: 'undefined-module',
   },
+  // $L_{sig}$ Protocol: Tactical library module detection
+  {
+    pattern: /unknown module ['"]?(picatinny_\w+|molle_\w+)['"]?/i,
+    category: 'hallucinated_lib',
+    severity: 'critical',
+    suggestedFix:
+      '$L_SIG_TACTICAL$ Add `use <libraries/tactical.scad>` at the top of your code. The module exists in the tactical library.',
+    pitfallRef: 'tactical-library-missing',
+  },
   {
     pattern: /unknown function ['"]?(\w+)['"]?/i,
     category: 'undefined_var',
@@ -211,6 +220,79 @@ const ERROR_PATTERNS: Array<{
   },
 ];
 
+// ============================================================================
+// $L_{sig}$ Protocol: Tactical Library Module Signatures
+// When an unknown module is detected, provide exact signature for recovery
+// ============================================================================
+
+const TACTICAL_MODULE_SIGNATURES: Record<string, string> = {
+  // Picatinny Rail Modules
+  picatinny_rail: 'picatinny_rail(slots = 5, height = 15, with_slots = true)',
+  picatinny_rail_male: 'picatinny_rail_male(slots = 5, with_slots = true)',
+  picatinny_groove: 'picatinny_groove(length = 50)',
+
+  // MOLLE Modules
+  molle_clip: 'molle_clip(width = 28, height = 40, rows = 1)',
+  molle_adapter_plate:
+    'molle_adapter_plate(plate_width = 80, plate_height = 60, plate_thickness = 5, clip_columns = 2)',
+  molle_webbing_pattern: 'molle_webbing_pattern(rows = 3, columns = 3)',
+
+  // Combined Tactical
+  picatinny_molle_adapter:
+    'picatinny_molle_adapter(slots = 5, plate_width = 80, plate_height = 50, clip_columns = 2)',
+
+  // Utility Modules
+  rcube: 'rcube(size, r = 2)',
+  counterbore: 'counterbore(shaft_d, shaft_depth, head_d, head_depth)',
+  tube: 'tube(od, id, h)',
+};
+
+/**
+ * $L_{sig}$ Protocol: Get exact module signature for tactical library modules
+ * Returns the full signature if found, null otherwise
+ */
+export function getTacticalModuleSignature(moduleName: string): string | null {
+  // Try exact match first
+  if (TACTICAL_MODULE_SIGNATURES[moduleName]) {
+    return TACTICAL_MODULE_SIGNATURES[moduleName];
+  }
+
+  // Try lowercase match
+  const lowerName = moduleName.toLowerCase();
+  for (const [key, sig] of Object.entries(TACTICAL_MODULE_SIGNATURES)) {
+    if (key.toLowerCase() === lowerName) {
+      return sig;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * $L_{sig}$ Protocol: Check if a module name is from tactical library
+ */
+export function isTacticalModule(moduleName: string): boolean {
+  return (
+    moduleName.startsWith('picatinny_') ||
+    moduleName.startsWith('molle_') ||
+    ['rcube', 'counterbore', 'tube'].includes(moduleName)
+  );
+}
+
+/**
+ * $L_{sig}$ Protocol: Generate recovery prompt for unknown tactical module
+ */
+export function generateTacticalRecoveryPrompt(moduleName: string): string | null {
+  const signature = getTacticalModuleSignature(moduleName);
+  if (!signature) return null;
+
+  return `TACTICAL LIBRARY FIX: Add \`use <libraries/tactical.scad>\` at the top of your code, then call the module with this EXACT signature:
+
+${signature}
+
+Do NOT redefine this module - it already exists in the tactical library.`;
+}
+
 /**
  * Parse line number from error message
  */
@@ -305,7 +387,17 @@ function categorizeError(rawMessage: string, code?: string): CategorizedError {
   const identifier = extractIdentifier(sanitized);
   if (identifier) {
     result.context = identifier;
-    if (result.category === 'undefined_var') {
+
+    // $L_{sig}$ Protocol: Check if this is a tactical library module
+    if (isTacticalModule(identifier)) {
+      const recoveryPrompt = generateTacticalRecoveryPrompt(identifier);
+      if (recoveryPrompt) {
+        result.category = 'hallucinated_lib';
+        result.suggestedFix = recoveryPrompt;
+        result.pitfallReference = 'tactical-library-missing';
+        console.log(`$L_{sig}$ Protocol: Detected missing tactical module '${identifier}'`);
+      }
+    } else if (result.category === 'undefined_var') {
       result.suggestedFix = `Define '${identifier}' before use. Check spelling and ensure it's declared at the top of the file.`;
     }
   }

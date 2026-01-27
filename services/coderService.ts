@@ -61,7 +61,42 @@ Cutting geometry must extend PAST surfaces: h = thickness + eps*2
 translate([10,0,0]) rotate([0,0,45]) cube(5);
 // 1. cube created, 2. rotated 45°, 3. translated
 
-### 4. Standard Primitives + Built-in Library
+### 4. ATOMIC LMP - Module Encapsulation (CRITICAL)
+Every GST component MUST be wrapped in its own module with LOCAL variables.
+This prevents 'Variable Shadowing' bugs in large assemblies.
+
+WRONG (Variables leak between scopes):
+\`\`\`
+width = 50;
+cube([width, 10, 5]);
+cylinder(h=width, d=10);  // Uses same 'width' - confusing!
+\`\`\`
+
+RIGHT (Atomic modules with local scope):
+\`\`\`
+module base_plate() {
+    local_width = 50;
+    local_depth = 10;
+    local_height = 5;
+    cube([local_width, local_depth, local_height], center=true);
+}
+
+module mounting_post() {
+    local_height = 50;  // Different 'height', no conflict!
+    local_diameter = 10;
+    cylinder(h=local_height, d=local_diameter, center=true);
+}
+
+// Assembly uses modules
+union() {
+    base_plate();
+    translate([0, 0, 2.5]) mounting_post();
+}
+\`\`\`
+
+RULE: Each GST child component → separate module → called in assembly
+
+### 5. Standard Primitives + Built-in Library
 Use built-in primitives: cube, sphere, cylinder, polyhedron, linear_extrude, rotate_extrude, hull, difference, union, intersection
 
 For tactical/military equipment from GST, USE the built-in tactical library:

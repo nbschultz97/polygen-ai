@@ -119,6 +119,12 @@ export interface ValidationResult {
   gstDeviationPercent?: number;
   /** Mesh volume in mm³ for Volumetric Similarity (Sv) - SOTA benchmark */
   volume?: number;
+  /** SOTA: Success probability score P_succ = M * (0.65*Sv + 0.35*Sd) */
+  pSucc?: number;
+  /** SOTA: Volumetric similarity Sv (0-1) */
+  sv?: number;
+  /** SOTA: Dimensional similarity Sd (min of x,y,z accuracies, 0-1) */
+  sd?: number;
 }
 
 // ============================================

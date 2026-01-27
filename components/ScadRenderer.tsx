@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Download,
+  Grid3X3,
   Info,
   Loader2,
   Lock,
@@ -42,6 +43,9 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
   } | null>(null);
   const [stlData, setStlData] = useState<Uint8Array | null>(null);
   const [complexityWarning, setComplexityWarning] = useState<string | null>(null);
+  // SOTA: 6x6 Visual Anchor Grid for VLM spatial analysis
+  const [showAnchorGrid, setShowAnchorGrid] = useState(false);
+  const anchorGridRef = useRef<THREE.Group | null>(null);
 
   const downloadSTL = useCallback(() => {
     if (!stlData) return;
@@ -155,6 +159,99 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       }
     };
   }, []);
+
+  /**
+   * SOTA: Create 6x6 Visual Anchor Grid for VLM spatial analysis
+   * Grid divisions help the vision model understand scale and positioning
+   * Appears in screenshots sent to Visual Critic for better spatial reasoning
+   */
+  const createAnchorGrid = useCallback(() => {
+    const group = new THREE.Group();
+    group.name = 'anchorGrid';
+
+    // Grid configuration: 6x6 divisions over 120mm (-60 to +60)
+    const gridSize = 120;
+    const divisions = 6;
+    const cellSize = gridSize / divisions;
+    const halfSize = gridSize / 2;
+
+    // Create vertical grid lines (in XZ plane, elevated above ground)
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: 0x00ff88,
+      transparent: true,
+      opacity: 0.6,
+    });
+
+    // Horizontal lines (along X)
+    for (let i = 0; i <= divisions; i++) {
+      const z = -halfSize + i * cellSize;
+      const points = [new THREE.Vector3(-halfSize, 0.5, z), new THREE.Vector3(halfSize, 0.5, z)];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, lineMaterial);
+      group.add(line);
+    }
+
+    // Vertical lines (along Z)
+    for (let i = 0; i <= divisions; i++) {
+      const x = -halfSize + i * cellSize;
+      const points = [new THREE.Vector3(x, 0.5, -halfSize), new THREE.Vector3(x, 0.5, halfSize)];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, lineMaterial);
+      group.add(line);
+    }
+
+    // Add coordinate labels at corners for VLM reference
+    // Using simple spheres as markers since TextGeometry requires font loading
+    const markerGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+    const markerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+
+    // Corner markers with different colors for orientation
+    const corners = [
+      { pos: [-halfSize, 0.5, -halfSize], color: 0xff0000 }, // Red: -X, -Z (origin reference)
+      { pos: [halfSize, 0.5, -halfSize], color: 0x00ff00 }, // Green: +X, -Z
+      { pos: [-halfSize, 0.5, halfSize], color: 0x0000ff }, // Blue: -X, +Z
+      { pos: [halfSize, 0.5, halfSize], color: 0xffff00 }, // Yellow: +X, +Z
+    ];
+
+    corners.forEach(({ pos, color }) => {
+      const marker = new THREE.Mesh(markerGeometry, new THREE.MeshBasicMaterial({ color }));
+      marker.position.set(pos[0], pos[1], pos[2]);
+      group.add(marker);
+    });
+
+    // Center marker
+    const centerMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+    centerMarker.position.set(0, 0.5, 0);
+    group.add(centerMarker);
+
+    return group;
+  }, []);
+
+  // Effect to add/remove anchor grid from scene
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    if (showAnchorGrid && !anchorGridRef.current) {
+      // Add grid
+      anchorGridRef.current = createAnchorGrid();
+      sceneRef.current.add(anchorGridRef.current);
+      console.log('Visual Anchor Grid: Enabled (6x6)');
+    } else if (!showAnchorGrid && anchorGridRef.current) {
+      // Remove grid
+      sceneRef.current.remove(anchorGridRef.current);
+      // Dispose of grid geometries and materials
+      anchorGridRef.current.traverse((obj: THREE.Object3D) => {
+        if (obj instanceof THREE.Line || obj instanceof THREE.Mesh) {
+          obj.geometry?.dispose();
+          if (obj.material instanceof THREE.Material) {
+            obj.material.dispose();
+          }
+        }
+      });
+      anchorGridRef.current = null;
+      console.log('Visual Anchor Grid: Disabled');
+    }
+  }, [showAnchorGrid, createAnchorGrid]);
 
   // Mobile detection for "Safe Mode" rendering
   const isMobile = useCallback(() => {
@@ -526,6 +623,23 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
                 <Play className="w-3 h-3 fill-current" />
               )}
               RENDER MODEL
+            </button>
+
+            <button
+              onClick={() => setShowAnchorGrid(!showAnchorGrid)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                showAnchorGrid
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+              title={
+                showAnchorGrid
+                  ? 'Hide 6x6 Anchor Grid'
+                  : 'Show 6x6 Anchor Grid (for VLM spatial analysis)'
+              }
+            >
+              <Grid3X3 className="w-3 h-3" />
+              GRID
             </button>
           </div>
 
