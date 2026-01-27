@@ -5,6 +5,20 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.3] - 2026-01-27
+
+### Fixed
+
+- **Standalone Code Export**: Generated code that uses `use <libraries/tactical.scad>` now works in desktop OpenSCAD. The library is automatically inlined into the generated code, making it fully self-contained. Previously, users would get "can't open library" errors when opening exported code in desktop OpenSCAD
+
+### Technical
+
+- Added `TACTICAL_LIBRARY_INLINE` constant containing all tactical module definitions
+- Added `inlineTacticalLibrary()` function to replace `use <libraries/tactical.scad>` with actual module code
+- Called in both `generateCode()` and `editCode()` post-processing
+
+---
+
 ## [3.5.2] - 2026-01-27
 
 ### Fixed

@@ -9,6 +9,185 @@ import type { CoderEditInput, CoderInput, CoderOutput } from '../types';
 import { getAuthToken } from './apiClient';
 import type { ValidationFeedback } from './validationFeedbackBuilder';
 
+// ============================================================================
+// TACTICAL LIBRARY INLINE (for standalone code that works in desktop OpenSCAD)
+// ============================================================================
+// This is inlined into generated code so users can open it in any OpenSCAD
+const TACTICAL_LIBRARY_INLINE = `
+// ============================================================================
+// TACTICAL LIBRARY (Inlined for standalone use)
+// MIL-STD-1913 Picatinny Rail & TW-PL-507F MOLLE Standards
+// ============================================================================
+
+// Picatinny Constants
+PICATINNY_SLOT_WIDTH = 5.23;
+PICATINNY_SLOT_SPACING = 10.01;
+PICATINNY_RAIL_TOP_WIDTH = 20.6;
+PICATINNY_RAIL_BASE_WIDTH = 21.2;
+PICATINNY_RAIL_HEIGHT = 9.6;
+PICATINNY_DOVETAIL_DEPTH = 5.31;
+PICATINNY_SLOT_DEPTH = 4.5;
+
+// MOLLE Constants
+MOLLE_WEBBING_WIDTH = 25;
+MOLLE_ROW_SPACING = 38;
+MOLLE_COLUMN_SPACING = 38;
+MOLLE_WEBBING_THICKNESS = 3;
+MOLLE_ATTACHMENT_GAP = 4;
+
+module picatinny_rail(slots = 5, height = 15, with_slots = true) {
+    length = slots * PICATINNY_SLOT_SPACING;
+    body_width = PICATINNY_RAIL_BASE_WIDTH + 4;
+    eps = 0.01;
+    difference() {
+        cube([length, body_width, height], center = true);
+        translate([0, 0, height/2 - PICATINNY_DOVETAIL_DEPTH/2 + eps])
+            linear_extrude(height = PICATINNY_DOVETAIL_DEPTH + eps, scale = PICATINNY_RAIL_TOP_WIDTH / PICATINNY_RAIL_BASE_WIDTH)
+                square([length + eps*2, PICATINNY_RAIL_BASE_WIDTH], center = true);
+        if (with_slots) {
+            for (i = [0:slots-1]) {
+                x_pos = (i - (slots-1)/2) * PICATINNY_SLOT_SPACING;
+                translate([x_pos, 0, height/2 - PICATINNY_SLOT_DEPTH/2 + eps])
+                    cube([PICATINNY_SLOT_WIDTH, body_width + eps*2, PICATINNY_SLOT_DEPTH + eps], center = true);
+            }
+        }
+    }
+}
+
+module picatinny_rail_male(slots = 5, with_slots = true) {
+    length = slots * PICATINNY_SLOT_SPACING;
+    eps = 0.01;
+    difference() {
+        linear_extrude(height = length, center = true)
+            polygon([
+                [-PICATINNY_RAIL_TOP_WIDTH/2, PICATINNY_RAIL_HEIGHT],
+                [PICATINNY_RAIL_TOP_WIDTH/2, PICATINNY_RAIL_HEIGHT],
+                [PICATINNY_RAIL_BASE_WIDTH/2, 0],
+                [-PICATINNY_RAIL_BASE_WIDTH/2, 0]
+            ]);
+        if (with_slots) {
+            for (i = [0:slots-1]) {
+                z_pos = (i - (slots-1)/2) * PICATINNY_SLOT_SPACING;
+                translate([0, PICATINNY_RAIL_HEIGHT - PICATINNY_SLOT_DEPTH/2 + eps, z_pos])
+                    cube([PICATINNY_RAIL_TOP_WIDTH + eps*2, PICATINNY_SLOT_DEPTH + eps, PICATINNY_SLOT_WIDTH], center = true);
+            }
+        }
+    }
+}
+
+module picatinny_groove(length = 50) {
+    linear_extrude(height = length, center = true)
+        rotate([0, 0, 90])
+            polygon([
+                [-PICATINNY_DOVETAIL_DEPTH, -PICATINNY_RAIL_BASE_WIDTH/2],
+                [-PICATINNY_DOVETAIL_DEPTH, PICATINNY_RAIL_BASE_WIDTH/2],
+                [0, PICATINNY_RAIL_TOP_WIDTH/2],
+                [0, -PICATINNY_RAIL_TOP_WIDTH/2]
+            ]);
+}
+
+module molle_clip(width = 28, height = 40, rows = 1) {
+    wall = 3;
+    hook_depth = 12;
+    hook_height = min(20, height * 0.4);
+    slot_width = MOLLE_WEBBING_WIDTH - 2;
+    eps = 0.01;
+    difference() {
+        union() {
+            cube([width, wall, height], center = true);
+            translate([0, -hook_depth/2 - wall/2, height/2 - hook_height/2])
+                cube([width, hook_depth, hook_height], center = true);
+            if (rows > 1) {
+                translate([0, -hook_depth/2 - wall/2, -height/2 + hook_height/2])
+                    cube([width, hook_depth, hook_height], center = true);
+            }
+        }
+        translate([0, -hook_depth/2, height/2 - hook_height + MOLLE_ATTACHMENT_GAP])
+            cube([slot_width, hook_depth + wall + eps*2, MOLLE_ATTACHMENT_GAP + eps], center = true);
+        if (rows > 1) {
+            translate([0, -hook_depth/2, -height/2 + hook_height - MOLLE_ATTACHMENT_GAP])
+                cube([slot_width, hook_depth + wall + eps*2, MOLLE_ATTACHMENT_GAP + eps], center = true);
+        }
+    }
+}
+
+module molle_adapter_plate(plate_width = 80, plate_height = 60, plate_thickness = 5, clip_columns = 2) {
+    clip_spacing = plate_width / (clip_columns + 1);
+    union() {
+        cube([plate_width, plate_thickness, plate_height], center = true);
+        for (i = [1:clip_columns]) {
+            x_pos = (i - (clip_columns + 1)/2) * clip_spacing;
+            translate([x_pos, -plate_thickness/2, 0])
+                rotate([90, 0, 0])
+                    molle_clip(width = 28, height = plate_height * 0.8);
+        }
+    }
+}
+
+module picatinny_molle_adapter(slots = 5, plate_width = 80, plate_height = 50, clip_columns = 2) {
+    plate_thickness = 5;
+    clip_spacing = plate_width / (clip_columns + 1);
+    union() {
+        cube([plate_width, plate_thickness, plate_height], center = true);
+        translate([0, plate_thickness/2 + 7.5, 0])
+            rotate([90, 0, 0])
+                picatinny_rail(slots = slots, height = 15);
+        for (i = [1:clip_columns]) {
+            x_pos = (i - (clip_columns + 1)/2) * clip_spacing;
+            translate([x_pos, -plate_thickness/2 - 1.5, 0])
+                rotate([90, 0, 0])
+                    molle_clip(width = 28, height = plate_height * 0.8);
+        }
+    }
+}
+
+module rcube(size, r = 2) {
+    hull() {
+        for (x = [-1, 1], y = [-1, 1], z = [-1, 1]) {
+            translate([x * (size[0]/2 - r), y * (size[1]/2 - r), z * (size[2]/2 - r)])
+                sphere(r = r);
+        }
+    }
+}
+
+module counterbore(shaft_d, shaft_depth, head_d, head_depth) {
+    eps = 0.01;
+    union() {
+        cylinder(h = shaft_depth + eps, d = shaft_d, center = false);
+        translate([0, 0, shaft_depth - head_depth])
+            cylinder(h = head_depth + eps, d = head_d, center = false);
+    }
+}
+
+module tube(od, id, h) {
+    eps = 0.01;
+    difference() {
+        cylinder(h = h, d = od, center = true);
+        cylinder(h = h + eps*2, d = id, center = true);
+    }
+}
+
+// ============================================================================
+// END TACTICAL LIBRARY
+// ============================================================================
+`;
+
+/**
+ * Inline the tactical library into code that uses it
+ * This makes the code self-contained for desktop OpenSCAD
+ */
+function inlineTacticalLibrary(code: string): string {
+  if (!code.includes('libraries/tactical.scad')) {
+    return code;
+  }
+
+  // Remove the use statement and add the inlined library
+  const codeWithoutUse = code.replace(/use\s*<libraries\/tactical\.scad>\s*;?\n*/gi, '');
+
+  // Add the library at the top, followed by the user's code
+  return TACTICAL_LIBRARY_INLINE + '\n' + codeWithoutUse;
+}
+
 // Extended CoderInput with validation feedback
 export interface EnhancedCoderInput extends CoderInput {
   validationFeedback?: ValidationFeedback;
@@ -463,6 +642,9 @@ ${input.validationErrors.map((e) => `- ${e}`).join('\n')}
       code = `use <libraries/tactical.scad>\n\n${code}`;
     }
 
+    // Inline the library so code works in desktop OpenSCAD
+    code = inlineTacticalLibrary(code);
+
     return {
       scadCode: code,
     };
@@ -652,6 +834,9 @@ Output the complete modified SCAD code with ALL changes applied.`;
       );
       code = `use <libraries/tactical.scad>\n\n${code}`;
     }
+
+    // Inline the library so code works in desktop OpenSCAD
+    code = inlineTacticalLibrary(code);
 
     return {
       scadCode: code,
