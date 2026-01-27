@@ -464,6 +464,10 @@ export function getErrorSummary(errors: CategorizedError[]): string {
 export const errorCategorizer = {
   categorizeErrors,
   getErrorSummary,
+  // $L_{sig}$ Protocol exports
+  getTacticalModuleSignature,
+  isTacticalModule,
+  generateTacticalRecoveryPrompt,
 };
 
 export default errorCategorizer;
