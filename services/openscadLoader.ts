@@ -1,12 +1,19 @@
 // This service manages the loading and initialization of the OpenSCAD WASM engine.
 // It uses a singleton pattern with proper cleanup to prevent memory leaks.
 // Uses ES module dynamic import since openscad-wasm is an ES module.
+//
+// SOTA 3-Tier Library System:
+// 1. Built-in libraries (tactical.scad) - loaded into WASM FS at /libraries/
+// 2. User can reference with: use <libraries/tactical.scad>
+// 3. Libraries are fetched from /public/libraries/ and cached
 
 interface OpenSCADInstance {
   FS: {
     writeFile: (path: string, data: string | Uint8Array) => void;
     readFile: (path: string) => Uint8Array;
     unlink?: (path: string) => void;
+    mkdir?: (path: string) => void;
+    stat?: (path: string) => { mode: number };
   };
   callMain: (args: string[]) => number;
   _free?: () => void;
@@ -27,6 +34,116 @@ interface OpenSCADModule {
 let openScadPromise: Promise<OpenSCADLoader> | null = null;
 let isLoading = false;
 let _cachedModule: OpenSCADModule | null = null;
+
+// ============================================================================
+// SOTA 3-Tier Library System
+// ============================================================================
+
+// Cache for library file contents (fetched once, reused across instances)
+const libraryCache: Map<string, string> = new Map();
+let librariesLoaded = false;
+
+// List of built-in libraries to mount in WASM FS
+const BUILT_IN_LIBRARIES = ['tactical.scad'];
+
+/**
+ * Fetch a library file from the public folder and cache it
+ */
+async function fetchLibrary(filename: string): Promise<string | null> {
+  // Return cached version if available
+  if (libraryCache.has(filename)) {
+    return libraryCache.get(filename)!;
+  }
+
+  try {
+    const response = await fetch(`/libraries/${filename}`);
+    if (!response.ok) {
+      console.warn(`Library ${filename} not found (${response.status})`);
+      return null;
+    }
+
+    const content = await response.text();
+    libraryCache.set(filename, content);
+    console.log(`Library loaded: ${filename} (${content.length} bytes)`);
+    return content;
+  } catch (error) {
+    console.warn(`Failed to fetch library ${filename}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Load all built-in libraries into cache
+ */
+async function loadBuiltInLibraries(): Promise<void> {
+  if (librariesLoaded) return;
+
+  console.log('Loading built-in OpenSCAD libraries...');
+  await Promise.all(BUILT_IN_LIBRARIES.map((lib) => fetchLibrary(lib)));
+  librariesLoaded = true;
+}
+
+/**
+ * Mount all cached libraries into WASM virtual filesystem
+ * Creates /libraries/ directory and writes all library files
+ */
+function mountLibraries(instance: OpenSCADInstance): void {
+  if (!instance.FS?.mkdir) {
+    console.warn('FS.mkdir not available - libraries will not be mounted');
+    return;
+  }
+
+  // Create /libraries directory if it doesn't exist
+  try {
+    instance.FS.stat?.('/libraries');
+  } catch {
+    try {
+      instance.FS.mkdir('/libraries');
+      console.log('Created /libraries directory in WASM FS');
+    } catch (mkdirError) {
+      console.warn('Failed to create /libraries directory:', mkdirError);
+    }
+  }
+
+  // Write each cached library to the WASM FS
+  for (const [filename, content] of libraryCache.entries()) {
+    try {
+      instance.FS.writeFile(`/libraries/${filename}`, content);
+      console.log(`Mounted library: /libraries/${filename}`);
+    } catch (writeError) {
+      console.warn(`Failed to mount library ${filename}:`, writeError);
+    }
+  }
+}
+
+// ============================================================================
+// SOTA Projection Guard
+// ============================================================================
+
+// Keywords that indicate 2D/laser cutting operations (not supported in browser)
+const PROJECTION_KEYWORDS = [
+  /\bprojection\s*\(/i,
+  /\blaser\s*cut/i,
+  /\b2d\s*(cut|pattern|design)/i,
+  /\bflatten/i,
+  /\bdxf\b/i,
+];
+
+/**
+ * Check if code contains unsupported 2D projection operations
+ * Returns error message if projection detected, null otherwise
+ */
+export function checkForProjection(code: string): string | null {
+  for (const pattern of PROJECTION_KEYWORDS) {
+    if (pattern.test(code)) {
+      return (
+        '2D projection/laser cutting operations are not supported in the browser. ' +
+        'Please use desktop OpenSCAD for projection() and DXF export.'
+      );
+    }
+  }
+  return null;
+}
 
 export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
   // Return existing promise if loading or loaded
@@ -122,11 +239,17 @@ Original error: ${importError instanceof Error ? importError.message : 'Unknown 
 /**
  * Create a new OpenSCAD instance with proper configuration.
  * Use cleanupInstance() when done to help with memory management.
+ *
+ * SOTA Library System: Automatically loads and mounts built-in libraries
+ * into the WASM virtual filesystem at /libraries/
  */
 export const createOpenSCADInstance = async (options: {
   onPrint?: (text: string) => void;
   onPrintErr?: (text: string) => void;
 }): Promise<OpenSCADInstance> => {
+  // Pre-load libraries in parallel with WASM initialization
+  const libraryLoadPromise = loadBuiltInLibraries();
+
   const { OpenSCAD } = await loadOpenSCAD();
 
   // createOpenSCAD returns OpenSCADInstance with high-level API
@@ -139,12 +262,19 @@ export const createOpenSCADInstance = async (options: {
 
   // The wrapper has renderToStl() and getInstance()
   // getInstance() returns the low-level OpenSCAD with FS and callMain
+  let instance: OpenSCADInstance;
   if ('getInstance' in wrapper && typeof wrapper.getInstance === 'function') {
-    return wrapper.getInstance() as OpenSCADInstance;
+    instance = wrapper.getInstance() as OpenSCADInstance;
+  } else {
+    // Fallback: if it's already the low-level instance
+    instance = wrapper as OpenSCADInstance;
   }
 
-  // Fallback: if it's already the low-level instance
-  return wrapper as OpenSCADInstance;
+  // Wait for libraries to finish loading, then mount them
+  await libraryLoadPromise;
+  mountLibraries(instance);
+
+  return instance;
 };
 
 /**

@@ -35,9 +35,24 @@ Cutting geometry must extend PAST surfaces: h = thickness + eps*2
 translate([10,0,0]) rotate([0,0,45]) cube(5);
 // 1. cube created, 2. rotated 45°, 3. translated
 
-### 4. Standard Primitives Only
-NO libraries (no BOSL2, MCAD, include, use statements)
-Use: cube, sphere, cylinder, polyhedron, linear_extrude, rotate_extrude, hull, difference, union, intersection
+### 4. Standard Primitives + Built-in Library
+Use built-in primitives: cube, sphere, cylinder, polyhedron, linear_extrude, rotate_extrude, hull, difference, union, intersection
+
+For tactical/military equipment from GST, USE the built-in tactical library:
+use <libraries/tactical.scad>
+
+Available tactical modules (NEVER redefine - just call them):
+- picatinny_rail(slots=5, height=15, with_slots=true) - Female receiver
+- picatinny_rail_male(slots=5, with_slots=true) - Male rail
+- picatinny_groove(length=50) - Subtraction primitive
+- molle_clip(width=28, height=40, rows=1) - Hook-style clip
+- molle_adapter_plate(plate_width=80, plate_height=60, plate_thickness=5, clip_columns=2)
+- picatinny_molle_adapter(slots=5, plate_width=80, plate_height=50, clip_columns=2)
+- rcube(size, r=2) - Rounded cube
+- counterbore(shaft_d, shaft_depth, head_d, head_depth) - Flush screw holes
+- tube(od, id, h) - Hollow cylinder
+
+IMPORTANT: Use \`use <>\` NOT \`include <>\`, NO external libraries (BOSL2, MCAD)
 
 ## GST TO OPENSCAD MAPPING
 
@@ -588,6 +603,210 @@ Output the complete modified SCAD code with ALL changes applied.`;
   }
 }
 
+// ============================================================================
+// SOTA Diff-Based Editing
+// ============================================================================
+
+// System prompt for targeted module fixes
+const DIFF_FIX_SYSTEM_PROMPT = `
+You are an OpenSCAD module debugger. Fix ONLY the broken module, not the entire file.
+
+## RULES
+1. Output ONLY the fixed module definition (module name() { ... })
+2. Do NOT include surrounding code, parameters, or other modules
+3. Preserve the module signature (name and parameters)
+4. Fix the specific error mentioned
+5. Ensure eps is used for boolean operations
+
+## OUTPUT FORMAT
+Return ONLY the fixed module:
+module module_name(param1, param2) {
+    // fixed implementation
+}
+
+No explanations, no markdown, just the module code.
+`;
+
+/**
+ * Extract module names and their code from OpenSCAD
+ */
+function extractModulesFromCode(
+  code: string
+): Map<string, { start: number; end: number; code: string }> {
+  const modules = new Map<string, { start: number; end: number; code: string }>();
+  const modulePattern = /module\s+(\w+)\s*\([^)]*\)\s*\{/g;
+  let match;
+
+  while ((match = modulePattern.exec(code)) !== null) {
+    const moduleName = match[1];
+    const startIndex = match.index;
+    let braceCount = 1;
+    let endIndex = match.index + match[0].length;
+
+    while (braceCount > 0 && endIndex < code.length) {
+      if (code[endIndex] === '{') braceCount++;
+      if (code[endIndex] === '}') braceCount--;
+      endIndex++;
+    }
+
+    if (braceCount === 0) {
+      modules.set(moduleName, {
+        start: startIndex,
+        end: endIndex,
+        code: code.substring(startIndex, endIndex),
+      });
+    }
+  }
+
+  return modules;
+}
+
+/**
+ * Identify which module contains an error based on error message
+ */
+function identifyBrokenModule(errorMessage: string, modules: Map<string, any>): string | null {
+  for (const moduleName of modules.keys()) {
+    if (errorMessage.toLowerCase().includes(moduleName.toLowerCase())) {
+      return moduleName;
+    }
+  }
+  return null;
+}
+
+/**
+ * SOTA Diff-Based Fix
+ * Requests only the broken module to be fixed, then patches it back
+ * Much faster and more reliable than regenerating entire file
+ */
+export async function fixBrokenModule(
+  input: {
+    existingCode: string;
+    brokenModuleName: string;
+    validationError: string;
+    gst?: any;
+  },
+  abortSignal?: AbortSignal
+): Promise<{ scadCode: string; fixedModule: string }> {
+  if (abortSignal?.aborted) {
+    throw new DOMException('Request was aborted', 'AbortError');
+  }
+
+  const modules = extractModulesFromCode(input.existingCode);
+  const brokenModule = modules.get(input.brokenModuleName);
+
+  if (!brokenModule) {
+    throw new Error(`Module ${input.brokenModuleName} not found in code`);
+  }
+
+  const prompt = `## BROKEN MODULE
+\`\`\`openscad
+${brokenModule.code}
+\`\`\`
+
+## VALIDATION ERROR
+${input.validationError}
+
+## CONTEXT (from GST)
+${
+  input.gst
+    ? JSON.stringify(
+        input.gst.root?.children?.find((c: any) => c.name?.includes(input.brokenModuleName)),
+        null,
+        2
+      )
+    : 'No GST context'
+}
+
+Fix ONLY this module. Output the corrected module definition.`;
+
+  try {
+    const text = await callClaudeProxy(prompt, DIFF_FIX_SYSTEM_PROMPT, abortSignal);
+
+    if (abortSignal?.aborted) {
+      throw new DOMException('Request was aborted', 'AbortError');
+    }
+
+    const fixedModule = extractScadCode(text);
+
+    // Patch the fixed module back into the original code
+    const patchedCode =
+      input.existingCode.substring(0, brokenModule.start) +
+      fixedModule +
+      input.existingCode.substring(brokenModule.end);
+
+    console.log(`Diff-based fix applied to module: ${input.brokenModuleName}`);
+
+    return {
+      scadCode: patchedCode,
+      fixedModule,
+    };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error;
+    }
+    console.error('Diff-based fix error:', error);
+    throw new Error(
+      `Module fix failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Attempt diff-based fix if possible, fall back to full edit
+ */
+export async function smartFix(
+  input: {
+    existingCode: string;
+    existingGST?: any;
+    validationErrors: string[];
+  },
+  abortSignal?: AbortSignal
+): Promise<{ scadCode: string; method: 'diff' | 'full' }> {
+  const modules = extractModulesFromCode(input.existingCode);
+
+  for (const error of input.validationErrors) {
+    const brokenModule = identifyBrokenModule(error, modules);
+
+    if (brokenModule) {
+      try {
+        console.log(`Attempting diff-based fix for module: ${brokenModule}`);
+        const result = await fixBrokenModule(
+          {
+            existingCode: input.existingCode,
+            brokenModuleName: brokenModule,
+            validationError: error,
+            gst: input.existingGST,
+          },
+          abortSignal
+        );
+
+        return {
+          scadCode: result.scadCode,
+          method: 'diff',
+        };
+      } catch (diffError) {
+        console.warn('Diff-based fix failed, falling back to full edit:', diffError);
+      }
+    }
+  }
+
+  console.log('Using full edit (diff-based fix not applicable)');
+  const result = await editCode(
+    {
+      existingGST: input.existingGST,
+      existingCode: input.existingCode,
+      editRequest: `Fix these validation errors:\n${input.validationErrors.join('\n')}`,
+      validationErrors: input.validationErrors,
+    },
+    abortSignal
+  );
+
+  return {
+    scadCode: result.scadCode,
+    method: 'full',
+  };
+}
+
 /**
  * Extract clean OpenSCAD code from response
  * Handles cases where Claude outputs explanation before/after code blocks
@@ -647,6 +866,8 @@ function extractScadCode(text: string): string {
 export const coderService = {
   generateCode,
   editCode,
+  fixBrokenModule,
+  smartFix,
   isCoderAvailable,
 };
 

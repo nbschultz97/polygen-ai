@@ -69,9 +69,17 @@ Cutters must extend PAST surfaces: h = thickness + eps*2
 translate([10,0,0]) rotate([0,0,45]) cube(5);
 // 1. cube created, 2. rotated 45°, 3. translated
 
-### 4. Standard Primitives Only
-NO libraries (no BOSL2, MCAD, include, use statements)
-Use: cube, sphere, cylinder, polyhedron, linear_extrude, rotate_extrude, hull, difference, union, intersection
+### 4. Standard Primitives + Built-in Library
+Use built-in primitives: cube, sphere, cylinder, polyhedron, linear_extrude, rotate_extrude, hull, difference, union, intersection
+
+For tactical/military equipment, USE the built-in tactical library:
+\`\`\`
+use <libraries/tactical.scad>
+\`\`\`
+IMPORTANT:
+- Use \`use <>\` NOT \`include <>\` (use imports modules only)
+- NEVER redefine modules from tactical.scad - just call them
+- NO external libraries (no BOSL2, MCAD, etc.)
 
 ## CODE STRUCTURE TEMPLATE
 // [Model Name] - [Brief description]
@@ -96,124 +104,79 @@ difference() {
     // Negative geometry (cutouts)
 }
 
-## MICRO-LIB (Common Patterns)
-These are VERIFIED modules. When you need these patterns:
-1. COPY the module definition EXACTLY as shown below
-2. DO NOT improvise or modify the geometry
-3. Only change parameter VALUES, not the module structure
+## TACTICAL LIBRARY (use <libraries/tactical.scad>)
+For tactical/military equipment, import the built-in library and use these modules.
+NEVER redefine these - just call them after the use statement.
 
-TEACHING MODE: When using these helpers, add a comment explaining WHY you chose them.
-This helps users learn CAD design principles.
+### Available Modules (signatures only):
 
-### Rounded Cuboid (rcube)
-// Use rcube for: impact resistance, grip comfort, print quality (no sharp corners)
-module rcube(size, r) {
-    hull() {
-        for (x = [-1, 1], y = [-1, 1], z = [-1, 1]) {
-            translate([x*(size[0]/2-r), y*(size[1]/2-r), z*(size[2]/2-r)])
-                sphere(r=r, $fn=32);
-        }
-    }
+\`\`\`
+// Picatinny Rail Modules (MIL-STD-1913)
+picatinny_rail(slots = 5, height = 15, with_slots = true)
+  // Female receiver - dovetail groove accepts male rail
+picatinny_rail_male(slots = 5, with_slots = true)
+  // Male rail - dovetail ridge fits into female mount
+picatinny_groove(length = 50)
+  // Subtraction primitive - use in difference() to cut groove
+
+// MOLLE Modules (TW-PL-507F)
+molle_clip(width = 28, height = 40, rows = 1)
+  // Hook-style clip for 25mm webbing
+molle_adapter_plate(plate_width = 80, plate_height = 60, plate_thickness = 5, clip_columns = 2)
+  // Complete adapter plate with integrated clips
+
+// Combined Tactical
+picatinny_molle_adapter(slots = 5, plate_width = 80, plate_height = 50, clip_columns = 2)
+  // Complete Picatinny-to-MOLLE adapter
+
+// Utility Modules
+rcube(size, r = 2)              // Rounded cube
+counterbore(shaft_d, shaft_depth, head_d, head_depth)  // Flush screw holes
+tube(od, id, h)                 // Hollow cylinder
+\`\`\`
+
+### Example: Tactical Equipment
+\`\`\`openscad
+use <libraries/tactical.scad>
+
+// Parameters
+plate_width = 100;
+plate_height = 60;
+
+// Assembly
+union() {
+    // Base plate
+    cube([plate_width, 5, plate_height], center=true);
+
+    // Picatinny on front
+    translate([0, 10, 0])
+        rotate([90, 0, 0])
+            picatinny_rail(slots=5, height=15);
+
+    // MOLLE clips on back
+    translate([-25, -5, 0]) molle_clip();
+    translate([25, -5, 0]) molle_clip();
 }
-Example usage comment:
-// Using rcube for rounded edges - improves grip and prevents corner chipping during printing
+\`\`\`
+
+## INLINE MODULES (define these yourself when needed)
+For simple patterns not in the library, define inline:
 
 ### Tube/Pipe
-// Use tube for: hollow structures, cable routing, weight reduction
 module tube(od, id, h) {
     difference() {
         cylinder(h=h, d=od, center=true);
         cylinder(h=h + eps*2, d=id, center=true);
     }
 }
-Example usage comment:
-// Using tube module - hollow core reduces material cost by ~40%
 
-### Counterbore Hole
-// Use counterbore for: flush screw heads, recessed fasteners, clean surfaces
-module counterbore(shaft_d, shaft_depth, head_d, head_depth) {
-    union() {
-        cylinder(h=shaft_depth + eps, d=shaft_d);
-        translate([0, 0, shaft_depth - head_depth])
-            cylinder(h=head_depth + eps, d=head_d);
-    }
-}
-Example usage comment:
-// Counterbore allows M4 screw head to sit flush with surface
-
-### Step Hole (for supports-free printing)
-// Use step_hole for: printable vertical holes without supports
+### Step Hole (supports-free printing)
 module step_hole(d, h, steps=3) {
     for (i = [0:steps-1]) {
         translate([0, 0, i * h/steps])
             cylinder(h=h/steps + eps, d1=d - (steps-i)*0.4, d2=d - (steps-i-1)*0.4);
     }
 }
-Example usage comment:
-// Using step_hole - graduated diameter enables printing without supports
-
-### Female Picatinny Rail Mount (MIL-STD-1913)
-// Use female_picatinny for: weapon attachments, drone mounts, tactical accessories
-// Creates a RECEIVER that accepts a standard male Picatinny rail
-module female_picatinny_rail(slots = 5, height = 15) {
-    // MIL-STD-1913 Picatinny specs (verified)
-    slot_pitch = 10.01;        // Center-to-center distance
-    groove_top = 21.2;         // Top of dovetail (wider)
-    groove_base = 20.6;        // Base of dovetail (narrower)
-    groove_depth = 9.6;        // Depth of dovetail groove
-    rail_width = 22;           // Overall width including walls
-    
-    length = slots * slot_pitch;
-    
-    difference() {
-        // Solid block
-        cube([length, rail_width, height], center=true);
-        
-        // Dovetail groove running along X axis, opening on TOP (Z+)
-        translate([0, 0, height/2 - groove_depth/2 + eps])
-            linear_extrude(height = groove_depth + eps, scale = groove_top/groove_base)
-                square([length + eps*2, groove_base], center=true);
-    }
-}
-Example usage comment:
-// Female Picatinny rail - MIL-STD-1913 dovetail accepts standard weapon/drone rails
-
-### MOLLE Clip (TW-PL-507F)
-// Use molle_clip for: plate carrier attachments, tactical pouches, gear mounting
-// Creates a clip that weaves through 25mm MOLLE webbing
-module molle_clip(width = 28, height = 40) {
-    // MOLLE/PALS specs (MIL-C-43950A derived)
-    webbing = 25;              // Webbing width
-    row_spacing = 25;          // Vertical row spacing
-    hook_depth = 10;           // How far hook extends
-    wall = 3;                  // Wall thickness
-    gap = 3;                   // Gap for webbing thickness
-    
-    difference() {
-        union() {
-            // Vertical spine (attaches to base plate)
-            cube([width, wall, height], center=true);
-            
-            // Top hook extending BACKWARD (toward plate carrier body)
-            translate([0, -hook_depth/2 - wall/2, height/2 - row_spacing/2])
-                cube([width, hook_depth, row_spacing], center=true);
-            
-            // Bottom hook extending BACKWARD
-            translate([0, -hook_depth/2 - wall/2, -height/2 + row_spacing/2])
-                cube([width, hook_depth, row_spacing], center=true);
-        }
-        
-        // Slot for webbing to pass through (top hook)
-        translate([0, -hook_depth/2, height/2 - row_spacing/2])
-            cube([webbing, hook_depth + wall + eps*2, gap], center=true);
-        
-        // Slot for webbing to pass through (bottom hook)
-        translate([0, -hook_depth/2, -height/2 + row_spacing/2])
-            cube([webbing, hook_depth + wall + eps*2, gap], center=true);
-    }
-}
-Example usage comment:
-// MOLLE clip - weaves through 25mm webbing, hooks backward to lock onto plate carrier
 
 ## TACTICAL EQUIPMENT ASSEMBLY RULES
 When building plate carrier adapters (Picatinny + MOLLE):

@@ -307,6 +307,37 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       // Store STL data for download
       setStlData(stlData);
 
+      // Validate triangle count before parsing - prevents renderer stalling
+      // FIX: STL header can contain garbage values (e.g., 892M triangles)
+      if (stlData.length >= 84) {
+        const view = new DataView(stlData.buffer as ArrayBuffer);
+        const rawTriangleCount = view.getUint32(80, true);
+
+        // Sanity check: each triangle is 50 bytes, plus 84-byte header
+        const actualTriangles = Math.floor((stlData.length - 84) / 50);
+
+        // If raw count is absurd (>10M) but file is small, use actual count
+        const triangleCount =
+          rawTriangleCount > 10000000 || rawTriangleCount * 50 + 84 > stlData.length + 100
+            ? actualTriangles
+            : rawTriangleCount;
+
+        // Cap at 1M triangles - anything beyond this will freeze the browser
+        if (triangleCount > 1000000) {
+          throw new Error(
+            `Model too complex (${triangleCount.toLocaleString()} triangles). ` +
+              'Reduce $fn values or simplify geometry. Max: 1,000,000 triangles.'
+          );
+        }
+
+        // Warn at 500K+ triangles
+        if (triangleCount > 500000) {
+          setComplexityWarning(
+            `High triangle count (${triangleCount.toLocaleString()}). May render slowly.`
+          );
+        }
+      }
+
       const loader = new STLLoader();
       const geometry = loader.parse(stlData.buffer as ArrayBuffer);
 

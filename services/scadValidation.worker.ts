@@ -28,6 +28,11 @@ interface ValidationResult {
   triangleCount?: number;
   isManifold?: boolean;
   manifoldIssues?: string[];
+  /** Bounding box for Dimensional Accuracy (Sd) - SOTA benchmark */
+  boundingBox?: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
 }
 
 interface WorkerRequest {
@@ -55,19 +60,167 @@ const DEFAULT_OPTIONS: ValidationOptions = {
   previewMode: false,
 };
 
+// ============================================================================
+// Library Cache (mirrored from openscadLoader.ts for worker context)
+// ============================================================================
+const libraryCache: Map<string, string> = new Map();
+let librariesLoaded = false;
+const BUILT_IN_LIBRARIES = ['tactical.scad'];
+
 /**
- * Initialize OpenSCAD WASM module
+ * Fetch a library file and cache it
+ */
+async function fetchLibrary(filename: string): Promise<string | null> {
+  if (libraryCache.has(filename)) {
+    return libraryCache.get(filename)!;
+  }
+
+  try {
+    const response = await fetch(`/libraries/${filename}`);
+    if (!response.ok) {
+      console.warn(`[Worker] Library ${filename} not found (${response.status})`);
+      return null;
+    }
+
+    const content = await response.text();
+    libraryCache.set(filename, content);
+    console.log(`[Worker] Library loaded: ${filename}`);
+    return content;
+  } catch (error) {
+    console.warn(`[Worker] Failed to fetch library ${filename}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Load all built-in libraries into cache
+ */
+async function loadBuiltInLibraries(): Promise<void> {
+  if (librariesLoaded) return;
+  await Promise.all(BUILT_IN_LIBRARIES.map((lib) => fetchLibrary(lib)));
+  librariesLoaded = true;
+}
+
+/**
+ * Mount libraries into WASM virtual filesystem
+ */
+function mountLibraries(instance: any): void {
+  if (!instance.FS?.mkdir) return;
+
+  // Create /libraries directory
+  try {
+    instance.FS.stat?.('/libraries');
+  } catch {
+    try {
+      instance.FS.mkdir('/libraries');
+    } catch {
+      // Directory might already exist
+    }
+  }
+
+  // Write each library file
+  for (const [filename, content] of libraryCache.entries()) {
+    try {
+      instance.FS.writeFile(`/libraries/${filename}`, content);
+      console.log(`[Worker] Mounted: /libraries/${filename}`);
+    } catch (e) {
+      console.warn(`[Worker] Failed to mount ${filename}:`, e);
+    }
+  }
+}
+
+// ============================================================================
+// STL Parsing Utilities
+// ============================================================================
+
+interface Triangle {
+  v1: [number, number, number];
+  v2: [number, number, number];
+  v3: [number, number, number];
+}
+
+/**
+ * Parse binary STL and extract triangles for geometry analysis
+ */
+function parseSTLBinary(data: Uint8Array): Triangle[] {
+  const triangles: Triangle[] = [];
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+  if (data.length < 84) return triangles;
+
+  // Use file-derived count to avoid corrupted header values
+  const actualTriangles = Math.floor((data.length - 84) / 50);
+  let offset = 84;
+
+  for (let i = 0; i < actualTriangles && offset + 50 <= data.length; i++) {
+    // Skip normal (12 bytes)
+    offset += 12;
+
+    const v1: [number, number, number] = [
+      view.getFloat32(offset, true),
+      view.getFloat32(offset + 4, true),
+      view.getFloat32(offset + 8, true),
+    ];
+    offset += 12;
+
+    const v2: [number, number, number] = [
+      view.getFloat32(offset, true),
+      view.getFloat32(offset + 4, true),
+      view.getFloat32(offset + 8, true),
+    ];
+    offset += 12;
+
+    const v3: [number, number, number] = [
+      view.getFloat32(offset, true),
+      view.getFloat32(offset + 4, true),
+      view.getFloat32(offset + 8, true),
+    ];
+    offset += 12;
+
+    // Skip attribute byte count
+    offset += 2;
+
+    triangles.push({ v1, v2, v3 });
+  }
+
+  return triangles;
+}
+
+/**
+ * Calculate bounding box for Dimensional Accuracy (Sd) check
+ */
+function calculateBoundingBox(triangles: Triangle[]): {
+  min: [number, number, number];
+  max: [number, number, number];
+} {
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+
+  for (const tri of triangles) {
+    for (const v of [tri.v1, tri.v2, tri.v3]) {
+      for (let i = 0; i < 3; i++) {
+        min[i] = Math.min(min[i], v[i]);
+        max[i] = Math.max(max[i], v[i]);
+      }
+    }
+  }
+
+  if (min[0] === Infinity) return { min: [0, 0, 0], max: [0, 0, 0] };
+  return { min, max };
+}
+
+/**
+ * Initialize OpenSCAD WASM module and load libraries
  */
 async function initializeWorker(): Promise<void> {
   try {
-    // Import openscad-wasm ES module
-    // Note: This works in module workers (type: 'module')
-    const module = await import('openscad-wasm');
+    // Load libraries and WASM module in parallel
+    const [, module] = await Promise.all([loadBuiltInLibraries(), import('openscad-wasm')]);
     openScadModule = module;
 
     isInitialized = true;
     ctx.postMessage({ type: 'READY' } as WorkerResponse);
-    console.log('[Worker] OpenSCAD WASM initialized');
+    console.log('[Worker] OpenSCAD WASM initialized with libraries');
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Worker] Initialization failed:', message);
@@ -140,6 +293,9 @@ async function validateInWorker(
       };
     }
 
+    // Mount libraries into WASM filesystem
+    mountLibraries(instance);
+
     // Write input file
     instance.FS.writeFile('/input.scad', trimmedCode);
 
@@ -186,15 +342,57 @@ async function validateInWorker(
       };
     }
 
-    // Parse triangle count from STL binary header
+    // Parse triangle count from STL binary header with sanity checking
+    // FIX: The raw header value can be garbage (e.g., 892M triangles for a small file)
     let triangleCount = 0;
+    let triangleCountCorrected = false;
+    const warnings: string[] = [];
+
     if (stlData.length >= 84) {
       const view = new DataView(stlData.buffer, stlData.byteOffset, stlData.byteLength);
-      triangleCount = view.getUint32(80, true);
+      const rawTriangleCount = view.getUint32(80, true);
+
+      // Sanity check: each triangle is 50 bytes, plus 84-byte header
+      const expectedSize = 84 + rawTriangleCount * 50;
+      const actualTriangles = Math.floor((stlData.length - 84) / 50);
+
+      if (rawTriangleCount > 10000000 || expectedSize > stlData.length + 100) {
+        // Raw value is invalid - use estimated count from file size
+        console.warn(
+          `[Worker] STL triangle count ${rawTriangleCount} invalid (file: ${stlData.length} bytes). Using: ${actualTriangles}`
+        );
+        triangleCount = actualTriangles;
+        triangleCountCorrected = true;
+      } else {
+        triangleCount = rawTriangleCount;
+      }
+
+      // Cap at 1M triangles max (anything beyond is likely parsing error)
+      if (triangleCount > 1000000) {
+        console.warn(
+          `[Worker] Triangle count ${triangleCount} exceeds 1M. Capping to: ${actualTriangles}`
+        );
+        triangleCount = Math.min(actualTriangles, 1000000);
+        triangleCountCorrected = true;
+      }
     }
 
-    // Collect warnings
-    const warnings: string[] = [];
+    if (triangleCountCorrected) {
+      warnings.push(`STL triangle count was corrected. Final count: ${triangleCount} triangles.`);
+    }
+
+    // Calculate bounding box for Active Critic (Sd metric)
+    let boundingBox: { min: [number, number, number]; max: [number, number, number] } | undefined;
+    if (triangleCount > 0 && triangleCount < 100000) {
+      try {
+        const triangles = parseSTLBinary(stlData);
+        boundingBox = calculateBoundingBox(triangles);
+      } catch (e) {
+        console.warn('[Worker] Bounding box calculation failed:', e);
+      }
+    }
+
+    // Collect warnings from error log
     if (errorLog.toLowerCase().includes('warning')) {
       warnings.push(
         ...errorLog
@@ -209,6 +407,7 @@ async function validateInWorker(
       rawErrorLog: errorLog || undefined,
       stlData,
       triangleCount,
+      boundingBox,
       isManifold: true, // Simplified - full manifold check is expensive
       warnings: warnings.length > 0 ? warnings : undefined,
     };
@@ -219,17 +418,28 @@ async function validateInWorker(
       error: `Validation failed: ${err?.message || 'Unknown error'}`,
     };
   } finally {
-    // Cleanup instance
-    if (instance?.FS?.unlink) {
-      try {
-        instance.FS.unlink('/input.scad');
-      } catch {
-        // Ignore cleanup errors
+    // Cleanup instance - CRITICAL for memory management
+    if (instance) {
+      // Step 1: Remove temporary files
+      if (instance.FS?.unlink) {
+        try {
+          instance.FS.unlink('/input.scad');
+        } catch {
+          /* ignore */
+        }
+        try {
+          instance.FS.unlink('/output.stl');
+        } catch {
+          /* ignore */
+        }
       }
-      try {
-        instance.FS.unlink('/output.stl');
-      } catch {
-        // Ignore cleanup errors
+
+      // Step 2: CRITICAL - Free WASM heap to prevent memory leaks
+      // Without this, memory accumulates with each render (~10-50MB per instance)
+      if (typeof instance.delete === 'function') {
+        instance.delete();
+      } else if (typeof instance._free === 'function') {
+        instance._free();
       }
     }
   }

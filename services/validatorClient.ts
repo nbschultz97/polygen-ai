@@ -10,6 +10,7 @@
 
 import type { GeometricStructureTree, ValidationResult, GSTBoundingBox } from '../types';
 import { workerValidationService } from './workerValidationService';
+import { visualCriticService, type VisualCritiqueResult } from './visualCriticService';
 
 // SOTA Active Critic: Dimensional accuracy threshold
 // Sd < 0.8 means >20% mismatch - triggers retry with specific feedback
@@ -237,11 +238,86 @@ export function isUsingWorker(): boolean {
   return workerValidationService.isAvailable();
 }
 
+/**
+ * SOTA Visual Critic: Validate with visual feedback loop
+ * Extended validation that includes Claude Vision analysis of rendered model
+ *
+ * @param input Standard validation input
+ * @param renderScreenshot Base64 PNG of rendered model (optional)
+ * @param originalRequest User's original request for comparison
+ */
+export async function validateWithVisualCritic(
+  input: {
+    scadCode: string;
+    gst?: GeometricStructureTree;
+    abortSignal?: AbortSignal;
+  },
+  renderScreenshot?: string,
+  originalRequest?: string
+): Promise<ValidationResult & { visualCritique?: VisualCritiqueResult }> {
+  // First, run standard geometric validation
+  const geometricResult = await validate(input);
+
+  // If geometric validation failed, return early
+  if (!geometricResult.success) {
+    return geometricResult;
+  }
+
+  // If no screenshot provided, skip visual critique
+  if (!renderScreenshot || !originalRequest) {
+    return geometricResult;
+  }
+
+  // Run visual critique
+  console.log('Running Visual Critic analysis...');
+  const visualCritique = await visualCriticService.critiqueRender(
+    renderScreenshot,
+    originalRequest,
+    input.abortSignal
+  );
+
+  // If visual critique finds issues, add them as errors
+  if (!visualCritique.approved && visualCriticService.needsRegeneration(visualCritique)) {
+    const visualErrors = visualCriticService.generateCritiqueFeedback(visualCritique);
+    console.log(`Visual Critic found ${visualErrors.length} issues requiring regeneration`);
+
+    return {
+      ...geometricResult,
+      success: false,
+      errors: [...geometricResult.errors, ...visualErrors],
+      warnings: [...geometricResult.warnings, ...visualCritique.suggestions],
+      visualCritique,
+    };
+  }
+
+  // Visual critique passed or found only minor issues
+  if (visualCritique.issues.length > 0) {
+    console.log(`Visual Critic found ${visualCritique.issues.length} minor issues (not blocking)`);
+    return {
+      ...geometricResult,
+      warnings: [
+        ...geometricResult.warnings,
+        ...visualCritique.issues.map((i) => `[Visual] ${i.description}`),
+      ],
+      visualCritique,
+    };
+  }
+
+  console.log('Visual Critic: Model approved');
+  return {
+    ...geometricResult,
+    visualCritique,
+  };
+}
+
 // Export as object for consistent API
 export const validatorClient = {
   validate,
+  validateWithVisualCritic,
   isValidatorAvailable,
   isUsingWorker,
+  // Re-export visual critic utilities
+  captureCanvasScreenshot: visualCriticService.captureCanvasScreenshot,
 };
 
 export default validatorClient;
