@@ -158,11 +158,9 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
     if (!code || !code.trim() || loading) return;
 
     // MOBILE GUARD: Inject low-poly settings to prevent crashing
-    let renderCode = code;
-    if (isMobile()) {
-      // Prepend global resolution settings that override user defaults
-      renderCode = `$fn=32; $fs=0.5; $fa=5; // MOBILE GUARD ACTIVE\n` + code;
-    }
+    const renderCode = isMobile()
+      ? `$fn=32; $fs=0.5; $fa=5; // MOBILE GUARD ACTIVE\n` + code
+      : code;
 
     const startTime = performance.now();
     setLoading(true);
@@ -188,15 +186,15 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
 
     try {
       const loaderResult = await loadOpenSCAD();
-      const { OpenSCAD, baseUrl } = loaderResult;
+      const { OpenSCAD } = loaderResult;
 
       if (!OpenSCAD || typeof OpenSCAD !== 'function') {
         throw new Error('OpenSCAD engine not available. Please refresh the page.');
       }
 
-      instance = await OpenSCAD({
+      // Create OpenSCAD instance - ES module import handles WASM location automatically
+      const wrapper = await OpenSCAD({
         noInitialRun: true,
-        locateFile: (path: string) => `${baseUrl}${path}`,
         print: () => {},
         printErr: (text: string) => {
           // Filter benign GL errors often seen in WASM
@@ -211,11 +209,17 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
         },
       });
 
+      // Get the low-level instance with FS and callMain
+      instance =
+        'getInstance' in wrapper && typeof wrapper.getInstance === 'function'
+          ? wrapper.getInstance()
+          : wrapper;
+
       if (!instance?.FS) {
         throw new Error('OpenSCAD instance failed to initialize');
       }
 
-      instance.FS.writeFile('/input.scad', code);
+      instance.FS.writeFile('/input.scad', renderCode);
       const exitCode = instance.callMain(['/input.scad', '-o', 'output.stl']);
 
       if (exitCode !== 0 || (errorLog.includes('ERROR') && !errorLog.includes('GL_INVALID'))) {
@@ -226,7 +230,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       let stlData: Uint8Array | null = null;
       try {
         stlData = instance.FS.readFile('/output.stl');
-      } catch (readError) {
+      } catch {
         throw new Error(
           'Failed to read output STL. Check for infinite recursion or empty geometry.'
         );
