@@ -104,6 +104,13 @@ IMPORTANT:
 - Use \`use <>\` NOT \`include <>\` (use imports modules only)
 - NEVER redefine modules from tactical.scad - just call them
 - NO external libraries (no BOSL2, MCAD, etc.)
+- $L_{sig}$ PROTOCOL: If you are unsure of a module signature, guess based on common engineering standards (MIL-STD-1913, NATO) but mark it with a comment.
+
+### 6. MATERIAL AWARENESS (MANUFACTURING)
+Always define a global tolerance variable based on the intended use case.
+- $tolerance = 0.2; // Standard FDM tolerance
+- Use this variable for all offsets and dimensions needing fit (e.g., d = hole_d + $tolerance)
+- For high-precision parts, acknowledge shrinkage (ABS/ASA = 1.006x, PETG/PLA = 1.002x).
 
 ## CODE STRUCTURE TEMPLATE
 // [Model Name] - [Brief description]
@@ -132,32 +139,38 @@ difference() {
 For tactical/military equipment, import the built-in library and use these modules.
 NEVER redefine these - just call them after the use statement.
 
-### Available Modules (signatures only):
+### Available Modules (EXACT SIGNATURES):
 
+\`\`\`openscad
+// Picatinny Rail System (MIL-STD-1913)
+module picatinny_rail(slots=5, height=15) 
+  // RATIONALE: Standard rail length = slots * 10mm
+
+module picatinny_rail_male(slots=5, with_slots=true)
+  // RATIONALE: The ridge that slides into a receiver
+
+module picatinny_rail_female(slots=5, plate_width=80, plate_height=50)
+  // RATIONALE: The groove/receiver mount
+
+// MOLLE System (MIL-P-191)
+module molle_clip(width=28, height=40, thickness=4, gap=3) 
+  // RATIONALE: Single clip for webbing
+
+module molle_adapter_plate(plate_width = 80, plate_height = 50, clip_columns = 2)
+  // RATIONALE: Base plate with integrated MOLLE mounting clips
+
+module picatinny_molle_adapter(slots = 5, plate_width = 80, plate_height = 50, clip_columns = 2)
+  // RATIONALE: Complete Picatinny-to-MOLLE adapter
 \`\`\`
-// Picatinny Rail Modules (MIL-STD-1913)
-picatinny_rail(slots = 5, height = 15, with_slots = true)
-  // Female receiver - dovetail groove accepts male rail
-picatinny_rail_male(slots = 5, with_slots = true)
-  // Male rail - dovetail ridge fits into female mount
-picatinny_groove(length = 50)
-  // Subtraction primitive - use in difference() to cut groove
 
-// MOLLE Modules (TW-PL-507F)
-molle_clip(width = 28, height = 40, rows = 1)
-  // Hook-style clip for 25mm webbing
-molle_adapter_plate(plate_width = 80, plate_height = 60, plate_thickness = 5, clip_columns = 2)
-  // Complete adapter plate with integrated clips
+## SOTA QUALITY GATING (P_succ)
+Your output is evaluated on:
+1. **Geometric Fidelity (Sv)**: Volume must match prompt description. DO NOT skip internal hollows or leave blocked holes.
+2. **Manifold Integrity (M)**: 100% printable. No self-intersections. No zero-thickness walls (thin walls must be > 0.8mm).
+3. **Dimensional Accuracy (Sd)**: All specified mm dimensions must match the final bounding box within 5%.
+4. **Visual Anchor (6x6 Grid)**: Positioning must be precise relative to the origin.
 
-// Combined Tactical
-picatinny_molle_adapter(slots = 5, plate_width = 80, plate_height = 50, clip_columns = 2)
-  // Complete Picatinny-to-MOLLE adapter
-
-// Utility Modules
-rcube(size, r = 2)              // Rounded cube
-counterbore(shaft_d, shaft_depth, head_d, head_depth)  // Flush screw holes
-tube(od, id, h)                 // Hollow cylinder
-\`\`\`
+FAILURE to meet P_succ > 0.8 results in an automatic system retry. Ensure your code is structurally sound and follows Atomic LMP rules.
 
 ### Example: Tactical Equipment
 \`\`\`openscad

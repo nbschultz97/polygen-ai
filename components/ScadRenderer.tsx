@@ -13,7 +13,7 @@ import {
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls, STLLoader } from 'three-stdlib';
-import { cleanupInstance, loadOpenSCAD } from '../services/openscadLoader';
+import { cleanupInstance, createOpenSCADInstance } from '../services/openscadLoader';
 
 interface ScadRendererProps {
   code: string;
@@ -350,18 +350,11 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
     }
 
     try {
-      const loaderResult = await loadOpenSCAD();
-      const { OpenSCAD } = loaderResult;
-
-      if (!OpenSCAD || typeof OpenSCAD !== 'function') {
-        throw new Error('OpenSCAD engine not available. Please refresh the page.');
-      }
-
-      // Create OpenSCAD instance - ES module import handles WASM location automatically
-      const wrapper = await OpenSCAD({
-        noInitialRun: true,
-        print: () => {},
-        printErr: (text: string) => {
+      // Use createOpenSCADInstance which properly mounts tactical libraries to /libraries/
+      // This is CRITICAL for code that uses: use <libraries/tactical.scad>
+      instance = await createOpenSCADInstance({
+        onPrint: () => {},
+        onPrintErr: (text: string) => {
           // Filter benign GL errors often seen in WASM
           if (
             text &&
@@ -374,14 +367,8 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
         },
       });
 
-      // Get the low-level instance with FS and callMain
-      instance =
-        'getInstance' in wrapper && typeof wrapper.getInstance === 'function'
-          ? wrapper.getInstance()
-          : wrapper;
-
       if (!instance?.FS) {
-        console.error('OpenSCAD getInstance() returned:', instance);
+        console.error('OpenSCAD createOpenSCADInstance() returned:', instance);
         throw new Error('OpenSCAD WASM failed to initialize. Try refreshing the page.');
       }
 

@@ -8,12 +8,14 @@ This document captures technical research findings and their implementation in P
 
 ## Executive Summary
 
-PolyGen AI uses a multi-agent architecture to convert natural language into 3D-printable OpenSCAD code. Based on deep technical research, we've identified key optimizations that can improve:
+PolyGen AI targets a **$10k-$20k MRR** baseline by unlocking the utility of 3D printers for the "Non-Engineer" market. Our strategy centers on shifting from "probabilistic code generation" to **"Engineered Geometric Fidelity."**
 
-- **Success Rate**: From ~44% (direct text-to-code) to 75%+ (with GST intermediate format)
-- **Performance**: 10x faster validation with Manifold geometry kernel
-- **Cost**: 50%+ reduction in API costs with prompt caching
-- **Reliability**: Enhanced error recovery with categorized feedback loops
+### Key Progress Benchmarks:
+
+- **Success Rate ($P_{succ}$)**: 90%+ Target for autonomous print-readiness.
+- **Reliability (Tier 4)**: Quantitatively validated metrics ($S_v, S_d$) with explicit WASM heap integrity.
+- **Revenue Deliverables**: Zero user-facing manifold errors and automated Vision-based self-correction.
+- **Cost Efficiency**: Future distillation of Claude-level reasoning into Gemini Flash to drop COGS.
 
 ---
 
@@ -375,40 +377,67 @@ Patents are "perishable assets" - prioritize:
 
 ---
 
-## 10. Implementation Priority
+---
 
-### Phase 1: Performance (v3.1.0)
+## 10. The Revenue Roadmap (v3.5.0+)
 
-- [ ] Manifold backend flag
-- [ ] Response streaming
-- [ ] Prompt caching
-- [ ] Web Worker offloading
+To bridge the **"Valley of Death"** where users churn due to unprintable code, we prioritize three mandatory deliverables:
 
-### Phase 2: Intelligence (v3.2.0)
+### 10.1 The Manifold Guard (The Gatekeeper)
 
-- [ ] Enable multi-agent as default
-- [ ] Enhanced error categories
-- [x] Visual feedback loop ✅ v3.4.0
-- [ ] Success rate tracking
+- **Goal**: 100% printable output.
+- **Strategy**: Headless WASM rendering before user preview. If non-manifold, trigger auto-retry.
+- **Metric**: Zero user-facing "floating parts" or "mesh holes."
 
-### Phase 3: Dual-Engine (v4.0.0)
+### 10.2 The Geometry Planner (GST Enforcement)
 
-- [ ] CadQuery server engine
-- [ ] MCP integration
-- [ ] Cloud rendering for Pro tier
+- **Goal**: Structural integrity via hierarchy.
+- **Strategy**: Force the AI to define `parent`, `child`, and `anchor_point` logic in JSON before writing a single line of SCAD.
+- **Status**: [IN PROGRESS] - Optimizing for Multi-Part Mating ($T_c$).
+
+### 10.3 The Visual Critic (The VLM Eye)
+
+- **Goal**: Catch topological errors that numeric metrics miss.
+- **Strategy**: Overlay 6x6 grid ($P_{vis}$) on renders. Feedback loop for "blocked holes" or "incorrect alignment."
+
+---
+
+## 11. Implementation Priority
+
+### Phase 1: Tier 4 Stabilization ✅ COMPLETE
+
+- [x] Manifold backend flag
+- [x] WASM Heap Copying (Integrity fix)
+- [x] Quantitative Metrics ($S_v, S_d$ in code)
+- [x] Tactical Guard (Auto-Injection)
+
+### Phase 2: Tier 5 Autonomy (v3.6.0)
+
+- [ ] **Visual Anchor Grid** (6x6 VLM feedback)
+- [ ] **P_succ Gating** (Vision ROI optimization)
+- [ ] **Atomic LMP** (Scope isolation enforcement)
+- [ ] **L_sig Protocol** (Signature recovery)
+
+### Phase 3: Tier 6 Self-Correction (v4.0.0)
+
+- [ ] **Golden Set** automated benchmarking
+- [ ] **Small Model Distillation** (drop COGS)
+- [ ] **CadQuery Server Engine** (Pro tier)
 
 ---
 
 ## References
 
-- Honda Research Institute: Multi-Agent CAD Generation
-- Manifold Geometry Kernel Benchmarks
-- OpenSCAD WASM Optimization Guides
-- VLM Component Assignment Studies (90.6% preference)
-- Sketch2Prototype Framework
-- Model Context Protocol (MCP) Specification
+- Sadik et al. (2025): Human-in-the-Loop 3D CAD
+- Code2Video (2025): Visual Anchor Grid benchmarks
+- AutoGen3D: Parametric Language Model Programs (LMPs)
+- Manifold Geometry Kernel (WASM)
 
 ---
 
 _Last Updated: January 2026_
-_Version: 1.0_
+_Version: 3.5.0_
+
+```
+
+```

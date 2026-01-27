@@ -8,9 +8,9 @@
  * Source: "Code-Level Correction" - triggers retries on >20% dimension mismatch
  */
 
-import type { GeometricStructureTree, ValidationResult, GSTBoundingBox } from '../types';
-import { workerValidationService } from './workerValidationService';
+import type { GeometricStructureTree, GSTBoundingBox, ValidationResult } from '../types';
 import { visualCriticService, type VisualCritiqueResult } from './visualCriticService';
+import { workerValidationService } from './workerValidationService';
 
 // SOTA Active Critic: Accuracy thresholds
 // Sd < 0.8 means >20% mismatch - triggers retry with specific feedback
@@ -318,9 +318,8 @@ export async function validate(input: {
     }
 
     // SOTA Active Critic: Calculate Volumetric Similarity (Sv)
-    // Using bounding box volume as proxy since mesh volume may not always be available
     if (input.gst?.boundingBox && validBoundingBox && result.success) {
-      // Calculate bounding box volumes
+      // Calculate dimensions for accuracy checks
       const genDims = [
         validBoundingBox.max[0] - validBoundingBox.min[0],
         validBoundingBox.max[1] - validBoundingBox.min[1],
@@ -332,14 +331,18 @@ export async function validate(input: {
         input.gst.boundingBox.max[2] - input.gst.boundingBox.min[2],
       ];
 
-      const genVolume = genDims[0] * genDims[1] * genDims[2];
-      const targetVolume = targetDims[0] * targetDims[1] * targetDims[2];
+      const targetVolumeProxy = targetDims[0] * targetDims[1] * targetDims[2];
 
-      if (targetVolume > 0) {
-        sv = Math.max(0, 1 - Math.abs(genVolume - targetVolume) / targetVolume);
+      // SOTA: Use mesh volume if available (fixes Hollow Box trap)
+      const actualGenVolume = result.volume || genDims[0] * genDims[1] * genDims[2];
+      const actualTargetVolume = targetVolumeProxy;
+
+      if (actualTargetVolume > 0) {
+        sv = 1 - Math.abs(actualGenVolume - actualTargetVolume) / actualTargetVolume;
+        sv = Math.max(0, Math.min(1, sv));
         validationResult.sv = sv;
         console.log(
-          `Active Critic: Sv=${sv.toFixed(2)} (gen=${genVolume.toFixed(0)}mm³, target=${targetVolume.toFixed(0)}mm³)`
+          `Active Critic: Sv=${sv.toFixed(2)} (gen=${actualGenVolume.toFixed(0)}mm³, target=${actualTargetVolume.toFixed(0)}mm³)`
         );
       }
     }
@@ -356,13 +359,18 @@ export async function validate(input: {
       `Active Critic: P_succ=${pSucc.toFixed(2)} (M=${validationResult.isManifold ? 1 : 0}, Sv=${sv.toFixed(2)}, Sd=${sd.toFixed(2)})`
     );
 
-    // Set final GST match status
-    validationResult.gstMatch = gstMatch;
+    // If any critic failed OR P_succ is too low, mark as failed and add feedback
+    const isPsuccFail = pSucc < 0.8 && result.success;
 
-    // If any critic failed, mark as failed and add feedback
-    if (!gstMatch && result.success) {
+    if ((!gstMatch || isPsuccFail) && result.success) {
       validationResult.success = false;
+      if (isPsuccFail) {
+        criticFeedback.push(
+          `SOTA QUALITY GATE FAILED: P_succ=${pSucc.toFixed(2)} (Required: 0.8). Volumetric similarity (${sv.toFixed(2)}) or dimensional accuracy (${sd.toFixed(2)}) is insufficient.`
+        );
+      }
       validationResult.errors.push(...criticFeedback);
+      console.log(`Active Critic: Quality gate rejected model with P_succ=${pSucc.toFixed(2)}`);
     }
 
     return validationResult;

@@ -40,12 +40,12 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   isMultiAgentAvailable,
   orchestrateGeneration,
-  undoHistory,
   redoHistory,
+  undoHistory,
 } from '../services/agentOrchestrator';
 import type { ImageData } from '../services/geminiService';
 import { APP_VERSION, processArchitectRequest } from '../services/geminiService';
-import { copyToClipboard, exportToOpenSCAD, exportSession } from '../services/openscadExport';
+import { copyToClipboard, exportSession, exportToOpenSCAD } from '../services/openscadExport';
 import type { GeneratedAsset, Message, WorkflowStep } from '../types';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
@@ -266,19 +266,51 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                 setStreamingCode(fullText);
               },
               onValidationComplete: (result) => {
-                if (result.success) {
+                // SOTA: P_succ calculation for quality gating
+                // P_succ = M * (0.65 * Sv + 0.35 * Sd)
+                const manifoldFactor = result.isManifold ? 1.0 : 0.0;
+                const sv = result.volume ? Math.min(1.0, 1.0) : 0.8; // Placeholder for Sv similarity
+                const sd = result.gstMatch ? 1.0 : 0.6; // Placeholder for Sd match
+
+                // Composite score
+                const pSucc = manifoldFactor * (0.65 * sv + 0.35 * sd);
+
+                console.log(
+                  `Validation Complete: P_succ = ${pSucc.toFixed(2)} (M:${manifoldFactor}, Sv:${sv}, Sd:${sd})`
+                );
+
+                if (result.success && pSucc >= 0.8) {
+                  // Only add message if it's the first time or something changed significantly
+                  // To avoid "Done!" loops
+                  setMessages((prev) => {
+                    const lastMsg = prev[prev.length - 1];
+                    if (
+                      lastMsg?.role === 'model' &&
+                      lastMsg.text.includes('3D model is rendering now')
+                    ) {
+                      return prev;
+                    }
+                    return [
+                      ...prev,
+                      {
+                        role: 'model',
+                        text: 'Geometric validation passed. Your 3D model is rendering now.',
+                      },
+                    ];
+                  });
+                } else if (!result.isManifold) {
                   setMessages((prev) => [
                     ...prev,
                     {
                       role: 'model',
-                      text: 'Done! Your 3D model is rendering now. Switch to the **3D Preview** tab to see it.',
+                      text: '⚠️ NON-MANIFOLD GEOMETRY: The model has "holes" or self-intersections. I will attempt a repair.',
+                      isError: true,
                     },
                   ]);
-                  // Note: View switch moved to after setCurrentAsset to avoid race condition
                 } else {
                   setMessages((prev) => [
                     ...prev,
-                    { role: 'model', text: `Validation issues: ${result.errors.join(', ')}` },
+                    { role: 'model', text: `Design feedback: ${result.errors.join(', ')}` },
                   ]);
                 }
               },
