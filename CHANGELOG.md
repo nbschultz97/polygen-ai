@@ -5,6 +5,26 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.5] - 2026-01-27
+
+### Added
+
+- **Golden Set Verification Protocol**: Added stress-test scripts for verifying Picatinny geometry and polyfill detection system
+- **Polyfill Detection Unit Tests**: 9 new tests verifying the `<polyfill_detected>` tag parsing and telemetry payload structure
+
+### Fixed
+
+- **Telemetry Integration Gap**: `detectAndLogPolyfills()` was defined but not called in `generateCode()` and `editCode()` functions. Now properly wired into both code paths to ensure polyfill events are logged to Supabase
+
+### Technical
+
+- Added `tests/golden-set/picatinny-riser-20mm.scad` for Picatinny geometry verification
+- Added `tests/golden-set/polyfill-trigger-test.scad` demonstrating the ScopeRefine pattern
+- Added `tests/unit/polyfillDetection.test.ts` with 9 tests for polyfill regex and payload validation
+- Wired `detectAndLogPolyfills(code)` call into both `generateCode()` and `editCode()` return paths
+
+---
+
 ## [3.5.4] - 2026-01-27
 
 ### Fixed
