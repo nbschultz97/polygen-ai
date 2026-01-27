@@ -5,13 +5,8 @@
  * SECURITY: All requests require authentication
  */
 
-import {
-  GeometricStructureTree,
-  CoderInput,
-  CoderEditInput,
-  CoderOutput
-} from '../types';
-import { buildValidationFeedback, buildRetryPrompt, ValidationFeedback } from './validationFeedbackBuilder';
+import type { CoderInput, CoderEditInput, CoderOutput } from '../types';
+import type { ValidationFeedback } from './validationFeedbackBuilder';
 import { getAuthToken } from './apiClient';
 
 // Extended CoderInput with validation feedback
@@ -138,6 +133,113 @@ Before outputting code, verify:
 [ ] All braces matched
 [ ] $fn set for smooth curves
 
+## COMPLETE EXAMPLE: GST to OpenSCAD
+
+INPUT GST:
+{
+  "name": "mounting_plate",
+  "globalParameters": [
+    { "name": "plate_width", "value": 50, "unit": "mm" },
+    { "name": "plate_depth", "value": 30, "unit": "mm" },
+    { "name": "plate_height", "value": 5, "unit": "mm" }
+  ],
+  "root": {
+    "id": "main",
+    "type": "union",
+    "children": [
+      {
+        "id": "base_plate",
+        "type": "cuboid",
+        "parameters": [
+          { "name": "width", "value": 50, "unit": "mm" },
+          { "name": "depth", "value": 30, "unit": "mm" },
+          { "name": "height", "value": 5, "unit": "mm" }
+        ]
+      },
+      {
+        "id": "hole_1",
+        "type": "screw_hole",
+        "booleanOp": "subtract",
+        "parameters": [
+          { "name": "diameter", "value": 3.4, "unit": "mm" },
+          { "name": "depth", "value": 5, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "center", "position": [-20, -10, 0], "orientation": "TOP" }]
+      },
+      {
+        "id": "hole_2",
+        "type": "screw_hole",
+        "booleanOp": "subtract",
+        "parameters": [
+          { "name": "diameter", "value": 3.4, "unit": "mm" },
+          { "name": "depth", "value": 5, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "center", "position": [20, -10, 0], "orientation": "TOP" }]
+      }
+    ]
+  }
+}
+
+OUTPUT SCAD:
+// Mounting Plate - Rectangular plate with mounting holes
+// Generated from GST
+
+// ============ Global Parameters ============
+plate_width = 50;   // mm
+plate_depth = 30;   // mm
+plate_height = 5;   // mm
+
+// ============ Component Parameters ============
+hole_diameter = 3.4;  // M3 clearance hole
+hole_depth = 5;       // mm
+
+// ============ Settings ============
+$fn = 64;
+eps = 0.01;
+
+// ============ Main Geometry ============
+difference() {
+    // Base plate (cuboid - no booleanOp = positive geometry)
+    cube([plate_width, plate_depth, plate_height], center=true);
+
+    // Hole 1 (screw_hole with booleanOp: subtract)
+    translate([-20, -10, 0])
+        cylinder(h=hole_depth + eps*2, d=hole_diameter, center=true, $fn=32);
+
+    // Hole 2 (screw_hole with booleanOp: subtract)
+    translate([20, -10, 0])
+        cylinder(h=hole_depth + eps*2, d=hole_diameter, center=true, $fn=32);
+}
+
+## COMMON PATTERNS
+
+### Pattern: Rounded Cuboid (rcube)
+module rcube(size, r) {
+    hull() {
+        for (x = [-1, 1], y = [-1, 1], z = [-1, 1]) {
+            translate([x*(size[0]/2-r), y*(size[1]/2-r), z*(size[2]/2-r)])
+                sphere(r=r, $fn=32);
+        }
+    }
+}
+
+### Pattern: Tube
+module tube(od, id, h) {
+    difference() {
+        cylinder(h=h, d=od, center=true);
+        cylinder(h=h + eps*2, d=id, center=true);
+    }
+}
+
+### Pattern: Counterbore Hole
+module counterbore(shaft_d, shaft_depth, head_d, head_depth) {
+    union() {
+        cylinder(h=shaft_depth + eps, d=shaft_d, center=false);
+        translate([0, 0, shaft_depth - head_depth])
+            cylinder(h=head_depth + eps, d=head_d, center=false);
+    }
+}
+
 NOW: Convert the provided GST to clean, printable OpenSCAD code.
 `;
 
@@ -188,21 +290,22 @@ async function callClaudeProxy(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       model: process.env.CODER_MODEL || DEFAULT_MODEL,
       max_tokens: 8192,
       system: systemPrompt,
-      messages: [{ role: 'user', content: prompt }]
+      messages: [{ role: 'user', content: prompt }],
     }),
-    signal: abortSignal
+    signal: abortSignal,
   });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
     // Anthropic returns { error: { type, message } } or { error: { message } }
-    const errorMessage = errorBody?.error?.message || errorBody?.error || `API error: ${response.status}`;
+    const errorMessage =
+      errorBody?.error?.message || errorBody?.error || `API error: ${response.status}`;
     console.error('Claude API error:', errorBody);
     throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
   }
@@ -241,7 +344,7 @@ ${OPENSCAD_QUICK_REF}
   // Add validation errors if this is a retry
   if (input.validationErrors && input.validationErrors.length > 0) {
     prompt += `\n## PREVIOUS VALIDATION ERRORS - FIX THESE
-${input.validationErrors.map(e => `- ${e}`).join('\n')}
+${input.validationErrors.map((e) => `- ${e}`).join('\n')}
 `;
   }
 
@@ -255,14 +358,13 @@ ${input.validationErrors.map(e => `- ${e}`).join('\n')}
     }
 
     return {
-      scadCode: extractScadCode(text)
+      scadCode: extractScadCode(text),
     };
-
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error;
     }
-    console.error("Coder service error:", error);
+    console.error('Coder service error:', error);
     throw new Error(`Coder failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -348,7 +450,7 @@ export async function editCode(
   extractComponents(input.existingGST?.root);
 
   // Build context-aware prompt
-  let prompt = `## EXISTING GST (Design Specification)
+  const prompt = `## EXISTING GST (Design Specification)
 \`\`\`json
 ${JSON.stringify(input.existingGST, null, 2)}
 \`\`\`
@@ -392,15 +494,16 @@ Output the complete modified SCAD code with ALL changes applied.`;
     }
 
     return {
-      scadCode: extractScadCode(text)
+      scadCode: extractScadCode(text),
     };
-
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error;
     }
-    console.error("Coder edit error:", error);
-    throw new Error(`Coder edit failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Coder edit error:', error);
+    throw new Error(
+      `Coder edit failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -430,7 +533,7 @@ function extractScadCode(text: string): string {
 export const coderService = {
   generateCode,
   editCode,
-  isCoderAvailable
+  isCoderAvailable,
 };
 
 export default coderService;

@@ -5,14 +5,7 @@
  * SECURITY: All requests require authentication
  */
 
-import {
-  GeometricStructureTree,
-  SpecData,
-  ClarificationQuestion,
-  PlannerInput,
-  PlannerOutput,
-  ImageData
-} from '../types';
+import type { GeometricStructureTree, SpecData, PlannerInput, PlannerOutput } from '../types';
 import { loadPreferences, getPreferencesForPrompt } from './preferencesService';
 import { getAuthToken } from './apiClient';
 
@@ -22,11 +15,15 @@ You are a 3D printing engineer. Generate Geometric Structure Trees (GST) from de
 The GST will be converted to OpenSCAD code by a Coder agent.
 
 ## CRITICAL RULES
-1. If conversation history shows previous Q&A, DO NOT ask more questions - BUILD THE DESIGN
+1. If conversation history shows previous Q&A with answers, proceed to BUILD THE DESIGN
 2. Use industry standards by default (MIL-STD-1913 picatinny, 25mm MOLLE webbing, etc.)
-3. Make reasonable engineering assumptions rather than asking
-4. Only ask if there's genuine ambiguity with no standard answer
-5. Use ONLY the component types listed below - the Coder maps these to OpenSCAD primitives
+3. For FIRST-TIME requests with vague descriptions, ASK 1-2 clarifying questions about:
+   - Critical dimensions (overall size, mounting hole sizes, wall thickness)
+   - Attachment method (how it connects to other objects)
+   - Specific use case if it affects geometry
+4. DO ask questions when: dimensions are unspecified, purpose is unclear, or multiple valid interpretations exist
+5. DO NOT ask questions when: user provides detailed specs, uses standard terms, or is iterating on existing design
+6. Use ONLY the component types listed below - the Coder maps these to OpenSCAD primitives
 
 ## OUTPUT: JSON only, no markdown
 
@@ -196,6 +193,109 @@ Or use explicit translation in anchors:
 - [ ] All parameters include name, value, unit
 - [ ] root.type is a boolean operation (union, difference, intersection)
 - [ ] Subtractive geometry is marked with booleanOp: "subtract"
+
+## EXAMPLE 1: Vague Request → Ask Questions
+User: "I need a phone holder"
+Response:
+{
+  "needsClarification": true,
+  "clarifications": [
+    {
+      "question": "What are your phone's dimensions (width x height x thickness)?",
+      "suggestions": ["iPhone 15 (71.6 x 147.6 x 7.8mm)", "Samsung S24 (70.6 x 147 x 7.6mm)", "Universal (75 x 160 x 10mm)"]
+    },
+    {
+      "question": "How should it mount?",
+      "suggestions": ["Desk stand (angled)", "Wall mount (flat)", "Car vent clip", "Adhesive back"]
+    }
+  ],
+  "partialSpec": {
+    "name": "phone_holder",
+    "description": "Phone holder - awaiting dimensions and mount type"
+  }
+}
+
+## EXAMPLE 2: Detailed Request → Build Immediately
+User: "Make a 50mm x 30mm x 5mm plate with four M3 mounting holes in the corners, 5mm from edges"
+Response:
+{
+  "version": "1.0",
+  "name": "mounting_plate",
+  "description": "Rectangular plate with four M3 corner mounting holes",
+  "globalParameters": [
+    { "name": "plate_width", "value": 50, "unit": "mm" },
+    { "name": "plate_depth", "value": 30, "unit": "mm" },
+    { "name": "plate_height", "value": 5, "unit": "mm" },
+    { "name": "hole_diameter", "value": 3.4, "unit": "mm", "description": "M3 clearance" },
+    { "name": "edge_offset", "value": 5, "unit": "mm" }
+  ],
+  "root": {
+    "id": "main",
+    "name": "plate_assembly",
+    "type": "union",
+    "children": [
+      {
+        "id": "base_plate",
+        "name": "base",
+        "type": "cuboid",
+        "parameters": [
+          { "name": "width", "value": 50, "unit": "mm" },
+          { "name": "depth", "value": 30, "unit": "mm" },
+          { "name": "height", "value": 5, "unit": "mm" }
+        ]
+      },
+      {
+        "id": "hole_1",
+        "name": "corner_hole_fl",
+        "type": "screw_hole",
+        "booleanOp": "subtract",
+        "parameters": [
+          { "name": "diameter", "value": 3.4, "unit": "mm" },
+          { "name": "depth", "value": 5, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "center", "position": [-20, -10, 0], "orientation": "TOP" }]
+      },
+      {
+        "id": "hole_2",
+        "name": "corner_hole_fr",
+        "type": "screw_hole",
+        "booleanOp": "subtract",
+        "parameters": [
+          { "name": "diameter", "value": 3.4, "unit": "mm" },
+          { "name": "depth", "value": 5, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "center", "position": [20, -10, 0], "orientation": "TOP" }]
+      },
+      {
+        "id": "hole_3",
+        "name": "corner_hole_bl",
+        "type": "screw_hole",
+        "booleanOp": "subtract",
+        "parameters": [
+          { "name": "diameter", "value": 3.4, "unit": "mm" },
+          { "name": "depth", "value": 5, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "center", "position": [-20, 10, 0], "orientation": "TOP" }]
+      },
+      {
+        "id": "hole_4",
+        "name": "corner_hole_br",
+        "type": "screw_hole",
+        "booleanOp": "subtract",
+        "parameters": [
+          { "name": "diameter", "value": 3.4, "unit": "mm" },
+          { "name": "depth", "value": 5, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "center", "position": [20, 10, 0], "orientation": "TOP" }]
+      }
+    ]
+  }
+}
+
+## EXAMPLE 3: Edit Request → Modify Existing
+User: "Make the holes bigger for M4 screws"
+(When conversation has existing design)
+Response: Build new GST with hole_diameter changed from 3.4 to 4.5mm
 `;
 
 /**
@@ -206,7 +306,7 @@ export async function generateGST(
   input: PlannerInput,
   abortSignal?: AbortSignal
 ): Promise<PlannerOutput> {
-  const prefs = loadPreferences();
+  void loadPreferences(); // Ensure preferences are loaded
   const prefsContext = getPreferencesForPrompt();
 
   // Check for abort before starting
@@ -243,16 +343,16 @@ ${input.userPrompt}`;
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         prompt,
         imageData: input.imageData,
         systemInstruction: PLANNER_SYSTEM_PROMPT,
         responseMimeType: 'application/json',
-        temperature: 0.7
+        temperature: 0.7,
       }),
-      signal: abortSignal
+      signal: abortSignal,
     });
 
     if (abortSignal?.aborted) {
@@ -265,14 +365,13 @@ ${input.userPrompt}`;
     }
 
     const data = await response.json();
-    const text = data.text || "";
+    const text = data.text || '';
     return parsePlannerResponse(text);
-
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error;
     }
-    console.error("Planner service error:", error);
+    console.error('Planner service error:', error);
     throw new Error(`Planner failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -309,7 +408,7 @@ function parsePlannerResponse(text: string): PlannerOutput {
       return {
         needsClarification: true,
         clarifications: data.clarifications || [],
-        partialSpec: data.partialSpec || data.spec
+        partialSpec: data.partialSpec || data.spec,
       };
     }
 
@@ -328,13 +427,14 @@ function parsePlannerResponse(text: string): PlannerOutput {
     return {
       needsClarification: false,
       gst: gst as GeometricStructureTree,
-      spec: extractSpecFromGST(gst)
+      spec: extractSpecFromGST(gst),
     };
-
   } catch (error) {
-    console.error("Failed to parse Planner response:", error);
-    console.log("Raw response:", text);
-    throw new Error(`Failed to parse Planner response: ${error instanceof Error ? error.message : 'Invalid JSON'}`);
+    console.error('Failed to parse Planner response:', error);
+    console.log('Raw response:', text);
+    throw new Error(
+      `Failed to parse Planner response: ${error instanceof Error ? error.message : 'Invalid JSON'}`
+    );
   }
 }
 
@@ -344,7 +444,7 @@ function parsePlannerResponse(text: string): PlannerOutput {
 function extractSpecFromGST(gst: GeometricStructureTree): SpecData {
   const spec: SpecData = {
     product_class: gst.name,
-    notes: gst.description
+    notes: gst.description,
   };
 
   // Extract envelope from bounding box
@@ -352,12 +452,12 @@ function extractSpecFromGST(gst: GeometricStructureTree): SpecData {
     const size = [
       gst.boundingBox.max[0] - gst.boundingBox.min[0],
       gst.boundingBox.max[1] - gst.boundingBox.min[1],
-      gst.boundingBox.max[2] - gst.boundingBox.min[2]
+      gst.boundingBox.max[2] - gst.boundingBox.min[2],
     ];
     spec.envelope = {
       max_x_mm: size[0],
       max_y_mm: size[1],
-      max_z_mm: size[2]
+      max_z_mm: size[2],
     };
   }
 
@@ -366,7 +466,7 @@ function extractSpecFromGST(gst: GeometricStructureTree): SpecData {
 
 // Export as object for consistent API
 export const plannerService = {
-  generateGST
+  generateGST,
 };
 
 export default plannerService;

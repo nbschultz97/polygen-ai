@@ -139,6 +139,13 @@ export interface SmartQuickFix {
 // Generated Asset (Extended)
 // ============================================
 
+export interface CodeHistoryEntry {
+  code: string;
+  gst?: GeometricStructureTree;
+  prompt: string;
+  timestamp: number;
+}
+
 export interface GeneratedAsset {
   scadCode?: string;
   spec?: SpecData;
@@ -155,6 +162,9 @@ export interface GeneratedAsset {
   conceptsUsed?: string[];
   learningTips?: string[];
   annotatedCode?: string; // Code with inline educational comments
+  // Version history for undo/iteration
+  history?: CodeHistoryEntry[];
+  currentHistoryIndex?: number;
 }
 
 // ============================================
@@ -162,14 +172,14 @@ export interface GeneratedAsset {
 // ============================================
 
 export type WorkflowStep =
-  | 'idle'           // No activity
-  | 'planning'       // Planner agent working (GST generation)
-  | 'gst-review'     // User reviewing GST
-  | 'coding'         // Coder agent working (SCAD generation)
-  | 'validating'     // Backend validation
-  | 'processing'     // Legacy: single-agent processing
-  | 'spec-review'    // Clarification needed
-  | 'complete';      // Success
+  | 'idle' // No activity
+  | 'planning' // Planner agent working (GST generation)
+  | 'gst-review' // User reviewing GST
+  | 'coding' // Coder agent working (SCAD generation)
+  | 'validating' // Backend validation
+  | 'processing' // Legacy: single-agent processing
+  | 'spec-review' // Clarification needed
+  | 'complete'; // Success
 
 export interface AppState {
   messages: Message[];

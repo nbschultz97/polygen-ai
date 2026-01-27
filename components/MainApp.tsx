@@ -13,6 +13,7 @@ import {
   Copy,
   Cpu,
   Crown,
+  Edit3,
   ExternalLink,
   Eye,
   HelpCircle,
@@ -20,10 +21,13 @@ import {
   Loader2,
   LogOut,
   MessageCircle,
+  Redo2,
   RotateCcw,
+  Save,
   Send,
   Settings,
   Sparkles,
+  Undo2,
   User,
   X,
   Zap,
@@ -32,10 +36,16 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { isMultiAgentAvailable, orchestrateGeneration } from '../services/agentOrchestrator';
-import { APP_VERSION, ImageData, processArchitectRequest } from '../services/geminiService';
+import {
+  isMultiAgentAvailable,
+  orchestrateGeneration,
+  undoHistory,
+  redoHistory,
+} from '../services/agentOrchestrator';
+import type { ImageData } from '../services/geminiService';
+import { APP_VERSION, processArchitectRequest } from '../services/geminiService';
 import { copyToClipboard, exportToOpenSCAD } from '../services/openscadExport';
-import { GeneratedAsset, Message, WorkflowStep } from '../types';
+import type { GeneratedAsset, Message, WorkflowStep } from '../types';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
 import DesignTemplates from './DesignTemplates';
@@ -56,7 +66,7 @@ interface MainAppProps {
 }
 
 const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowDashboard }) => {
-  const { user, profile, signOut, canGenerate, recordGeneration, isProUser } = useAuth();
+  const { user, profile: _profile, signOut, canGenerate, recordGeneration, isProUser } = useAuth();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -79,6 +89,10 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [usageInfo, setUsageInfo] = useState({ remaining: 0, limit: 0 });
+
+  // Code editing state
+  const [isEditingCode, setIsEditingCode] = useState(false);
+  const [editedCode, setEditedCode] = useState('');
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -360,6 +374,72 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
       }
     }
   }, [currentAsset]);
+
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    if (!currentAsset) return;
+    const previousState = undoHistory(currentAsset);
+    if (previousState) {
+      setCurrentAsset(previousState);
+      setMessages((prev) => [...prev, { role: 'model', text: 'Reverted to previous version.' }]);
+    }
+  }, [currentAsset]);
+
+  const handleRedo = useCallback(() => {
+    if (!currentAsset) return;
+    const nextState = redoHistory(currentAsset);
+    if (nextState) {
+      setCurrentAsset(nextState);
+      setMessages((prev) => [...prev, { role: 'model', text: 'Restored next version.' }]);
+    }
+  }, [currentAsset]);
+
+  // Check if undo/redo are available
+  const canUndo = currentAsset?.history && (currentAsset.currentHistoryIndex ?? 0) > 0;
+  const canRedo =
+    currentAsset?.history &&
+    (currentAsset.currentHistoryIndex ?? 0) < currentAsset.history.length - 1;
+
+  // Code editing handlers
+  const handleStartEdit = useCallback(() => {
+    if (currentAsset?.scadCode) {
+      setEditedCode(currentAsset.scadCode);
+      setIsEditingCode(true);
+    }
+  }, [currentAsset]);
+
+  const handleSaveEdit = useCallback(() => {
+    if (editedCode && currentAsset) {
+      setCurrentAsset({
+        ...currentAsset,
+        scadCode: editedCode,
+        // Add to history
+        history: [
+          ...(currentAsset.history || []),
+          {
+            code: editedCode,
+            gst: currentAsset.gst,
+            prompt: 'Manual code edit',
+            timestamp: Date.now(),
+          },
+        ],
+        currentHistoryIndex: currentAsset.history?.length ?? 0,
+      });
+      setIsEditingCode(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'model',
+          text: 'Code updated. Click **Render Model** in 3D view to preview changes.',
+        },
+      ]);
+    }
+  }, [editedCode, currentAsset]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditingCode(false);
+    setEditedCode('');
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -755,6 +835,64 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* History Navigation */}
+                    {currentAsset?.history && currentAsset.history.length > 1 && (
+                      <div className="flex items-center gap-1 mr-2 border-r border-white/[0.08] pr-3">
+                        <button
+                          onClick={handleUndo}
+                          disabled={!canUndo}
+                          className="p-1.5 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-white rounded-lg transition-colors border border-white/[0.08]"
+                          title="Undo (previous version)"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={handleRedo}
+                          disabled={!canRedo}
+                          className="p-1.5 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-white rounded-lg transition-colors border border-white/[0.08]"
+                          title="Redo (next version)"
+                        >
+                          <Redo2 className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-[10px] text-gray-500 ml-1">
+                          {(currentAsset.currentHistoryIndex ?? 0) + 1}/
+                          {currentAsset.history.length}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Edit Mode Toggle */}
+                    {viewMode === 'code' && !isEditingCode && (
+                      <button
+                        onClick={handleStartEdit}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
+                        title="Edit code directly"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                    )}
+
+                    {/* Save/Cancel when editing */}
+                    {isEditingCode && (
+                      <>
+                        <button
+                          onClick={handleSaveEdit}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg transition-colors"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          Cancel
+                        </button>
+                      </>
+                    )}
+
                     <button
                       onClick={handleCopy}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
@@ -783,27 +921,45 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                 {/* Content Area */}
                 <div className="flex-1 overflow-hidden">
                   {viewMode === 'code' ? (
-                    <div className="h-full overflow-auto">
-                      <SyntaxHighlighter
-                        language="openscad"
-                        style={oneDark}
-                        customStyle={{
-                          margin: 0,
-                          padding: '1rem 1.25rem',
-                          background: 'transparent',
-                          fontSize: '12px',
-                          lineHeight: '1.7',
-                        }}
-                        showLineNumbers
-                        lineNumberStyle={{
-                          color: '#3f3f46',
-                          paddingRight: '1.25rem',
-                          minWidth: '2.5rem',
-                        }}
-                      >
-                        {currentAsset.scadCode}
-                      </SyntaxHighlighter>
-                    </div>
+                    isEditingCode ? (
+                      <div className="h-full flex flex-col">
+                        <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
+                          <Edit3 className="w-4 h-4 text-amber-400" />
+                          <span className="text-xs text-amber-300">
+                            Editing mode - make changes and click Save
+                          </span>
+                        </div>
+                        <textarea
+                          value={editedCode}
+                          onChange={(e) => setEditedCode(e.target.value)}
+                          className="flex-1 w-full bg-transparent text-gray-100 font-mono text-xs p-4 resize-none focus:outline-none"
+                          style={{ lineHeight: '1.7' }}
+                          spellCheck={false}
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-full overflow-auto">
+                        <SyntaxHighlighter
+                          language="openscad"
+                          style={oneDark}
+                          customStyle={{
+                            margin: 0,
+                            padding: '1rem 1.25rem',
+                            background: 'transparent',
+                            fontSize: '12px',
+                            lineHeight: '1.7',
+                          }}
+                          showLineNumbers
+                          lineNumberStyle={{
+                            color: '#3f3f46',
+                            paddingRight: '1.25rem',
+                            minWidth: '2.5rem',
+                          }}
+                        >
+                          {currentAsset.scadCode}
+                        </SyntaxHighlighter>
+                      </div>
+                    )
                   ) : (
                     <ScadRenderer code={currentAsset.scadCode} isProUser={isProUser} />
                   )}

@@ -9,27 +9,94 @@ import { coderService } from './coderService';
 import { validatorClient } from './validatorClient';
 import { analyzeForQuickFixes } from './quickFixAnalyzer';
 import { previewImageService } from './previewImageService';
-import { buildValidationFeedback, buildRetryPrompt } from './validationFeedbackBuilder';
+import { buildValidationFeedback } from './validationFeedbackBuilder';
 import { getErrorSummary, categorizeErrors } from './errorCategorizer';
 import { explainCode } from './codeExplainer';
-import {
+import type {
   GeneratedAsset,
   GeometricStructureTree,
-  ValidationResult,
-  WorkflowStep,
-  SmartQuickFix,
   ImageData,
-  OrchestratorCallbacks
+  OrchestratorCallbacks,
+  CodeHistoryEntry,
 } from '../types';
 
-const MAX_RETRY_ATTEMPTS = 3;  // Increased from 2 for better error recovery
+const MAX_RETRY_ATTEMPTS = 3; // Increased from 2 for better error recovery
+
+/**
+ * Helper to add a history entry to an asset
+ * Maintains undo/redo capability by tracking code versions
+ */
+function pushHistory(asset: GeneratedAsset, prompt: string): GeneratedAsset {
+  if (!asset.scadCode) return asset;
+
+  const entry: CodeHistoryEntry = {
+    code: asset.scadCode,
+    gst: asset.gst,
+    prompt,
+    timestamp: Date.now(),
+  };
+
+  const history = asset.history || [];
+  const currentIndex = asset.currentHistoryIndex ?? -1;
+
+  // If we're not at the end of history, truncate forward history (standard undo behavior)
+  const newHistory =
+    currentIndex >= 0 && currentIndex < history.length - 1
+      ? [...history.slice(0, currentIndex + 1), entry]
+      : [...history, entry];
+
+  // Limit history to last 20 entries to prevent memory bloat
+  const trimmedHistory = newHistory.slice(-20);
+
+  return {
+    ...asset,
+    history: trimmedHistory,
+    currentHistoryIndex: trimmedHistory.length - 1,
+  };
+}
+
+/**
+ * Navigate to a specific history index (for undo/redo)
+ */
+export function navigateHistory(asset: GeneratedAsset, index: number): GeneratedAsset | null {
+  if (!asset.history || index < 0 || index >= asset.history.length) {
+    return null;
+  }
+
+  const entry = asset.history[index];
+  return {
+    ...asset,
+    scadCode: entry.code,
+    gst: entry.gst,
+    currentHistoryIndex: index,
+  };
+}
+
+/**
+ * Undo to previous history state
+ */
+export function undoHistory(asset: GeneratedAsset): GeneratedAsset | null {
+  const currentIndex = asset.currentHistoryIndex ?? -1;
+  if (currentIndex <= 0) return null;
+  return navigateHistory(asset, currentIndex - 1);
+}
+
+/**
+ * Redo to next history state
+ */
+export function redoHistory(asset: GeneratedAsset): GeneratedAsset | null {
+  const currentIndex = asset.currentHistoryIndex ?? -1;
+  const historyLength = asset.history?.length ?? 0;
+  if (currentIndex >= historyLength - 1) return null;
+  return navigateHistory(asset, currentIndex + 1);
+}
 
 export interface OrchestratorInput {
   userPrompt: string;
   imageData?: ImageData;
   existingAsset?: GeneratedAsset;
   conversationHistory?: string[];
-  enableTeachingMode?: boolean;  // Enable educational annotations
+  enableTeachingMode?: boolean; // Enable educational annotations
   isEdit?: boolean;
 }
 
@@ -52,11 +119,14 @@ export async function orchestrateGeneration(
       console.log('Orchestrator: Edit mode - using symbolic correction');
       callbacks.onStepChange('coding');
 
-      const coderOutput = await coderService.editCode({
-        existingGST: asset.gst,
-        existingCode: asset.scadCode,
-        editRequest: input.userPrompt
-      }, abortSignal);
+      const coderOutput = await coderService.editCode(
+        {
+          existingGST: asset.gst,
+          existingCode: asset.scadCode,
+          editRequest: input.userPrompt,
+        },
+        abortSignal
+      );
 
       if (abortSignal?.aborted) {
         throw new DOMException('Aborted', 'AbortError');
@@ -69,7 +139,7 @@ export async function orchestrateGeneration(
       callbacks.onStepChange('validating');
       const validation = await validatorClient.validate({
         scadCode: coderOutput.scadCode,
-        gst: asset.gst
+        gst: asset.gst,
       });
 
       asset.validationResult = validation;
@@ -88,6 +158,9 @@ export async function orchestrateGeneration(
         asset.annotatedCode = explanation.enhancedCode;
       }
 
+      // Track in history for undo capability
+      asset = pushHistory(asset, input.userPrompt);
+
       callbacks.onStepChange('complete');
       return asset;
     }
@@ -100,11 +173,14 @@ export async function orchestrateGeneration(
     console.log('Orchestrator: Starting Planner agent');
     callbacks.onStepChange('planning');
 
-    const plannerOutput = await plannerService.generateGST({
-      userPrompt: input.userPrompt,
-      imageData: input.imageData,
-      conversationHistory: input.conversationHistory
-    }, abortSignal);
+    const plannerOutput = await plannerService.generateGST(
+      {
+        userPrompt: input.userPrompt,
+        imageData: input.imageData,
+        conversationHistory: input.conversationHistory,
+      },
+      abortSignal
+    );
 
     if (abortSignal?.aborted) {
       throw new DOMException('Aborted', 'AbortError');
@@ -128,7 +204,8 @@ export async function orchestrateGeneration(
       callbacks.onGSTGenerated(plannerOutput.gst);
 
       // Start preview image generation in parallel (non-blocking)
-      previewImageService.generatePreviewImage(plannerOutput.gst, abortSignal)
+      previewImageService
+        .generatePreviewImage(plannerOutput.gst, abortSignal)
         .then((imageUrl) => {
           if (imageUrl && !abortSignal?.aborted) {
             asset.previewImageUrl = imageUrl;
@@ -145,13 +222,11 @@ export async function orchestrateGeneration(
     console.log('Orchestrator: Starting Coder agent');
     callbacks.onStepChange('coding');
 
-    let lastValidationFeedback: ReturnType<typeof buildValidationFeedback> | undefined;
-
     while (attempts < MAX_RETRY_ATTEMPTS) {
       try {
         // Build coder input with enhanced feedback on retries
-        let coderInput: { gst: GeometricStructureTree; validationErrors?: string[] } = {
-          gst: asset.gst!
+        const coderInput: { gst: GeometricStructureTree; validationErrors?: string[] } = {
+          gst: asset.gst!,
         };
 
         // On retry, build comprehensive validation feedback
@@ -165,10 +240,10 @@ export async function orchestrateGeneration(
             MAX_RETRY_ATTEMPTS
           );
 
-          lastValidationFeedback = feedback;
-
           // Log error categories for debugging
-          console.log(`Orchestrator: Retry ${attempts} - Error categories: ${feedback.errorSummary}`);
+          console.log(
+            `Orchestrator: Retry ${attempts} - Error categories: ${feedback.errorSummary}`
+          );
           console.log(`Orchestrator: Applying pitfalls: ${feedback.pitfallsIncluded.join(', ')}`);
 
           // Pass the full prompt guidance as validation errors for now
@@ -191,7 +266,7 @@ export async function orchestrateGeneration(
 
         const validation = await validatorClient.validate({
           scadCode: coderOutput.scadCode,
-          gst: asset.gst
+          gst: asset.gst,
         });
 
         asset.validationResult = validation;
@@ -215,13 +290,18 @@ export async function orchestrateGeneration(
             asset.annotatedCode = explanation.enhancedCode;
           }
 
+          // Track in history for undo capability
+          asset = pushHistory(asset, input.userPrompt);
+
           callbacks.onStepChange('complete');
           return asset;
         }
 
         // Validation failed - analyze errors and retry
         const errorCategories = categorizeErrors(validation.errors, 0, coderOutput.scadCode);
-        console.log(`Orchestrator: Validation failed (attempt ${attempts + 1}/${MAX_RETRY_ATTEMPTS})`);
+        console.log(
+          `Orchestrator: Validation failed (attempt ${attempts + 1}/${MAX_RETRY_ATTEMPTS})`
+        );
         console.log(`Orchestrator: Errors: ${getErrorSummary(errorCategories)}`);
 
         attempts++;
@@ -229,7 +309,6 @@ export async function orchestrateGeneration(
         if (attempts < MAX_RETRY_ATTEMPTS) {
           callbacks.onStepChange('coding');
         }
-
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           throw error;
@@ -250,7 +329,6 @@ export async function orchestrateGeneration(
     console.log('Orchestrator: Max retries reached');
     callbacks.onStepChange('complete');
     return asset;
-
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error;
@@ -283,15 +361,15 @@ export function getAgentStatus(): {
   return {
     planner: {
       available: true, // Actual availability checked server-side
-      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash'
+      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
     },
     coder: {
       available: process.env.USE_MULTI_AGENT === 'true',
-      model: process.env.CODER_MODEL || 'claude-sonnet-4-20250514'
+      model: process.env.CODER_MODEL || 'claude-sonnet-4-20250514',
     },
     validator: {
-      available: true // Browser WASM always available
-    }
+      available: true, // Browser WASM always available
+    },
   };
 }
 
@@ -299,7 +377,10 @@ export function getAgentStatus(): {
 export const agentOrchestrator = {
   orchestrateGeneration,
   isMultiAgentAvailable,
-  getAgentStatus
+  getAgentStatus,
+  undoHistory,
+  redoHistory,
+  navigateHistory,
 };
 
 export default agentOrchestrator;
