@@ -172,6 +172,11 @@ async function orchestrateUnified(
           return asset;
         }
 
+        // Store generated GST if returned
+        if (result.gst) {
+          asset.gst = result.gst;
+        }
+
         // Store generated code
         if (result.scadCode) {
           asset.scadCode = result.scadCode;
@@ -199,6 +204,20 @@ async function orchestrateUnified(
             const smartFixes = analyzeForQuickFixes(asset.gst, validation, asset.scadCode!);
             asset.smartFixes = smartFixes;
             callbacks.onSmartFixesGenerated(smartFixes);
+
+            // Start preview image generation in parallel (non-blocking)
+            previewImageService
+              .generatePreviewImage(asset.gst, abortSignal)
+              .then((imageUrl) => {
+                if (imageUrl && !abortSignal?.aborted) {
+                  asset.previewImageUrl = imageUrl;
+                  callbacks.onPreviewImageGenerated?.(imageUrl);
+                  console.log('Orchestrator: Preview image generated');
+                }
+              })
+              .catch((err) => {
+                console.log('Orchestrator: Preview image skipped:', err.message);
+              });
           }
 
           // Apply teaching mode if enabled

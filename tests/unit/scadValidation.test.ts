@@ -3,56 +3,67 @@
  * Tests the OpenSCAD WASM validation functionality
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { validateScadCode } from '../../services/scadValidation';
 import { mockScadCode, mockScadCodeWithError } from '../mocks/types';
 
 // Mock the openscadLoader module
 vi.mock('../../services/openscadLoader', () => ({
   loadOpenSCAD: vi.fn(),
-  cleanupInstance: vi.fn()
+  cleanupInstance: vi.fn(),
 }));
 
-import { loadOpenSCAD, cleanupInstance } from '../../services/openscadLoader';
+import { cleanupInstance, loadOpenSCAD } from '../../services/openscadLoader';
 
 describe('SCAD Validation Service', () => {
   // Create a mock OpenSCAD instance
-  const createMockInstance = (options: {
-    exitCode?: number;
-    stlData?: Uint8Array | null;
-    throwOnReadFile?: boolean;
-    errorLog?: string;
-  } = {}) => {
+  const createMockInstance = (
+    options: {
+      exitCode?: number;
+      stlData?: Uint8Array | null;
+      throwOnReadFile?: boolean;
+      errorLog?: string;
+    } = {}
+  ) => {
     const {
       exitCode = 0,
       stlData = new Uint8Array(100), // Valid STL has more than 84 bytes
       throwOnReadFile = false,
-      errorLog = ''
+      errorLog = '',
     } = options;
 
     let printErrCallback: ((text: string) => void) | null = null;
 
+    const writeFileSpy = vi.fn();
+    const readFileSpy = vi.fn().mockImplementation(() => {
+      if (throwOnReadFile) {
+        throw new Error('Failed to read file');
+      }
+      return stlData;
+    });
+    const unlinkSpy = vi.fn();
+    const callMainSpy = vi.fn().mockImplementation(() => {
+      if (errorLog && printErrCallback) {
+        printErrCallback(errorLog);
+      }
+      return exitCode;
+    });
+
     return {
+      writeFileSpy, // Expose spies for assertions
+      readFileSpy,
+      unlinkSpy,
+      callMainSpy,
       factory: vi.fn().mockImplementation(async (config: any) => {
         printErrCallback = config.printErr;
-        
+
         return {
           FS: {
-            writeFile: vi.fn(),
-            readFile: vi.fn().mockImplementation(() => {
-              if (throwOnReadFile) {
-                throw new Error('Failed to read file');
-              }
-              return stlData;
-            }),
-            unlink: vi.fn()
+            writeFile: writeFileSpy,
+            readFile: readFileSpy,
+            unlink: unlinkSpy,
           },
-          callMain: vi.fn().mockImplementation(() => {
-            if (errorLog && printErrCallback) {
-              printErrCallback(errorLog);
-            }
-            return exitCode;
-          })
+          callMain: callMainSpy,
         };
       }),
       baseUrl: 'https://unpkg.com/openscad-wasm@0.6.0/dist/',
@@ -60,7 +71,7 @@ describe('SCAD Validation Service', () => {
         if (printErrCallback) {
           printErrCallback(text);
         }
-      }
+      },
     };
   };
 
@@ -71,35 +82,35 @@ describe('SCAD Validation Service', () => {
   describe('input validation', () => {
     it('should reject empty string', async () => {
       const result = await validateScadCode('');
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('empty');
     });
 
     it('should reject whitespace-only string', async () => {
       const result = await validateScadCode('   \n\t  ');
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('empty');
     });
 
     it('should reject null-like input', async () => {
       const result = await validateScadCode(null as any);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('empty or invalid');
     });
 
     it('should reject undefined input', async () => {
       const result = await validateScadCode(undefined as any);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('empty or invalid');
     });
 
     it('should reject non-string input', async () => {
       const result = await validateScadCode(123 as any);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('empty or invalid');
     });
@@ -108,9 +119,9 @@ describe('SCAD Validation Service', () => {
   describe('OpenSCAD loading', () => {
     it('should handle OpenSCAD load failure gracefully', async () => {
       vi.mocked(loadOpenSCAD).mockRejectedValueOnce(new Error('Network error'));
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(true);
       expect(result.warnings).toBeDefined();
       expect(result.warnings!.length).toBeGreaterThan(0);
@@ -120,11 +131,11 @@ describe('SCAD Validation Service', () => {
     it('should handle missing OpenSCAD factory', async () => {
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: null as any,
-        baseUrl: 'https://test.com/'
+        baseUrl: 'https://test.com/',
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(true);
       expect(result.warnings).toBeDefined();
       expect(result.warnings![0]).toContain('not available');
@@ -133,11 +144,11 @@ describe('SCAD Validation Service', () => {
     it('should handle non-function OpenSCAD factory', async () => {
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: {} as any,
-        baseUrl: 'https://test.com/'
+        baseUrl: 'https://test.com/',
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(true);
       expect(result.warnings).toBeDefined();
     });
@@ -148,11 +159,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance();
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(true);
       expect(result.error).toBeUndefined();
     });
@@ -161,11 +172,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance();
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       await validateScadCode(mockScadCode);
-      
+
       expect(cleanupInstance).toHaveBeenCalled();
     });
 
@@ -173,13 +184,12 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance();
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       await validateScadCode(mockScadCode);
-      
-      const instanceResult = await mockInstance.factory({});
-      expect(instanceResult.FS.writeFile).toHaveBeenCalled();
+
+      expect(mockInstance.writeFileSpy).toHaveBeenCalled();
     });
   });
 
@@ -188,11 +198,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance({ exitCode: 1 });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCodeWithError);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('Compilation Failed');
       expect(result.error).toContain('Exit Code 1');
@@ -201,15 +211,15 @@ describe('SCAD Validation Service', () => {
     it('should capture error log from printErr', async () => {
       const mockInstance = createMockInstance({
         exitCode: 1,
-        errorLog: 'ERROR: Unknown module cube2'
+        errorLog: 'ERROR: Unknown module cube2',
       });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCodeWithError);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('Unknown module');
     });
@@ -218,11 +228,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance({ throwOnReadFile: true });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('Failed to read output STL');
     });
@@ -231,11 +241,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance({ stlData: null });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('No STL data');
     });
@@ -248,11 +258,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance({ stlData: emptyStl });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('SCENE IS EMPTY');
     });
@@ -262,11 +272,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance({ stlData: headerOnly });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('SCENE IS EMPTY');
     });
@@ -276,11 +286,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance({ stlData: validStl });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(true);
     });
   });
@@ -289,11 +299,11 @@ describe('SCAD Validation Service', () => {
     it('should handle missing FS in instance', async () => {
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: vi.fn().mockResolvedValue({}),
-        baseUrl: 'https://test.com/'
+        baseUrl: 'https://test.com/',
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('failed to initialize');
     });
@@ -301,11 +311,11 @@ describe('SCAD Validation Service', () => {
     it('should handle instance creation failure', async () => {
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: vi.fn().mockRejectedValue(new Error('WASM init failed')),
-        baseUrl: 'https://test.com/'
+        baseUrl: 'https://test.com/',
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('WASM init failed');
     });
@@ -315,15 +325,15 @@ describe('SCAD Validation Service', () => {
     it('should ignore GL_INVALID_OPERATION errors', async () => {
       const mockInstance = createMockInstance({
         exitCode: 0,
-        errorLog: 'GL_INVALID_OPERATION: some graphics error'
+        errorLog: 'GL_INVALID_OPERATION: some graphics error',
       });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const result = await validateScadCode(mockScadCode);
-      
+
       // Should succeed because GL errors are filtered out
       expect(result.success).toBe(true);
     });
@@ -334,11 +344,11 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance({ exitCode: 1 });
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       await validateScadCode(mockScadCodeWithError);
-      
+
       expect(cleanupInstance).toHaveBeenCalled();
     });
 
@@ -347,11 +357,11 @@ describe('SCAD Validation Service', () => {
         OpenSCAD: vi.fn().mockImplementation(async () => {
           throw new Error('Unexpected error');
         }),
-        baseUrl: 'https://test.com/'
+        baseUrl: 'https://test.com/',
       });
-      
+
       await validateScadCode(mockScadCode);
-      
+
       // Cleanup might not be called if instance was never created
       // This tests that the function doesn't hang
     });
@@ -362,12 +372,12 @@ describe('SCAD Validation Service', () => {
       const mockInstance = createMockInstance();
       vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
         OpenSCAD: mockInstance.factory,
-        baseUrl: mockInstance.baseUrl
+        baseUrl: mockInstance.baseUrl,
       });
-      
+
       const paddedCode = `   \n\n${mockScadCode}\n\n   `;
       const result = await validateScadCode(paddedCode);
-      
+
       expect(result.success).toBe(true);
     });
   });
