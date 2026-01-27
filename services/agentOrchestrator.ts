@@ -25,8 +25,12 @@ import type {
 } from '../types';
 
 // Use unified pipeline by default (single Claude call)
-// Set USE_MULTI_AGENT=true to use separate Gemini + Claude calls
-const USE_UNIFIED_PIPELINE = process.env.USE_MULTI_AGENT !== 'true';
+// For Vite builds, use import.meta.env; for Node, use process.env
+const USE_MULTI_AGENT =
+  typeof import.meta !== 'undefined'
+    ? (import.meta as any).env?.VITE_USE_MULTI_AGENT === 'true'
+    : process.env.USE_MULTI_AGENT === 'true';
+const USE_UNIFIED_PIPELINE = !USE_MULTI_AGENT;
 
 const MAX_RETRY_ATTEMPTS = 3; // Increased from 2 for better error recovery
 
