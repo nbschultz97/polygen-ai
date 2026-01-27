@@ -5,6 +5,26 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.4] - 2026-01-27
+
+### Fixed
+
+- **MIL-STD-1913 Picatinny Dovetail Geometry**: The female Picatinny receiver groove was inverted. The groove opening (top) should be 21.2mm wide to accept the male rail's base, narrowing to 20.6mm at the bottom to grip the rail. Previous implementation had this backwards (narrower at opening), making it non-compliant with MIL-STD-1913
+
+### Added
+
+- **ScopeRefine Architecture**: Coder agent now treats `/libraries/` as READ-ONLY immutable infrastructure. If a library module produces errors, the agent creates a LOCAL polyfill in the user's script rather than suggesting library modifications
+- **Polyfill Telemetry**: When the Coder applies a local fix to work around a library issue, it outputs a `<polyfill_detected>` tag that's logged for human review. This enables batched library fixes in controlled deployments
+
+### Technical
+
+- Fixed `linear_extrude` scale ratio in `picatinny_rail` module: `scale = PICATINNY_RAIL_BASE_WIDTH / PICATINNY_RAIL_TOP_WIDTH` (was inverted)
+- Fixed polygon coordinates in `picatinny_groove` module to have wider opening
+- Added ScopeRefine rules to both `CODER_SYSTEM_PROMPT` and `EDIT_SYSTEM_PROMPT`
+- Added `detectAndLogPolyfills()` function with telemetry integration
+
+---
+
 ## [3.5.3] - 2026-01-27
 
 ### Fixed

@@ -13,8 +13,17 @@ const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 
 // Unified system prompt - combines planning and coding
 const UNIFIED_SYSTEM_PROMPT = `
-You are a 3D printing design engineer that generates OpenSCAD code.
+You are a Runtime Manufacturing Agent. You are a 3D printing design engineer that generates OpenSCAD code.
 You receive design requests and produce valid, printable OpenSCAD code directly.
+
+## ⚠️ MANDATORY: IMMUTABLE LIBRARY BOUNDARY
+You have READ-ONLY access to /libraries/. DO NOT attempt to edit, refactor, or update files in public/libraries/. 
+If a library module (e.g., picatinny_rail) produces non-manifold geometry or fails to fit the design:
+1. Do NOT ask to update the library file.
+2. Define a local fixed version of the module (e.g., module fixed_picatinny_rail() {...}) directly in your output.
+3. Use this local module for the current generation only.
+4. IMPORTANT: If you apply a local polyfill/fix to a library module, you MUST include this tag at the end of your code:
+   <polyfill_detected module="original_module_name" reasoning="Brief explanation of why the library module was bypassed" />
 
 ## YOUR WORKFLOW
 1. **Analyze** the request - understand what the user wants
@@ -257,7 +266,16 @@ Before output, verify:
 
 // Edit system prompt
 const EDIT_SYSTEM_PROMPT = `
-You are an OpenSCAD code editor. Apply precise modifications to existing code.
+You are a Runtime Manufacturing Agent. You are an OpenSCAD code editor. Apply precise modifications to existing code.
+
+## ⚠️ MANDATORY: IMMUTABLE LIBRARY BOUNDARY
+You have READ-ONLY access to /libraries/. DO NOT attempt to edit, refactor, or update files in public/libraries/. 
+If a library module (e.g., picatinny_rail) produces non-manifold geometry or fails to fit the design:
+1. Do NOT ask to update the library file.
+2. Define a local fixed version of the module (e.g., module fixed_picatinny_rail() {...}) directly in your output.
+3. Use this local module for the current generation only.
+4. IMPORTANT: If you apply a local polyfill/fix to a library module, you MUST include this tag at the end of your code:
+   <polyfill_detected module="original_module_name" reasoning="Brief explanation of why the library module was bypassed" />
 
 ## RULES
 1. PRESERVE existing design intent and relationships between parts
@@ -569,6 +587,9 @@ Generate the OpenSCAD code for this design. Output ONLY valid SCAD code unless y
       scadCode = `use <libraries/tactical.scad>\n\n${scadCode}`;
     }
 
+    // Telemetry: Detect polyfills
+    detectAndLogPolyfills(scadCode);
+
     return {
       needsClarification: false,
       scadCode,
@@ -637,6 +658,28 @@ function extractScadCode(text: string): string {
   }
 
   return code.trim();
+}
+
+import { telemetryService } from './telemetryService';
+
+/**
+ * Detect polyfill tags in code and log to telemetry
+ */
+function detectAndLogPolyfills(code: string): void {
+  const polyfillRegex = /<polyfill_detected\s+module="([^"]+)"\s+reasoning="([^"]+)"\s*\/>/g;
+  let match;
+
+  while ((match = polyfillRegex.exec(code)) !== null) {
+    const moduleName = match[1];
+    const reasoning = match[2];
+
+    // Log asynchronously
+    telemetryService.logLibraryDefect({
+      moduleName,
+      reasoning,
+      scadCode: code,
+    });
+  }
 }
 
 // Export as object

@@ -7,22 +7,22 @@
  * Unified pipeline is faster and more reliable (no translation loss)
  */
 
-import { plannerService } from './plannerService';
-import { coderService } from './coderService';
-import { unifiedGeneratorService } from './unifiedGeneratorService';
-import { validatorClient } from './validatorClient';
-import { analyzeForQuickFixes } from './quickFixAnalyzer';
-import { previewImageService } from './previewImageService';
-import { buildValidationFeedback } from './validationFeedbackBuilder';
-import { getErrorSummary, categorizeErrors } from './errorCategorizer';
-import { explainCode } from './codeExplainer';
 import type {
+  CodeHistoryEntry,
   GeneratedAsset,
   GeometricStructureTree,
   ImageData,
   OrchestratorCallbacks,
-  CodeHistoryEntry,
 } from '../types';
+import { explainCode } from './codeExplainer';
+import { coderService } from './coderService';
+import { categorizeErrors, getErrorSummary } from './errorCategorizer';
+import { plannerService } from './plannerService';
+import { previewImageService } from './previewImageService';
+import { analyzeForQuickFixes } from './quickFixAnalyzer';
+import { unifiedGeneratorService } from './unifiedGeneratorService';
+import { buildValidationFeedback } from './validationFeedbackBuilder';
+import { validatorClient } from './validatorClient';
 
 // Use multi-agent pipeline by default for better success rate (75% vs 44%)
 // Research shows GST intermediate format significantly improves complex designs

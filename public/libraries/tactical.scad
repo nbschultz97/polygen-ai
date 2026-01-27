@@ -60,10 +60,11 @@ module picatinny_rail(slots = 5, height = 15, with_slots = true) {
         cube([length, body_width, height], center = true);
 
         // Dovetail groove - opens on top (Z+)
-        // Trapezoid: wider at bottom, narrower at top
+        // MIL-STD-1913: Opening (top) is WIDER (21.2mm) to accept male rail base
+        //               Bottom is NARROWER (20.6mm) to grip male rail top
         translate([0, 0, height/2 - PICATINNY_DOVETAIL_DEPTH/2 + eps])
-            linear_extrude(height = PICATINNY_DOVETAIL_DEPTH + eps, scale = PICATINNY_RAIL_TOP_WIDTH / PICATINNY_RAIL_BASE_WIDTH)
-                square([length + eps*2, PICATINNY_RAIL_BASE_WIDTH], center = true);
+            linear_extrude(height = PICATINNY_DOVETAIL_DEPTH + eps, scale = PICATINNY_RAIL_BASE_WIDTH / PICATINNY_RAIL_TOP_WIDTH)
+                square([length + eps*2, PICATINNY_RAIL_TOP_WIDTH], center = true);
 
         // T-slots for cross-bolt lockup
         if (with_slots) {
@@ -117,13 +118,14 @@ module picatinny_rail_male(slots = 5, with_slots = true) {
  */
 module picatinny_groove(length = 50) {
     // Dovetail profile for subtraction
+    // MIL-STD-1913: Opening (z=0) is WIDER (21.2mm), bottom is NARROWER (20.6mm)
     linear_extrude(height = length, center = true)
         rotate([0, 0, 90])
             polygon([
-                [-PICATINNY_DOVETAIL_DEPTH, -PICATINNY_RAIL_BASE_WIDTH/2],  // bottom left
-                [-PICATINNY_DOVETAIL_DEPTH, PICATINNY_RAIL_BASE_WIDTH/2],   // bottom right
-                [0, PICATINNY_RAIL_TOP_WIDTH/2],                             // top right
-                [0, -PICATINNY_RAIL_TOP_WIDTH/2]                             // top left
+                [-PICATINNY_DOVETAIL_DEPTH, -PICATINNY_RAIL_TOP_WIDTH/2],   // bottom left (narrower)
+                [-PICATINNY_DOVETAIL_DEPTH, PICATINNY_RAIL_TOP_WIDTH/2],    // bottom right (narrower)
+                [0, PICATINNY_RAIL_BASE_WIDTH/2],                            // top right (wider opening)
+                [0, -PICATINNY_RAIL_BASE_WIDTH/2]                            // top left (wider opening)
             ]);
 }
 

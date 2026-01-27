@@ -13,7 +13,8 @@ import type { ValidationFeedback } from './validationFeedbackBuilder';
 // TACTICAL LIBRARY INLINE (for standalone code that works in desktop OpenSCAD)
 // ============================================================================
 // This is inlined into generated code so users can open it in any OpenSCAD
-const TACTICAL_LIBRARY_INLINE = `
+// NOTE: Currently disabled - see inlineTacticalLibrary() comment
+const _TACTICAL_LIBRARY_INLINE = `
 // ============================================================================
 // TACTICAL LIBRARY (Inlined for standalone use)
 // MIL-STD-1913 Picatinny Rail & TW-PL-507F MOLLE Standards
@@ -41,9 +42,10 @@ module picatinny_rail(slots = 5, height = 15, with_slots = true) {
     eps = 0.01;
     difference() {
         cube([length, body_width, height], center = true);
+        // MIL-STD-1913: Opening wider (21.2mm), bottom narrower (20.6mm)
         translate([0, 0, height/2 - PICATINNY_DOVETAIL_DEPTH/2 + eps])
-            linear_extrude(height = PICATINNY_DOVETAIL_DEPTH + eps, scale = PICATINNY_RAIL_TOP_WIDTH / PICATINNY_RAIL_BASE_WIDTH)
-                square([length + eps*2, PICATINNY_RAIL_BASE_WIDTH], center = true);
+            linear_extrude(height = PICATINNY_DOVETAIL_DEPTH + eps, scale = PICATINNY_RAIL_BASE_WIDTH / PICATINNY_RAIL_TOP_WIDTH)
+                square([length + eps*2, PICATINNY_RAIL_TOP_WIDTH], center = true);
         if (with_slots) {
             for (i = [0:slots-1]) {
                 x_pos = (i - (slots-1)/2) * PICATINNY_SLOT_SPACING;
@@ -76,38 +78,25 @@ module picatinny_rail_male(slots = 5, with_slots = true) {
 }
 
 module picatinny_groove(length = 50) {
+    // MIL-STD-1913: Opening wider (21.2mm), bottom narrower (20.6mm)
     linear_extrude(height = length, center = true)
         rotate([0, 0, 90])
             polygon([
-                [-PICATINNY_DOVETAIL_DEPTH, -PICATINNY_RAIL_BASE_WIDTH/2],
-                [-PICATINNY_DOVETAIL_DEPTH, PICATINNY_RAIL_BASE_WIDTH/2],
-                [0, PICATINNY_RAIL_TOP_WIDTH/2],
-                [0, -PICATINNY_RAIL_TOP_WIDTH/2]
+                [-PICATINNY_DOVETAIL_DEPTH, -PICATINNY_RAIL_TOP_WIDTH/2],
+                [-PICATINNY_DOVETAIL_DEPTH, PICATINNY_RAIL_TOP_WIDTH/2],
+                [0, PICATINNY_RAIL_BASE_WIDTH/2],
+                [0, -PICATINNY_RAIL_BASE_WIDTH/2]
             ]);
 }
 
-module molle_clip(width = 28, height = 40, rows = 1) {
-    wall = 3;
-    hook_depth = 12;
-    hook_height = min(20, height * 0.4);
-    slot_width = MOLLE_WEBBING_WIDTH - 2;
+module molle_clip(width = 25, height = 40, thickness = 4) {
     eps = 0.01;
-    difference() {
-        union() {
-            cube([width, wall, height], center = true);
-            translate([0, -hook_depth/2 - wall/2, height/2 - hook_height/2])
-                cube([width, hook_depth, hook_height], center = true);
-            if (rows > 1) {
-                translate([0, -hook_depth/2 - wall/2, -height/2 + hook_height/2])
-                    cube([width, hook_depth, hook_height], center = true);
-            }
-        }
-        translate([0, -hook_depth/2, height/2 - hook_height + MOLLE_ATTACHMENT_GAP])
-            cube([slot_width, hook_depth + wall + eps*2, MOLLE_ATTACHMENT_GAP + eps], center = true);
-        if (rows > 1) {
-            translate([0, -hook_depth/2, -height/2 + hook_height - MOLLE_ATTACHMENT_GAP])
-                cube([slot_width, hook_depth + wall + eps*2, MOLLE_ATTACHMENT_GAP + eps], center = true);
-        }
+    union() {
+        cube([width, thickness, height], center = true);
+        translate([0, thickness, height/2 - 2.5])
+            cube([width, thickness*2, 5], center = true);
+        translate([0, thickness*2, height/2 - 10])
+            cube([width, thickness, 20], center = true);
     }
 }
 
@@ -177,15 +166,9 @@ module tube(od, id, h) {
  * This makes the code self-contained for desktop OpenSCAD
  */
 function inlineTacticalLibrary(code: string): string {
-  if (!code.includes('libraries/tactical.scad')) {
-    return code;
-  }
-
-  // Remove the use statement and add the inlined library
-  const codeWithoutUse = code.replace(/use\s*<libraries\/tactical\.scad>\s*;?\n*/gi, '');
-
-  // Add the library at the top, followed by the user's code
-  return TACTICAL_LIBRARY_INLINE + '\n' + codeWithoutUse;
+  // DISABLE INLINING DURING ITERATION - It creates a massive context burden and causes API timeouts.
+  // We only want 'use <...>' in the version controlled code.
+  return code;
 }
 
 // Extended CoderInput with validation feedback
@@ -195,8 +178,46 @@ export interface EnhancedCoderInput extends CoderInput {
 
 // System prompt for the Coder agent - Enhanced with OpenSCAD rules and GST mapping
 const CODER_SYSTEM_PROMPT = `
-You convert Geometric Structure Trees (GST) to OpenSCAD code for 3D printing.
+You are a Runtime Manufacturing Agent. You convert Geometric Structure Trees (GST) to OpenSCAD code for 3D printing.
 Output ONLY valid OpenSCAD code. No markdown, no explanations.
+
+## ⚠️ MANDATORY: IMMUTABLE LIBRARY BOUNDARY
+You have READ-ONLY access to /libraries/. DO NOT attempt to edit, refactor, or update files in public/libraries/. 
+If a library module (e.g., picatinny_rail) produces non-manifold geometry or fails to fit the design:
+1. Do NOT ask to update the library file.
+2. Define a local fixed version of the module (e.g., module fixed_picatinny_rail() {...}) directly in your output.
+3. Use this local module for the current generation only.
+4. IMPORTANT: If you apply a local polyfill/fix to a library module, you MUST include this tag at the end of your code:
+   <polyfill_detected module="original_module_name" reasoning="Brief explanation of why the library module was bypassed" />
+
+## 🔒 SCOPEREFINE ARCHITECTURE (CRITICAL - READ FIRST!)
+
+You have READ-ONLY access to /libraries/. Library files are IMMUTABLE infrastructure.
+
+**NEVER:**
+- Suggest modifying files in public/libraries/ or /libraries/
+- Ask to update tactical.scad or any shared library
+- Propose changes to system-wide module definitions
+
+**INSTEAD (Local Polyfill Pattern):**
+If a library module produces geometry errors (non-manifold, empty scene, etc.):
+1. Define a LOCAL fixed version in the user's script: \`module fixed_picatinny_rail() {...}\`
+2. Use the local module for THIS generation only
+3. The fix is isolated to the user's edge case
+
+Example polyfill:
+\`\`\`openscad
+use <libraries/tactical.scad>
+
+// Local fix for edge case (does not modify library)
+module fixed_molle_clip(width = 28, height = 40) {
+    // Adjusted geometry for this specific use case
+    molle_clip(width = width - 0.5, height = height);  // Clearance adjustment
+}
+
+// Use the polyfill
+fixed_molle_clip();
+\`\`\`
 
 ## ⚠️ MANDATORY: TACTICAL LIBRARY DETECTION (CHECK FIRST!)
 
@@ -659,7 +680,16 @@ ${input.validationErrors.map((e) => `- ${e}`).join('\n')}
 
 // Edit system prompt - more focused on precise modifications
 const EDIT_SYSTEM_PROMPT = `
-You are an OpenSCAD code editor. Apply precise modifications to existing code.
+You are a Runtime Manufacturing Agent. You are an OpenSCAD code editor. Apply precise modifications to existing code.
+
+## ⚠️ MANDATORY: IMMUTABLE LIBRARY BOUNDARY
+You have READ-ONLY access to /libraries/. DO NOT attempt to edit, refactor, or update files in public/libraries/. 
+If a library module (e.g., picatinny_rail) produces non-manifold geometry or fails to fit the design:
+1. Do NOT ask to update the library file.
+2. Define a local fixed version of the module (e.g., module fixed_picatinny_rail() {...}) directly in your output.
+3. Use this local module for the current generation only.
+4. IMPORTANT: If you apply a local polyfill/fix to a library module, you MUST include this tag at the end of your code:
+   <polyfill_detected module="original_module_name" reasoning="Brief explanation of why the library module was bypassed" />
 
 ## CRITICAL: PRESERVE DESIGN INTENT
 When editing, you MUST preserve the user's original design intent:
@@ -1109,6 +1139,28 @@ function extractScadCode(text: string): string {
   }
 
   return code.trim();
+}
+
+import { telemetryService } from './telemetryService';
+
+/**
+ * Detect polyfill tags in code and log to telemetry
+ */
+function detectAndLogPolyfills(code: string): void {
+  const polyfillRegex = /<polyfill_detected\s+module="([^"]+)"\s+reasoning="([^"]+)"\s*\/>/g;
+  let match;
+
+  while ((match = polyfillRegex.exec(code)) !== null) {
+    const moduleName = match[1];
+    const reasoning = match[2];
+
+    // Log asynchronously
+    telemetryService.logLibraryDefect({
+      moduleName,
+      reasoning,
+      scadCode: code,
+    });
+  }
 }
 
 // Export as object for consistent API
