@@ -5,6 +5,22 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] - 2026-01-27
+
+### Fixed
+
+- **Hallucinated Tactical Modules**: Claude was inventing non-existent modules like `picatinny_dovetail_female` instead of using the correct `picatinny_rail`. Added full module signature list to EDIT_SYSTEM_PROMPT with explicit warning against hallucinating modules
+- **Unknown Module Detection**: Validation now detects "Ignoring unknown module" warnings for tactical modules and returns `success: false` with $L_{sig}$ recovery prompt. Previously returned `success: true` with warning, allowing bad code to pass
+- **Edit Flow Module Awareness**: EDIT_SYSTEM_PROMPT now lists all 9 available tactical.scad modules with their exact signatures, preventing edits from breaking working code
+
+### Technical
+
+- Added `isTacticalModule()` and `generateTacticalRecoveryPrompt()` imports to scadValidation.ts
+- Added unknown module pattern detection in validation success path
+- EDIT_SYSTEM_PROMPT now includes complete tactical module reference block
+
+---
+
 ## [3.5.0] - 2026-01-27
 
 ### Added
