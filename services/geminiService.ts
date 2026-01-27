@@ -4,14 +4,15 @@
  * SECURITY: All requests require authentication
  */
 
-import { ClarificationQuestion, GeneratedAsset } from '../types';
+import type { ClarificationQuestion, GeneratedAsset } from '../types';
 import { getAuthToken } from './apiClient';
 import { addRecentDesign, getPreferencesForPrompt, loadPreferences } from './preferencesService';
 import { validateScadCode } from './scadValidation';
 
-// App Version - update this when making changes
-export const APP_VERSION = '3.0.0';
-export const APP_BUILD_DATE = '2026-01-26';
+// App Version - SINGLE SOURCE OF TRUTH
+// Update this when making changes - all components import from here
+export const APP_VERSION = '3.2.1';
+export const APP_BUILD_DATE = '2026-01-27';
 
 // Configuration
 const TEMPERATURE = 0.7; // Balanced creativity vs consistency

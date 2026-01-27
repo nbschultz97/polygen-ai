@@ -5,7 +5,7 @@ import ChatPanel from './components/ChatPanel';
 import OutputPanel from './components/OutputPanel';
 import SettingsPanel from './components/SettingsPanel';
 import type { Message, GeneratedAsset, WorkflowStep } from './types';
-import { processArchitectRequest } from './services/geminiService';
+import { processArchitectRequest, APP_VERSION } from './services/geminiService';
 import { orchestrateGeneration, isMultiAgentAvailable } from './services/agentOrchestrator';
 import { exportToOpenSCAD, copyToClipboard, exportSession } from './services/openscadExport';
 import { useImageUpload } from './hooks/useImageUpload';
@@ -225,7 +225,7 @@ const App: React.FC = () => {
   // Export session handler for debugging
   const handleExportSession = useCallback(async () => {
     const result = await exportSession({
-      version: '3.2.0',
+      version: APP_VERSION,
       exportedAt: new Date().toISOString(),
       conversation: messages.map((m) => ({
         role: m.role,
