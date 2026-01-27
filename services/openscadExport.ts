@@ -124,11 +124,14 @@ export interface SessionExportData {
 /**
  * Export entire session for debugging and AI back-briefs
  * Includes conversation, generated code, GST, validation results
+ * Filename format: polygen_session_v{version}_{date}.json
  */
 export const exportSession = async (data: SessionExportData): Promise<ExportResult> => {
   try {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `polygen_session_${timestamp}.json`;
+    // Format: YYYY-MM-DD for clean sorting and readability
+    const date = new Date().toISOString().slice(0, 10);
+    const versionTag = data.version ? `v${data.version}_` : '';
+    const fileName = `polygen_session_${versionTag}${date}.json`;
 
     // Format the export with pretty printing for readability
     const content = JSON.stringify(data, null, 2);
