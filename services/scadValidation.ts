@@ -27,6 +27,13 @@ export interface ValidationResult {
   triangleCount?: number;
   isManifold?: boolean;
   manifoldIssues?: string[];
+  /** Bounding box for Dimensional Accuracy (Sd) - SOTA benchmark */
+  boundingBox?: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
+  /** Mesh volume for Volumetric Similarity (Sv) - SOTA benchmark */
+  volume?: number;
 }
 
 /**
@@ -87,6 +94,58 @@ function parseSTLBinary(data: Uint8Array): Triangle[] {
   }
 
   return triangles;
+}
+
+/**
+ * Calculate bounding box of the mesh
+ * Used for Dimensional Accuracy (Sd) check - SOTA benchmark metric
+ */
+function calculateBoundingBox(triangles: Triangle[]): {
+  min: [number, number, number];
+  max: [number, number, number];
+} {
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+
+  for (const tri of triangles) {
+    for (const v of [tri.v1, tri.v2, tri.v3]) {
+      for (let i = 0; i < 3; i++) {
+        min[i] = Math.min(min[i], v[i]);
+        max[i] = Math.max(max[i], v[i]);
+      }
+    }
+  }
+
+  // Handle empty mesh case
+  if (min[0] === Infinity) return { min: [0, 0, 0], max: [0, 0, 0] };
+
+  return { min, max };
+}
+
+/**
+ * Calculate mesh volume using signed tetrahedron method
+ * Used for Volumetric Similarity (Sv) check - SOTA benchmark metric
+ */
+function calculateVolume(triangles: Triangle[]): number {
+  let volume = 0;
+
+  for (const tri of triangles) {
+    // Signed volume of tetrahedron formed by origin and triangle
+    // V = (v1 . (v2 x v3)) / 6
+    const v1 = tri.v1;
+    const v2 = tri.v2;
+    const v3 = tri.v3;
+
+    // Cross product v2 x v3
+    const crossX = v2[1] * v3[2] - v2[2] * v3[1];
+    const crossY = v2[2] * v3[0] - v2[0] * v3[2];
+    const crossZ = v2[0] * v3[1] - v2[1] * v3[0];
+
+    // Dot product v1 . cross
+    volume += v1[0] * crossX + v1[1] * crossY + v1[2] * crossZ;
+  }
+
+  return Math.abs(volume / 6.0);
 }
 
 /**
@@ -449,6 +508,8 @@ export const validateScadCode = async (
     // Perform manifold check on the generated STL
     let isManifold = true;
     let manifoldIssues: string[] = [];
+    let boundingBox: { min: [number, number, number]; max: [number, number, number] } | undefined;
+    let volume: number | undefined;
 
     if (triangleCount > 0 && triangleCount < 100000) {
       // Only check manifold for reasonably sized meshes (< 100k triangles)
@@ -462,6 +523,10 @@ export const validateScadCode = async (
         if (manifoldIssues.length > 0) {
           successWarnings.push(...manifoldIssues);
         }
+
+        // Calculate physical properties for SOTA benchmarking (Sd and Sv metrics)
+        boundingBox = calculateBoundingBox(triangles);
+        volume = calculateVolume(triangles);
       } catch (manifoldErr) {
         console.warn('Manifold check skipped:', manifoldErr);
       }
@@ -476,6 +541,8 @@ export const validateScadCode = async (
       isManifold,
       manifoldIssues: manifoldIssues.length > 0 ? manifoldIssues : undefined,
       warnings: successWarnings.length > 0 ? successWarnings : undefined,
+      boundingBox,
+      volume,
     };
   } catch (err: any) {
     const errorMessage = err?.message || 'Unknown Validation Error';

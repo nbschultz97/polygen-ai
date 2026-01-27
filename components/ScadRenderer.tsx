@@ -378,7 +378,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       }
       setLoading(false);
     }
-  }, [code, loading]);
+  }, [code, loading, analyzeComplexity, isMobile]);
 
   // Auto-update logic with debounce
   useEffect(() => {

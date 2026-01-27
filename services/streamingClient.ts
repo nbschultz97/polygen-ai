@@ -101,6 +101,17 @@ export async function streamClaudeResponse(
               throw new Error(event.error);
             }
 
+            // Detect truncation: max_tokens reached means incomplete code
+            // This prevents "Lazy Coding" - incomplete code execution
+            if (event.type === 'message_stop' || event.type === 'message_delta') {
+              const stopReason = event.delta?.stop_reason || event.stop_reason;
+              if (stopReason === 'max_tokens') {
+                throw new Error(
+                  'Response truncated: MAX_TOKENS reached. The generated code may be incomplete. Please try again with a simpler request or continue the generation.'
+                );
+              }
+            }
+
             // Extract text from content_block_delta events
             // Anthropic stream format: { type: 'content_block_delta', delta: { type: 'text_delta', text: '...' } }
             if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {

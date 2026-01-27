@@ -493,7 +493,7 @@ export default function LandingPage({
               <Box className="w-4 h-4 text-white" />
             </div>
             <span className="text-sm text-gray-400">PolyGen AI - Text to 3D Models</span>
-            <span className="text-xs text-gray-600">v3.1.2</span>
+            <span className="text-xs text-gray-600">v3.2.0</span>
           </div>
 
           <div className="flex items-center gap-6 text-sm text-gray-500">

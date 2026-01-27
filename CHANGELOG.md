@@ -5,6 +5,23 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-01-26
+
+### Added
+
+- **SOTA Benchmark Metrics**: Validation now calculates bounding box (Dimensional Accuracy Sd) and mesh volume (Volumetric Similarity Sv) for quality assessment
+- **Truncation Detection**: Streaming client now detects `max_tokens` truncation and throws an error to prevent incomplete code execution
+- **Complexity Guard**: Pre-render analysis detects high `$fn` values and threading patterns, applies safe settings on mobile to prevent browser crashes
+
+### Technical
+
+- Added `calculateBoundingBox()` and `calculateVolume()` functions to scadValidation.ts
+- Added `boundingBox` and `volume` fields to ValidationResult interface
+- Streaming client checks for `stop_reason === 'max_tokens'` in message events
+- ScadRenderer analyzes code complexity before render
+
+---
+
 ## [3.1.2] - 2026-01-26
 
 ### Fixed
