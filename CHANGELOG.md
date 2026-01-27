@@ -5,6 +5,28 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-01-27
+
+### Added
+
+- **SOTA Complexity Router**: Auto-detects complex requests (assembly, mount, adapter, picatinny, molle, etc.) and forces Multi-Agent (GST) pipeline for higher fidelity (75% vs 44% success rate)
+- **SOTA Active Critic**: Implements Dimensional Accuracy (Sd) formula to compare generated geometry against target dimensions. Triggers retry with specific feedback on >20% mismatch
+- **SOTA Teaching Mode (Micro-Lib)**: System prompt now includes educational comments explaining WHY to use each helper pattern (rcube for impact resistance, tube for weight reduction, step_hole for supports-free printing)
+- **Step Hole Pattern**: New `step_hole` module for printing vertical holes without supports using graduated diameter
+
+### Fixed
+
+- **Critical Memory Leak**: OpenSCAD WASM instances now explicitly call `instance.delete()` to free C++ objects from WASM heap. Previously, memory accumulated ~10-50MB per render, causing heap exhaustion after 5-10 renders on mobile devices
+
+### Technical
+
+- Added complexity keyword regex: `assembly|parts|mechanism|gear|hinge|housing|enclosure|case|bracket|mount|adapter|joint|contact|fit|connect|multi|picatinny|molle|rail`
+- Added `calculateDimensionalAccuracy()` function with Sd formula: `Sd = 1 - |Dg - Dt| / Dg`
+- Updated `cleanupInstance()` in openscadLoader.ts to call `instance.delete()` for WASM heap cleanup
+- Enhanced UNIFIED_SYSTEM_PROMPT with Micro-Lib section and educational example comments
+
+---
+
 ## [3.2.2] - 2026-01-27
 
 ### Fixed

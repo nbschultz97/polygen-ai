@@ -96,9 +96,13 @@ difference() {
     // Negative geometry (cutouts)
 }
 
-## COMMON PATTERNS
+## MICRO-LIB (Common Patterns)
+These are reusable modules that solve common 3D printing challenges.
+TEACHING MODE: When using these helpers, add a comment explaining WHY you chose them.
+This helps users learn CAD design principles.
 
-### Rounded Cuboid
+### Rounded Cuboid (rcube)
+// Use rcube for: impact resistance, grip comfort, print quality (no sharp corners)
 module rcube(size, r) {
     hull() {
         for (x = [-1, 1], y = [-1, 1], z = [-1, 1]) {
@@ -107,16 +111,22 @@ module rcube(size, r) {
         }
     }
 }
+Example usage comment:
+// Using rcube for rounded edges - improves grip and prevents corner chipping during printing
 
 ### Tube/Pipe
+// Use tube for: hollow structures, cable routing, weight reduction
 module tube(od, id, h) {
     difference() {
         cylinder(h=h, d=od, center=true);
         cylinder(h=h + eps*2, d=id, center=true);
     }
 }
+Example usage comment:
+// Using tube module - hollow core reduces material cost by ~40%
 
 ### Counterbore Hole
+// Use counterbore for: flush screw heads, recessed fasteners, clean surfaces
 module counterbore(shaft_d, shaft_depth, head_d, head_depth) {
     union() {
         cylinder(h=shaft_depth + eps, d=shaft_d);
@@ -124,6 +134,19 @@ module counterbore(shaft_d, shaft_depth, head_d, head_depth) {
             cylinder(h=head_depth + eps, d=head_d);
     }
 }
+Example usage comment:
+// Counterbore allows M4 screw head to sit flush with surface
+
+### Step Hole (for supports-free printing)
+// Use step_hole for: printable vertical holes without supports
+module step_hole(d, h, steps=3) {
+    for (i = [0:steps-1]) {
+        translate([0, 0, i * h/steps])
+            cylinder(h=h/steps + eps, d1=d - (steps-i)*0.4, d2=d - (steps-i-1)*0.4);
+    }
+}
+Example usage comment:
+// Using step_hole - graduated diameter enables printing without supports
 
 ## INDUSTRY STANDARDS (use these, don't ask)
 
@@ -480,11 +503,25 @@ Generate the OpenSCAD code for this design. Output ONLY valid SCAD code unless y
 
 /**
  * Extract clean OpenSCAD code from response
+ * Handles cases where Claude outputs explanation before/after code blocks
  */
 function extractScadCode(text: string): string {
-  let code = text.trim();
+  const trimmed = text.trim();
 
-  // Remove markdown code fences
+  // First, try to find a code block anywhere in the text
+  // This handles cases where Claude outputs explanation before the code
+  const codeBlockMatch = trimmed.match(/```(?:openscad|scad)?\s*\n([\s\S]*?)```/);
+  if (codeBlockMatch && codeBlockMatch[1]) {
+    const extracted = codeBlockMatch[1].trim();
+    // Verify it looks like OpenSCAD (has variables or primitives)
+    if (extracted.match(/(?:cube|cylinder|sphere|difference|union|module|=\s*\d)/)) {
+      console.log('Extracted OpenSCAD code from markdown block');
+      return extracted;
+    }
+  }
+
+  // Fallback: Remove markdown code fences if at start/end (legacy behavior)
+  let code = trimmed;
   if (code.startsWith('```openscad')) {
     code = code.slice(12);
   } else if (code.startsWith('```scad')) {
@@ -495,6 +532,25 @@ function extractScadCode(text: string): string {
 
   if (code.endsWith('```')) {
     code = code.slice(0, -3);
+  }
+
+  // Check if the result looks like explanation text (not OpenSCAD code)
+  // If it starts with conversational text, try to find where code begins
+  const codeStart = code.trim();
+  if (codeStart && !codeStart.startsWith('//') && !codeStart.match(/^[$\w]+\s*=/)) {
+    // Text doesn't look like OpenSCAD - might have explanation at start
+    // Try to find where the actual code begins (line starting with // or variable assignment)
+    const lines = codeStart.split('\n');
+    const codeStartIdx = lines.findIndex(
+      (line) =>
+        line.trim().startsWith('//') ||
+        line.trim().match(/^[$\w]+\s*=/) ||
+        line.trim().match(/^(?:module|function|difference|union|cube|cylinder|sphere)\s*[({]?/)
+    );
+    if (codeStartIdx > 0) {
+      console.warn(`Stripped ${codeStartIdx} lines of explanation text from Claude response`);
+      return lines.slice(codeStartIdx).join('\n').trim();
+    }
   }
 
   return code.trim();
