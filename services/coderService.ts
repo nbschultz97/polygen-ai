@@ -666,6 +666,9 @@ ${input.validationErrors.map((e) => `- ${e}`).join('\n')}
     // Inline the library so code works in desktop OpenSCAD
     code = inlineTacticalLibrary(code);
 
+    // Detect and log any polyfills for telemetry
+    detectAndLogPolyfills(code);
+
     return {
       scadCode: code,
     };
@@ -867,6 +870,9 @@ Output the complete modified SCAD code with ALL changes applied.`;
 
     // Inline the library so code works in desktop OpenSCAD
     code = inlineTacticalLibrary(code);
+
+    // Detect and log any polyfills for telemetry
+    detectAndLogPolyfills(code);
 
     return {
       scadCode: code,

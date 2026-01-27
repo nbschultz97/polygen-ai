@@ -124,4 +124,24 @@ CREATE POLICY "Service role can update all profiles" ON user_profiles
 --   'reset-monthly-generations',
 --   '0 0 1 * *',  -- First day of each month at midnight
 --   $$SELECT reset_monthly_generations()$$
--- );
+-- ============================================
+-- Library Defects Telemetry Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS library_defects (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
+  module_name TEXT NOT NULL,
+  reasoning TEXT,
+  scad_code TEXT,
+  p_succ FLOAT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- RLS for library_defects: Users can insert, but only admins (service_role) can view all
+ALTER TABLE library_defects ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert own defect reports" ON library_defects
+  FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "Service role can view all defects" ON library_defects
+  FOR SELECT USING (auth.role() = 'service_role');

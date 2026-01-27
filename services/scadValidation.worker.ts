@@ -33,6 +33,8 @@ interface ValidationResult {
     min: [number, number, number];
     max: [number, number, number];
   };
+  /** Mesh volume in mm³ for Volumetric Similarity (Sv) - SOTA benchmark */
+  volume?: number;
 }
 
 interface WorkerRequest {
@@ -250,6 +252,32 @@ function calculateBoundingBox(triangles: Triangle[]): {
 }
 
 /**
+ * Calculate mesh volume using signed tetrahedron method
+ * Used for Volumetric Similarity (Sv) check - SOTA benchmark metric
+ */
+function calculateVolume(triangles: Triangle[]): number {
+  let volume = 0;
+
+  for (const tri of triangles) {
+    // Signed volume of tetrahedron formed by origin and triangle
+    // V = (v1 . (v2 x v3)) / 6
+    const v1 = tri.v1;
+    const v2 = tri.v2;
+    const v3 = tri.v3;
+
+    // Cross product v2 x v3
+    const crossX = v2[1] * v3[2] - v2[2] * v3[1];
+    const crossY = v2[2] * v3[0] - v2[0] * v3[2];
+    const crossZ = v2[0] * v3[1] - v2[1] * v3[0];
+
+    // Dot product v1 . cross
+    volume += v1[0] * crossX + v1[1] * crossY + v1[2] * crossZ;
+  }
+
+  return Math.abs(volume / 6.0);
+}
+
+/**
  * Initialize OpenSCAD WASM module and load libraries
  */
 async function initializeWorker(): Promise<void> {
@@ -425,14 +453,19 @@ async function validateInWorker(
       warnings.push(`STL triangle count was corrected. Final count: ${triangleCount} triangles.`);
     }
 
-    // Calculate bounding box for Active Critic (Sd metric)
+    // Calculate bounding box and volume for SOTA metrics (Sd and Sv)
     let boundingBox: { min: [number, number, number]; max: [number, number, number] } | undefined;
+    let volume: number | undefined;
     if (triangleCount > 0 && triangleCount < 100000) {
       try {
         const triangles = parseSTLBinary(stlData);
         boundingBox = calculateBoundingBox(triangles) ?? undefined; // null -> undefined
+        volume = calculateVolume(triangles);
+        if (volume > 0) {
+          console.log(`[Worker] SOTA: Volume = ${volume.toFixed(0)}mm³`);
+        }
       } catch (e) {
-        console.warn('[Worker] Bounding box calculation failed:', e);
+        console.warn('[Worker] Geometry metrics calculation failed:', e);
       }
     }
 
@@ -452,6 +485,7 @@ async function validateInWorker(
       stlData,
       triangleCount,
       boundingBox,
+      volume,
       isManifold: true, // Simplified - full manifold check is expensive
       warnings: warnings.length > 0 ? warnings : undefined,
     };
