@@ -1,4 +1,3 @@
-
 // This service manages the loading and initialization of the OpenSCAD WASM engine.
 // It uses a singleton pattern with proper cleanup to prevent memory leaks.
 
@@ -59,7 +58,9 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
     // List of CDNs to try with fallbacks
     // Package structure: openscad-wasm@0.0.4 uses ./web/openscad.js for browsers
     const candidates = [
-      // Current version with correct paths (v0.0.4 uses /web/ folder for browser builds)
+      // Self-hosted (Priority 1)
+      { url: '/wasm/', file: 'openscad.js' },
+      // Current version with correct paths
       { url: 'https://unpkg.com/openscad-wasm@0.0.4/', file: 'web/openscad.js' },
       { url: 'https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.4/', file: 'web/openscad.js' },
       // Latest tag
@@ -82,7 +83,11 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
         props.forEach((p) => {
           if (globalScope[p] !== undefined) {
             backup[p] = globalScope[p];
-            try { globalScope[p] = undefined; } catch (e) { /* ignore */ }
+            try {
+              globalScope[p] = undefined;
+            } catch (e) {
+              /* ignore */
+            }
           }
         });
 
@@ -94,7 +99,11 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
         const cleanup = () => {
           props.forEach((p) => {
             if (backup[p] !== undefined) {
-              try { globalScope[p] = backup[p]; } catch (e) { /* ignore */ }
+              try {
+                globalScope[p] = backup[p];
+              } catch (e) {
+                /* ignore */
+              }
             }
           });
         };
@@ -146,7 +155,9 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
         const wasmBaseUrl = candidate.file.includes('/')
           ? candidate.url + candidate.file.substring(0, candidate.file.lastIndexOf('/') + 1)
           : candidate.url;
-        console.log(`OpenSCAD loaded from ${candidate.url}${candidate.file}, WASM base: ${wasmBaseUrl}`);
+        console.log(
+          `OpenSCAD loaded from ${candidate.url}${candidate.file}, WASM base: ${wasmBaseUrl}`
+        );
         return { OpenSCAD: globalScope.OpenSCAD, baseUrl: wasmBaseUrl };
       } catch (e) {
         lastError = e as Error;
@@ -198,8 +209,16 @@ export const cleanupInstance = (instance: OpenSCADInstance): void => {
   try {
     // Try to remove temporary files
     if (instance.FS.unlink) {
-      try { instance.FS.unlink('/input.scad'); } catch (e) { /* file may not exist */ }
-      try { instance.FS.unlink('/output.stl'); } catch (e) { /* file may not exist */ }
+      try {
+        instance.FS.unlink('/input.scad');
+      } catch (e) {
+        /* file may not exist */
+      }
+      try {
+        instance.FS.unlink('/output.stl');
+      } catch (e) {
+        /* file may not exist */
+      }
     }
   } catch (e) {
     console.warn('Failed to cleanup OpenSCAD instance files:', e);

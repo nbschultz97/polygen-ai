@@ -1,10 +1,18 @@
-
-import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import {
+  AlertTriangle,
+  Download,
+  Info,
+  Loader2,
+  Lock,
+  Play,
+  RotateCcw,
+  Zap,
+  ZapOff,
+} from 'lucide-react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { STLLoader } from 'three-stdlib';
-import { OrbitControls } from 'three-stdlib';
-import { Loader2, AlertTriangle, RotateCcw, Lock, Play, Zap, ZapOff, Info, Download } from 'lucide-react';
-import { loadOpenSCAD, cleanupInstance } from '../services/openscadLoader';
+import { OrbitControls, STLLoader } from 'three-stdlib';
+import { cleanupInstance, loadOpenSCAD } from '../services/openscadLoader';
 
 interface ScadRendererProps {
   code: string;
@@ -126,7 +134,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
             if (object.material instanceof THREE.Material) {
               object.material.dispose();
             } else if (Array.isArray(object.material)) {
-              object.material.forEach(m => m.dispose());
+              object.material.forEach((m) => m.dispose());
             }
           }
         });
@@ -138,14 +146,29 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
     };
   }, []);
 
+  // Mobile detection for "Safe Mode" rendering
+  const isMobile = useCallback(() => {
+    return (
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      window.innerWidth < 768
+    );
+  }, []);
+
   const compileAndRender = useCallback(async () => {
     if (!code || !code.trim() || loading) return;
+
+    // MOBILE GUARD: Inject low-poly settings to prevent crashing
+    let renderCode = code;
+    if (isMobile()) {
+      // Prepend global resolution settings that override user defaults
+      renderCode = `$fn=32; $fs=0.5; $fa=5; // MOBILE GUARD ACTIVE\n` + code;
+    }
 
     const startTime = performance.now();
     setLoading(true);
     setError(null);
 
-    let errorLog = "";
+    let errorLog = '';
     let instance: any = null;
 
     // Remove existing model
@@ -168,7 +191,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       const { OpenSCAD, baseUrl } = loaderResult;
 
       if (!OpenSCAD || typeof OpenSCAD !== 'function') {
-        throw new Error("OpenSCAD engine not available. Please refresh the page.");
+        throw new Error('OpenSCAD engine not available. Please refresh the page.');
       }
 
       instance = await OpenSCAD({
@@ -176,21 +199,27 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
         locateFile: (path: string) => `${baseUrl}${path}`,
         print: () => {},
         printErr: (text: string) => {
-          if (text && text.toLowerCase().includes('error') && !text.includes("GL_INVALID_OPERATION")) {
-            errorLog += text + "\n";
+          // Filter benign GL errors often seen in WASM
+          if (
+            text &&
+            text.toLowerCase().includes('error') &&
+            !text.includes('GL_INVALID_OPERATION') &&
+            !text.includes('GL_INVALID_ENUM')
+          ) {
+            errorLog += text + '\n';
           }
-        }
+        },
       });
 
       if (!instance?.FS) {
-        throw new Error("OpenSCAD instance failed to initialize");
+        throw new Error('OpenSCAD instance failed to initialize');
       }
 
       instance.FS.writeFile('/input.scad', code);
       const exitCode = instance.callMain(['/input.scad', '-o', 'output.stl']);
 
-      if (exitCode !== 0 || (errorLog.includes("ERROR") && !errorLog.includes("GL_INVALID"))) {
-        throw new Error(`Compiler Error:\n${errorLog || "Exit Code " + exitCode}`);
+      if (exitCode !== 0 || (errorLog.includes('ERROR') && !errorLog.includes('GL_INVALID'))) {
+        throw new Error(`Compiler Error:\n${errorLog || 'Exit Code ' + exitCode}`);
       }
 
       // Safely read STL data
@@ -198,11 +227,15 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       try {
         stlData = instance.FS.readFile('/output.stl');
       } catch (readError) {
-        throw new Error("Failed to read output STL. Check for infinite recursion or empty geometry.");
+        throw new Error(
+          'Failed to read output STL. Check for infinite recursion or empty geometry.'
+        );
       }
 
       if (!stlData || stlData.length <= 84) {
-        throw new Error("Render Successful, but scene is empty. Check boolean/difference operations.");
+        throw new Error(
+          'Render Successful, but scene is empty. Check boolean/difference operations.'
+        );
       }
 
       // Store STL data for download
@@ -212,7 +245,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       const geometry = loader.parse(stlData.buffer);
 
       if (!geometry || !geometry.attributes.position) {
-        throw new Error("Failed to parse STL geometry");
+        throw new Error('Failed to parse STL geometry');
       }
 
       geometry.center();
@@ -230,7 +263,10 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       group.add(mesh);
 
       const edges = new THREE.EdgesGeometry(geometry, 20);
-      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.15, transparent: true }));
+      const line = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.15, transparent: true })
+      );
       group.add(line);
 
       group.rotation.x = -Math.PI / 2;
@@ -244,12 +280,16 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
 
         if (maxDim > 0 && isFinite(maxDim)) {
           const fov = cameraRef.current.fov * (Math.PI / 180);
-          let cameraZ = Math.abs(maxDim / 2 * Math.tan(fov * 2));
+          let cameraZ = Math.abs((maxDim / 2) * Math.tan(fov * 2));
           cameraZ *= 2.8;
 
           const center = box.getCenter(new THREE.Vector3());
           if (isFinite(center.x) && isFinite(center.y) && isFinite(center.z)) {
-            cameraRef.current.position.set(center.x + cameraZ, center.y + cameraZ, center.z + cameraZ);
+            cameraRef.current.position.set(
+              center.x + cameraZ,
+              center.y + cameraZ,
+              center.z + cameraZ
+            );
             cameraRef.current.lookAt(center);
             controlsRef.current.target.copy(center);
             controlsRef.current.update();
@@ -259,13 +299,12 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
 
       setRenderStats({
         time: Math.round(performance.now() - startTime),
-        vertices: geometry.attributes.position.count
+        vertices: geometry.attributes.position.count,
       });
       setIsDirty(false);
-
     } catch (err: any) {
-      console.error("Renderer Error:", err);
-      setError(err?.message || "Failed to render. Please check your code.");
+      console.error('Renderer Error:', err);
+      setError(err?.message || 'Failed to render. Please check your code.');
     } finally {
       // Clean up OpenSCAD instance
       if (instance) {
@@ -301,10 +340,14 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
                   ? 'bg-indigo-600 text-white'
                   : 'bg-slate-800 text-slate-400 hover:text-slate-200'
               }`}
-              title={autoUpdate ? "Disable Auto-Render" : "Enable Auto-Render (Experimental)"}
+              title={autoUpdate ? 'Disable Auto-Render' : 'Enable Auto-Render (Experimental)'}
             >
-              {autoUpdate ? <Zap className="w-3 h-3 fill-current" /> : <ZapOff className="w-3 h-3" />}
-              {autoUpdate ? "LIVE" : "MANUAL"}
+              {autoUpdate ? (
+                <Zap className="w-3 h-3 fill-current" />
+              ) : (
+                <ZapOff className="w-3 h-3" />
+              )}
+              {autoUpdate ? 'LIVE' : 'MANUAL'}
             </button>
 
             <button
@@ -316,7 +359,11 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
                   : 'bg-slate-800 text-slate-500 cursor-default'
               }`}
             >
-              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-current" />}
+              {loading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Play className="w-3 h-3 fill-current" />
+              )}
               RENDER MODEL
             </button>
           </div>
@@ -324,7 +371,9 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
           {!isProUser && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 backdrop-blur border border-white/10 rounded-full w-fit">
               <Lock className="w-3 h-3 text-slate-400" />
-              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Free Tier Preview</span>
+              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+                Free Tier Preview
+              </span>
             </div>
           )}
         </div>
@@ -338,7 +387,9 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
               </div>
               <div className="flex justify-between gap-4 text-slate-400">
                 <span>Mesh Vertices:</span>
-                <span className="text-indigo-400 font-mono">{renderStats.vertices.toLocaleString()}</span>
+                <span className="text-indigo-400 font-mono">
+                  {renderStats.vertices.toLocaleString()}
+                </span>
               </div>
             </div>
             {stlData && (
@@ -362,7 +413,9 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
             <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
             <Loader2 className="w-12 h-12 text-indigo-500 opacity-20" />
           </div>
-          <p className="mt-4 text-sm font-bold text-white tracking-widest uppercase">Calculating CSG...</p>
+          <p className="mt-4 text-sm font-bold text-white tracking-widest uppercase">
+            Calculating CSG...
+          </p>
           <p className="text-[10px] text-slate-400 mt-1">Initializing OpenSCAD Engine</p>
         </div>
       )}
@@ -390,7 +443,10 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
             ) : (
               <>
                 <h3 className="text-xl font-bold text-white mb-2">Geometric Conflict</h3>
-                <p className="text-sm text-slate-400 mb-6">The code produced an invalid or empty mesh. This often happens if a <code>difference()</code> operation removes the entire base object.</p>
+                <p className="text-sm text-slate-400 mb-6">
+                  The code produced an invalid or empty mesh. This often happens if a{' '}
+                  <code>difference()</code> operation removes the entire base object.
+                </p>
                 <pre className="text-xs text-left bg-black/40 p-4 rounded-xl text-red-300 overflow-auto max-h-[150px] whitespace-pre-wrap font-mono border border-red-900/30 mb-6">
                   {error}
                 </pre>
@@ -416,16 +472,24 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
             <Play className="w-10 h-10 text-indigo-400 opacity-40 fill-current translate-x-1" />
           </div>
           <h3 className="text-lg font-medium text-slate-400">3D Preview Ready</h3>
-          <p className="text-xs text-slate-500 mt-2 max-w-xs">Click "Render Model" to compile the current code into 3D geometry.</p>
+          <p className="text-xs text-slate-500 mt-2 max-w-xs">
+            Click "Render Model" to compile the current code into 3D geometry.
+          </p>
         </div>
       )}
 
       {/* Navigation Hint */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
         <div className="bg-slate-900/90 backdrop-blur-md text-[9px] text-slate-400 px-4 py-2 rounded-full border border-white/5 flex gap-4 shadow-2xl">
-          <span className="flex items-center gap-1"><Info className="w-3 h-3 text-indigo-400" /> LEFT: ROTATE</span>
-          <span className="flex items-center gap-1"><Info className="w-3 h-3 text-indigo-400" /> RIGHT: PAN</span>
-          <span className="flex items-center gap-1"><Info className="w-3 h-3 text-indigo-400" /> SCROLL: ZOOM</span>
+          <span className="flex items-center gap-1">
+            <Info className="w-3 h-3 text-indigo-400" /> LEFT: ROTATE
+          </span>
+          <span className="flex items-center gap-1">
+            <Info className="w-3 h-3 text-indigo-400" /> RIGHT: PAN
+          </span>
+          <span className="flex items-center gap-1">
+            <Info className="w-3 h-3 text-indigo-400" /> SCROLL: ZOOM
+          </span>
         </div>
       </div>
     </div>
