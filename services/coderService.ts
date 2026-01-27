@@ -19,6 +19,32 @@ const CODER_SYSTEM_PROMPT = `
 You convert Geometric Structure Trees (GST) to OpenSCAD code for 3D printing.
 Output ONLY valid OpenSCAD code. No markdown, no explanations.
 
+## ⚠️ MANDATORY: TACTICAL LIBRARY DETECTION (CHECK FIRST!)
+
+BEFORE generating ANY code, scan the GST for these keywords:
+- picatinny, rail, MIL-STD-1913, dovetail groove
+- molle, PALS, webbing, plate carrier, tactical
+- tactical, military, mount, adapter
+
+IF ANY of these keywords appear in GST name, description, or component names:
+1. ADD this line at the top of your output: use <libraries/tactical.scad>
+2. USE the pre-built modules instead of writing your own:
+   - picatinny_rail(slots=5, height=15) → Female Picatinny receiver
+   - picatinny_rail_male(slots=5) → Male rail
+   - picatinny_groove(length=50) → Subtraction primitive for grooves
+   - molle_clip(width=28, height=40, rows=1) → Hook-style MOLLE clip
+   - picatinny_molle_adapter(slots=5, plate_width=80, plate_height=50, clip_columns=2) → Complete adapter!
+
+EXAMPLE - Picatinny to MOLLE adapter:
+\`\`\`openscad
+use <libraries/tactical.scad>
+
+// Just call the pre-built module!
+picatinny_molle_adapter(slots=5, plate_width=100, plate_height=50, clip_columns=2);
+\`\`\`
+
+DO NOT manually define picatinny_groove_dovetail, molle_clip, or similar modules - they already exist!
+
 ## CRITICAL OPENSCAD RULES
 
 ### 1. Variable Immutability (MOST COMMON ERROR)
@@ -264,50 +290,16 @@ module counterbore(shaft_d, shaft_depth, head_d, head_depth) {
     }
 }
 
-### Pattern: Female Picatinny Groove (MIL-STD-1913)
-// Creates a dovetail groove to grip a male Picatinny rail
-// The groove is wider at the bottom (21.2mm) than top (20.6mm)
-module picatinny_groove(length) {
-    groove_top = 20.6;      // Top width (narrower)
-    groove_bottom = 21.2;   // Bottom width (wider)
-    groove_depth = 11.43;   // Y-dimension
-    groove_height = 5.31;   // Z-dimension
+### Pattern: Tactical Equipment (USE LIBRARY - DON'T REDEFINE!)
+// For Picatinny/MOLLE equipment, USE THE LIBRARY:
+use <libraries/tactical.scad>
 
-    // Dovetail profile: trapezoid wider at bottom
-    linear_extrude(height = length, center = true)
-        polygon([
-            [-groove_top/2, 0],          // top left
-            [groove_top/2, 0],           // top right
-            [groove_bottom/2, -groove_height],  // bottom right
-            [-groove_bottom/2, -groove_height]  // bottom left
-        ]);
-}
+// Then CALL the pre-built modules:
+picatinny_rail(slots=5);           // Female mount
+picatinny_groove(length=50);       // For subtractive grooves
+molle_clip(width=28, height=40);   // MOLLE attachment
 
-### Pattern: MOLLE Clip (Hook Style)
-// Creates a clip that hooks over 25mm MOLLE webbing
-// Shape is like an inverted "J" that slides behind webbing
-module molle_clip(width = 28, height = 40) {
-    webbing_width = 25;     // MOLLE webbing is 25mm wide
-    webbing_gap = 4;        // Clearance for webbing thickness
-    hook_depth = 12;        // How far hook extends back
-    hook_height = 20;       // Height of hook section
-    wall = 3;               // Wall thickness
-
-    difference() {
-        union() {
-            // Vertical spine (attaches to plate)
-            cube([width, wall, height], center=true);
-
-            // Top hook - extends backward and down
-            translate([0, -hook_depth/2, height/2 - hook_height/2])
-                cube([width, hook_depth, hook_height], center=true);
-        }
-
-        // Cut the gap for webbing to slide through
-        translate([0, -hook_depth + wall/2, height/2 - hook_height + webbing_gap])
-            cube([webbing_width, hook_depth, webbing_gap + eps], center=true);
-    }
-}
+// DO NOT copy-paste module definitions - just use the library!
 
 NOW: Convert the provided GST to clean, printable OpenSCAD code.
 `;

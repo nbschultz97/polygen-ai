@@ -104,20 +104,37 @@ function calculateBoundingBox(triangles: Triangle[]): {
   min: [number, number, number];
   max: [number, number, number];
 } {
+  // Sanity limit: 10,000mm = 10 meters - models larger than this are likely corrupt
+  const SANITY_LIMIT = 10000;
+
   const min: [number, number, number] = [Infinity, Infinity, Infinity];
   const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
 
   for (const tri of triangles) {
     for (const v of [tri.v1, tri.v2, tri.v3]) {
       for (let i = 0; i < 3; i++) {
-        min[i] = Math.min(min[i], v[i]);
-        max[i] = Math.max(max[i], v[i]);
+        const coord = v[i];
+        // Skip NaN, Infinity, or insane values (WASM heap corruption)
+        if (!Number.isFinite(coord) || Math.abs(coord) > SANITY_LIMIT) {
+          continue;
+        }
+        min[i] = Math.min(min[i], coord);
+        max[i] = Math.max(max[i], coord);
       }
     }
   }
 
-  // Handle empty mesh case
-  if (min[0] === Infinity) return { min: [0, 0, 0], max: [0, 0, 0] };
+  // Handle empty mesh or all-corrupt values case
+  if (min[0] === Infinity) {
+    console.warn('Bounding box calculation failed: no valid coordinates found');
+    return { min: [0, 0, 0], max: [0, 0, 0] };
+  }
+
+  // Final sanity check: if any values are still extreme, warn
+  const hasExtremeValues = [...min, ...max].some((v) => Math.abs(v) > SANITY_LIMIT);
+  if (hasExtremeValues) {
+    console.warn(`Bounding box has extreme values (>10m): min=${min}, max=${max}`);
+  }
 
   return { min, max };
 }
@@ -451,24 +468,27 @@ export const validateScadCode = async (
     }
 
     // Safely attempt to read the output file
+    // FIX: Explicitly copy the data to avoid WASM heap view issues
+    // The FS.readFile() returns a VIEW into WASM heap, not a copy.
+    // Using stlData.buffer would parse the entire heap (garbage data).
     let stlData: Uint8Array | null = null;
     try {
-      stlData = instance.FS.readFile('/output.stl');
+      const rawStl = instance.FS.readFile('/output.stl');
+      if (!rawStl) {
+        return {
+          success: false,
+          error: 'No STL data was generated. Check your SCAD code for errors.',
+          exitCode,
+          rawErrorLog: errorLog,
+          warnings: preWarnings,
+        };
+      }
+      stlData = new Uint8Array(rawStl); // Explicit copy - CRITICAL
     } catch {
       return {
         success: false,
         error:
           'Failed to read output STL. The compilation may have succeeded but produced no output. Check for infinite recursion or empty geometry.',
-        exitCode,
-        rawErrorLog: errorLog,
-        warnings: preWarnings,
-      };
-    }
-
-    if (!stlData) {
-      return {
-        success: false,
-        error: 'No STL data was generated. Check your SCAD code for errors.',
         exitCode,
         rawErrorLog: errorLog,
         warnings: preWarnings,

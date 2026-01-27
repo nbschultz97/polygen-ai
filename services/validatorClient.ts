@@ -12,9 +12,52 @@ import type { GeometricStructureTree, ValidationResult, GSTBoundingBox } from '.
 import { workerValidationService } from './workerValidationService';
 import { visualCriticService, type VisualCritiqueResult } from './visualCriticService';
 
-// SOTA Active Critic: Dimensional accuracy threshold
+// SOTA Active Critic: Accuracy thresholds
 // Sd < 0.8 means >20% mismatch - triggers retry with specific feedback
 const DIMENSIONAL_ACCURACY_THRESHOLD = 0.8;
+// Sv < 0.8 means >20% volume mismatch - triggers retry with scale feedback
+const VOLUMETRIC_ACCURACY_THRESHOLD = 0.8;
+
+/**
+ * SOTA Active Critic: Calculate Volumetric Similarity (Sv)
+ * Formula: Sv = 1 - |Vgen - Vtarget| / Vtarget
+ * Where Vgen = generated volume, Vtarget = target volume
+ *
+ * Returns: { match: boolean, similarity: number, feedback: string[] }
+ */
+function _calculateVolumetricSimilarity(
+  generatedVolume: number,
+  targetVolume: number
+): {
+  match: boolean;
+  similarity: number;
+  feedback: string[];
+} {
+  const feedback: string[] = [];
+
+  // Guard against zero/negative volumes
+  if (targetVolume <= 0 || generatedVolume <= 0) {
+    return { match: true, similarity: 1, feedback: [] };
+  }
+
+  // Calculate Sv: Sv = 1 - |Vgen - Vtarget| / Vtarget
+  const sv = 1 - Math.abs(generatedVolume - targetVolume) / targetVolume;
+  const match = sv >= VOLUMETRIC_ACCURACY_THRESHOLD;
+
+  if (!match) {
+    const pctOff = ((1 - sv) * 100).toFixed(1);
+    const scaleFactor = (targetVolume / generatedVolume).toFixed(2);
+    const direction = generatedVolume < targetVolume ? 'smaller' : 'larger';
+
+    feedback.push(
+      `VOLUMETRIC MISMATCH: Generated ${generatedVolume.toFixed(0)}mm³ vs Target ${targetVolume.toFixed(0)}mm³ (${pctOff}% ${direction}). ` +
+        `Scale factor needed: ${scaleFactor}x.`
+    );
+    console.log(`Active Critic: Volumetric similarity failed. Sv=${sv.toFixed(2)}`);
+  }
+
+  return { match, similarity: sv, feedback };
+}
 
 /**
  * SOTA Active Critic: Calculate Dimensional Accuracy (Sd)
@@ -165,6 +208,23 @@ export async function validate(input: {
       input.abortSignal
     );
 
+    // Validate bounding box data - reject corrupt values
+    // WASM heap corruption can produce extreme values (e.g., 8.48e-33 to 1.86e+34)
+    let validBoundingBox = result.boundingBox;
+    if (validBoundingBox) {
+      const allValues = [...validBoundingBox.min, ...validBoundingBox.max];
+      const hasCorruptValues = allValues.some(
+        (v) => !Number.isFinite(v) || Math.abs(v) > 10000 // 10m sanity limit
+      );
+      if (hasCorruptValues) {
+        console.warn(
+          'Active Critic: Bounding box has corrupt values, discarding:',
+          validBoundingBox
+        );
+        validBoundingBox = undefined;
+      }
+    }
+
     // Build validation result
     const validationResult: ValidationResult = {
       success: result.success,
@@ -172,6 +232,8 @@ export async function validate(input: {
       warnings: [...(result.warnings || [])],
       isManifold: result.isManifold ?? result.success,
       triangleCount: result.triangleCount,
+      volume: result.volume,
+      boundingBox: validBoundingBox,
     };
 
     // Add preprocessing fixes as informational warnings
@@ -179,31 +241,45 @@ export async function validate(input: {
       validationResult.warnings.push(...fixes.map((f) => `Auto-fix applied: ${f}`));
     }
 
+    // Track overall GST match status
+    let gstMatch = true;
+    const criticFeedback: string[] = [];
+
     // SOTA Active Critic: Compare generated geometry to GST target dimensions
     // Implements Sd formula: Sd = 1 - |Dg - Dt| / Dg
     // Triggers retry on >20% mismatch (Sd < 0.8)
-    if (input.gst?.boundingBox && result.boundingBox && result.success) {
-      const critic = calculateDimensionalAccuracy(result.boundingBox, input.gst.boundingBox);
+    if (input.gst?.boundingBox && validBoundingBox && result.success) {
+      const dimCritic = calculateDimensionalAccuracy(validBoundingBox, input.gst.boundingBox);
 
-      validationResult.gstMatch = critic.match;
-      validationResult.gstDeviationPercent = critic.maxDeviation;
-      validationResult.boundingBox = result.boundingBox;
+      validationResult.gstDeviationPercent = dimCritic.maxDeviation;
 
-      if (!critic.match) {
-        // Add dimensional mismatch as errors to trigger retry
-        // This enables "Code-Level Correction" - the coder will receive
-        // specific feedback about which dimensions need adjustment
-        validationResult.success = false;
-        validationResult.errors.push(...critic.feedback);
+      if (!dimCritic.match) {
+        gstMatch = false;
+        criticFeedback.push(...dimCritic.feedback);
         console.log('Active Critic: Triggering retry due to dimensional mismatch');
       } else {
         console.log(
-          `Active Critic: Dimensions match (max deviation: ${critic.maxDeviation.toFixed(1)}%)`
+          `Active Critic: Dimensions match (max deviation: ${dimCritic.maxDeviation.toFixed(1)}%)`
         );
       }
-    } else if (result.boundingBox) {
-      // No target to compare, just store the generated bounding box
-      validationResult.boundingBox = result.boundingBox;
+    }
+
+    // SOTA Active Critic: Compare generated volume to GST target volume
+    // Implements Sv formula: Sv = 1 - |Vgen - Vtarget| / Vtarget
+    // Triggers retry on >20% mismatch (Sv < 0.8)
+    // Note: GST doesn't have explicit volume, so we'd need to calculate it from bounding box
+    // For now, we just log the volume for diagnostics
+    if (result.volume && result.success) {
+      console.log(`Active Critic: Generated volume = ${result.volume.toFixed(0)}mm³`);
+    }
+
+    // Set final GST match status
+    validationResult.gstMatch = gstMatch;
+
+    // If any critic failed, mark as failed and add feedback
+    if (!gstMatch && result.success) {
+      validationResult.success = false;
+      validationResult.errors.push(...criticFeedback);
     }
 
     return validationResult;

@@ -405,7 +405,9 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   }, [currentAsset]);
 
   // Export session for debugging and back-briefs
+  // SOTA Diagnostic Export: Includes all quantitative metrics for analysis
   const handleExportSession = useCallback(async () => {
+    const vr = currentAsset?.validationResult;
     const result = await exportSession({
       version: APP_VERSION,
       exportedAt: new Date().toISOString(),
@@ -415,18 +417,39 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
       })),
       generatedCode: currentAsset?.scadCode,
       gst: currentAsset?.gst,
-      validationResult: currentAsset?.validationResult
+      validationResult: vr
         ? {
-            success: currentAsset.validationResult.success,
-            errors: currentAsset.validationResult.errors,
-            warnings: currentAsset.validationResult.warnings,
-            triangleCount: currentAsset.validationResult.triangleCount,
-            isManifold: currentAsset.validationResult.isManifold,
-            volume: currentAsset.validationResult.volume,
-            boundingBox: currentAsset.validationResult.boundingBox,
+            success: vr.success,
+            errors: vr.errors,
+            warnings: vr.warnings,
+            triangleCount: vr.triangleCount,
+            isManifold: vr.isManifold,
+            // SOTA Quantitative Metrics
+            volume: vr.volume,
+            boundingBox: vr.boundingBox as {
+              min: [number, number, number];
+              max: [number, number, number];
+            },
+            gstMatch: vr.gstMatch,
+            gstDeviationPercent: vr.gstDeviationPercent,
           }
         : undefined,
-      codeHistory: currentAsset?.history,
+      // SOTA Visual Critic results (if available)
+      visualCritique: (vr as any)?.visualCritique
+        ? {
+            approved: (vr as any).visualCritique.approved,
+            confidence: (vr as any).visualCritique.confidence,
+            issues: (vr as any).visualCritique.issues,
+            suggestions: (vr as any).visualCritique.suggestions,
+          }
+        : undefined,
+      // Code history with GST for each version
+      codeHistory: currentAsset?.history?.map((h) => ({
+        code: h.code,
+        prompt: h.prompt,
+        timestamp: h.timestamp,
+        gst: h.gst,
+      })),
     });
     if (result.success) {
       console.log('Session exported:', result.filePath);

@@ -102,6 +102,7 @@ export const copyToClipboard = async (code: string): Promise<boolean> => {
 
 /**
  * Session export data structure for debugging and back-briefs
+ * SOTA Diagnostic Export: Includes quantitative metrics for analysis
  */
 export interface SessionExportData {
   version: string;
@@ -115,10 +116,29 @@ export interface SessionExportData {
     warnings?: string[];
     triangleCount?: number;
     isManifold?: boolean;
+    // SOTA Quantitative Metrics
+    /** Mesh volume in mm³ for Volumetric Similarity (Sv) */
     volume?: number;
-    boundingBox?: object;
+    /** Bounding box for Dimensional Accuracy (Sd) */
+    boundingBox?: {
+      min: [number, number, number];
+      max: [number, number, number];
+    };
+    /** Whether generated geometry matches GST target dimensions */
+    gstMatch?: boolean;
+    /** Maximum deviation from GST target (percentage) */
+    gstDeviationPercent?: number;
   };
-  codeHistory?: { code: string; prompt: string; timestamp: number }[];
+  /** Visual Critic analysis result */
+  visualCritique?: {
+    approved: boolean;
+    confidence: number;
+    issues: { type: string; description: string; severity: string }[];
+    suggestions: string[];
+  };
+  /** Refactoring score for Tier 3 code quality (0-1) */
+  refactoringScore?: number;
+  codeHistory?: { code: string; prompt: string; timestamp: number; gst?: object }[];
 }
 
 /**

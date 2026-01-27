@@ -33,12 +33,19 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
   const [error, setError] = useState<string | null>(null);
   const [autoUpdate, setAutoUpdate] = useState(false);
   const [isDirty, setIsDirty] = useState(true);
-  const [renderStats, setRenderStats] = useState<{ time: number; vertices: number } | null>(null);
+  const [renderStats, setRenderStats] = useState<{
+    time: number;
+    vertices: number;
+    triangles: number;
+    dimensions?: { x: number; y: number; z: number };
+    volume?: number;
+  } | null>(null);
   const [stlData, setStlData] = useState<Uint8Array | null>(null);
   const [complexityWarning, setComplexityWarning] = useState<string | null>(null);
 
   const downloadSTL = useCallback(() => {
     if (!stlData) return;
+    // Since stlData is now a proper copy (not a WASM heap view), buffer is safe to use
     const blob = new Blob([stlData.buffer as ArrayBuffer], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -289,9 +296,13 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       }
 
       // Safely read STL data
+      // FIX: Explicitly copy the data to avoid WASM heap view issues
+      // The FS.readFile() returns a VIEW into WASM heap, not a copy.
+      // Using stlData.buffer would parse the entire heap (garbage data).
       let stlData: Uint8Array | null = null;
       try {
-        stlData = instance.FS.readFile('/output.stl');
+        const rawStl = instance.FS.readFile('/output.stl');
+        stlData = new Uint8Array(rawStl); // Explicit copy - CRITICAL
       } catch {
         throw new Error(
           'Failed to read output STL. Check for infinite recursion or empty geometry.'
@@ -394,9 +405,45 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
         }
       }
 
+      // Calculate SOTA metrics from geometry
+      const boundingBox = new THREE.Box3().setFromObject(group);
+      const dims = boundingBox.getSize(new THREE.Vector3());
+
+      // Calculate volume using signed tetrahedron method
+      // Each triangle forms a tetrahedron with origin, sum signed volumes
+      let calculatedVolume = 0;
+      const positions = geometry.attributes.position;
+      const triangleCount = positions.count / 3;
+
+      for (let i = 0; i < triangleCount; i++) {
+        const i0 = i * 3;
+        const v1 = [positions.getX(i0), positions.getY(i0), positions.getZ(i0)];
+        const v2 = [positions.getX(i0 + 1), positions.getY(i0 + 1), positions.getZ(i0 + 1)];
+        const v3 = [positions.getX(i0 + 2), positions.getY(i0 + 2), positions.getZ(i0 + 2)];
+
+        // Cross product v2 x v3
+        const crossX = v2[1] * v3[2] - v2[2] * v3[1];
+        const crossY = v2[2] * v3[0] - v2[0] * v3[2];
+        const crossZ = v2[0] * v3[1] - v2[1] * v3[0];
+
+        // Dot product v1 . cross
+        calculatedVolume += v1[0] * crossX + v1[1] * crossY + v1[2] * crossZ;
+      }
+      calculatedVolume = Math.abs(calculatedVolume / 6.0);
+
       setRenderStats({
         time: Math.round(performance.now() - startTime),
         vertices: geometry.attributes.position.count,
+        triangles: triangleCount,
+        dimensions:
+          dims.x > 0 && dims.y > 0 && dims.z > 0
+            ? {
+                x: Math.round(dims.x * 10) / 10,
+                y: Math.round(dims.y * 10) / 10,
+                z: Math.round(dims.z * 10) / 10,
+              }
+            : undefined,
+        volume: calculatedVolume > 0 ? Math.round(calculatedVolume) : undefined,
       });
       setIsDirty(false);
     } catch (err: any) {
@@ -500,11 +547,29 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
                 <span className="text-emerald-400 font-mono">{renderStats.time}ms</span>
               </div>
               <div className="flex justify-between gap-4 text-slate-400">
-                <span>Mesh Vertices:</span>
+                <span>Triangles:</span>
                 <span className="text-indigo-400 font-mono">
-                  {renderStats.vertices.toLocaleString()}
+                  {renderStats.triangles.toLocaleString()}
                 </span>
               </div>
+              {/* SOTA Metrics */}
+              {renderStats.dimensions && (
+                <div className="flex justify-between gap-4 text-slate-400">
+                  <span>Dimensions:</span>
+                  <span className="text-cyan-400 font-mono text-[9px]">
+                    {renderStats.dimensions.x}×{renderStats.dimensions.y}×{renderStats.dimensions.z}
+                    mm
+                  </span>
+                </div>
+              )}
+              {renderStats.volume !== undefined && renderStats.volume > 0 && (
+                <div className="flex justify-between gap-4 text-slate-400">
+                  <span>Volume:</span>
+                  <span className="text-purple-400 font-mono">
+                    {renderStats.volume.toLocaleString()}mm³
+                  </span>
+                </div>
+              )}
               {complexityWarning && (
                 <div className="flex items-center gap-1.5 text-amber-400 pt-1">
                   <AlertTriangle className="w-3 h-3 flex-shrink-0" />
