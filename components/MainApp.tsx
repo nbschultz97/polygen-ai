@@ -576,8 +576,8 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
              ${isMobile && mobileTab === 'preview' ? 'translate-x-[-100%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}
           `}
           >
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Messages - add top padding on mobile for floating tab switcher */}
+            <div className="flex-1 overflow-y-auto p-4 pt-14 md:pt-4 space-y-3">
               {messages.length === 0 && (
                 <div className="flex flex-col h-full">
                   <div className="flex flex-col items-center justify-center text-center px-6 py-8">
@@ -806,9 +806,10 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
           >
             {currentAsset?.scadCode ? (
               <>
-                {/* Toolbar */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
-                  <div className="flex items-center gap-2.5">
+                {/* Toolbar - stacked on mobile for floating tab switcher clearance */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between px-3 md:px-5 py-2 md:py-3 pt-14 md:pt-3 gap-2 md:gap-0 border-b border-white/[0.06]">
+                  {/* Row 1: View mode toggle */}
+                  <div className="flex items-center justify-center md:justify-start gap-2.5">
                     <div className="flex items-center bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.08]">
                       <button
                         onClick={() => setViewMode('code')}
@@ -830,14 +831,17 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                         }`}
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        3D Preview
+                        <span className="hidden sm:inline">3D Preview</span>
+                        <span className="sm:hidden">3D</span>
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  {/* Row 2: Action buttons */}
+                  <div className="flex items-center justify-center md:justify-end gap-1.5 md:gap-2 flex-wrap">
                     {/* History Navigation */}
                     {currentAsset?.history && currentAsset.history.length > 1 && (
-                      <div className="flex items-center gap-1 mr-2 border-r border-white/[0.08] pr-3">
+                      <div className="flex items-center gap-1 mr-1 md:mr-2 border-r border-white/[0.08] pr-2 md:pr-3">
                         <button
                           onClick={handleUndo}
                           disabled={!canUndo}
@@ -854,7 +858,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                         >
                           <Redo2 className="w-3.5 h-3.5" />
                         </button>
-                        <span className="text-[10px] text-gray-500 ml-1">
+                        <span className="text-[10px] text-gray-500 ml-1 hidden sm:inline">
                           {(currentAsset.currentHistoryIndex ?? 0) + 1}/
                           {currentAsset.history.length}
                         </span>
@@ -865,11 +869,11 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                     {viewMode === 'code' && !isEditingCode && (
                       <button
                         onClick={handleStartEdit}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
+                        className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
                         title="Edit code directly"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        Edit
+                        <span className="hidden sm:inline">Edit</span>
                       </button>
                     )}
 
@@ -878,42 +882,46 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                       <>
                         <button
                           onClick={handleSaveEdit}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg transition-colors"
+                          className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg transition-colors"
                         >
                           <Save className="w-3.5 h-3.5" />
-                          Save
+                          <span className="hidden sm:inline">Save</span>
                         </button>
                         <button
                           onClick={handleCancelEdit}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
+                          className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
                         >
                           <X className="w-3.5 h-3.5" />
-                          Cancel
+                          <span className="hidden sm:inline">Cancel</span>
                         </button>
                       </>
                     )}
 
                     <button
                       onClick={handleCopy}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
+                      className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
+                      title="Copy code"
                     >
                       {copied ? (
                         <Check className="w-3.5 h-3.5 text-emerald-400" />
                       ) : (
                         <Copy className="w-3.5 h-3.5" />
                       )}
-                      {copied ? 'Copied' : 'Copy'}
+                      <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
                     </button>
                     <button
                       onClick={handleExport}
-                      className="flex items-center gap-1.5 px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-all"
+                      className="flex items-center gap-1 md:gap-1.5 px-2 md:px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-all"
+                      title="Download for OpenSCAD"
                     >
                       {exported ? (
                         <Check className="w-3.5 h-3.5" />
                       ) : (
                         <ExternalLink className="w-3.5 h-3.5" />
                       )}
-                      {exported ? 'Downloaded' : 'Open in OpenSCAD'}
+                      <span className="hidden sm:inline">
+                        {exported ? 'Downloaded' : 'OpenSCAD'}
+                      </span>
                     </button>
                   </div>
                 </div>
