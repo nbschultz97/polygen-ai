@@ -58,7 +58,7 @@ export default function AnalyticsDashboard() {
           }, {});
 
           const stats = Object.entries(byDate)
-            .map(([date, count]) => ({ date, count }))
+            .map(([date, count]) => ({ date, count: count as number }))
             .slice(0, 7)
             .reverse();
 

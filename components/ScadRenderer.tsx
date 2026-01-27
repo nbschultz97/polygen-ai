@@ -36,7 +36,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
 
   const downloadSTL = useCallback(() => {
     if (!stlData) return;
-    const blob = new Blob([stlData], { type: 'application/octet-stream' });
+    const blob = new Blob([stlData.buffer as ArrayBuffer], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -242,7 +242,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
       setStlData(stlData);
 
       const loader = new STLLoader();
-      const geometry = loader.parse(stlData.buffer);
+      const geometry = loader.parse(stlData.buffer as ArrayBuffer);
 
       if (!geometry || !geometry.attributes.position) {
         throw new Error('Failed to parse STL geometry');

@@ -3,7 +3,7 @@
 // ============================================
 
 export interface Message {
-  role: 'user' | 'model';
+  role: 'user' | 'model' | 'assistant';
   text: string;
   isError?: boolean;
 }

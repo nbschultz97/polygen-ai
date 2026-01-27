@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => {
       SUPABASE_ANON_KEY: fileEnv.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY ||
                          fileEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
                          fileEnv.SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '',
+      // Server-side only - used by dev proxy, not exposed to frontend bundle
+      ANTHROPIC_API_KEY: fileEnv.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || '',
     };
     return {
       server: {
