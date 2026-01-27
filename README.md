@@ -1,6 +1,6 @@
 # PolyGen AI
 
-**v3.0.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md) | [Deployment Guide](DEPLOYMENT.md)
+**v3.1.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md) | [Deployment Guide](DEPLOYMENT.md)
 
 A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natural language descriptions into printable OpenSCAD code using Google Gemini (Planner) and Anthropic Claude (Coder).
 
@@ -13,6 +13,7 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 ## Features
 
 ### Core 3D Generation
+
 - **Natural Language Input** - Describe what you want to create in plain English
 - **Image-to-3D** - Upload a photo and recreate it as a printable model
 - **OpenSCAD Code Generation** - Outputs parametric, printable-ready pure OpenSCAD code
@@ -20,6 +21,7 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 - **STL Export** - Download STL files directly from the preview
 
 ### v2.2 Reliable Code Generation
+
 - **Closed-Loop Validation** - 3-attempt retry system with escalating guidance
 - **Error Categorization** - Parses errors into 7 categories with suggested fixes
 - **Pitfall Database** - 12 common OpenSCAD mistakes with bad/good examples
@@ -28,6 +30,7 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 - **Teaching Mode** - Educational comments explain OpenSCAD concepts
 
 ### Multi-Agent Pipeline (v2.0+)
+
 - **Planner Agent (Gemini 3 Pro)** - Generates Geometric Structure Tree (GST) from natural language
 - **Coder Agent (Claude Sonnet)** - Converts GST to pure OpenSCAD code
 - **Browser Validation** - WASM-based OpenSCAD compilation (fully serverless)
@@ -35,6 +38,7 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 - **Symbolic Correction** - Edit requests preserve component relationships
 
 ### SaaS Platform (v3.0+)
+
 - **User Authentication** - Email/password and Google OAuth via Supabase
 - **Subscription Tiers** - Free, Pro ($19/mo), Enterprise ($99/mo)
 - **Usage Tracking** - Generation limits enforced per tier
@@ -43,6 +47,7 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 - **Referral System** - Earn bonus generations by referring friends
 
 ### UX
+
 - **Design Templates** - 9 quick-start templates for common objects
 - **Clarification Questions** - AI asks follow-up questions with clickable suggested answers
 - **User Preferences** - Save your printer settings, tolerances, and material preferences
@@ -51,11 +56,11 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 
 ## Pricing
 
-| Plan | Price | Generations | Features |
-|------|-------|-------------|----------|
-| **Free** | $0 | 5/month | Basic templates, OpenSCAD export |
-| **Pro** | $19/month | 100/month | All templates, STL export, 3D preview, priority support |
-| **Enterprise** | $99/month | Unlimited | + API access, team features |
+| Plan           | Price     | Generations | Features                                                |
+| -------------- | --------- | ----------- | ------------------------------------------------------- |
+| **Free**       | $0        | 5/month     | Basic templates, OpenSCAD export                        |
+| **Pro**        | $19/month | 100/month   | All templates, STL export, 3D preview, priority support |
+| **Enterprise** | $99/month | Unlimited   | + API access, team features                             |
 
 ## Architecture
 
@@ -73,22 +78,26 @@ User Prompt → [Planner/Gemini] → GST JSON → [Coder/Claude] → OpenSCAD �
 **Prerequisites:** Node.js 20+
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/nbschultz97/polygen-ai.git
    cd polygen-ai
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Copy the environment template:
+
    ```bash
    cp .env.example .env.local
    ```
 
 4. Fill in your API keys in `.env.local`:
+
    ```bash
    # AI APIs (Required)
    GEMINI_API_KEY=your_gemini_key
@@ -105,6 +114,7 @@ User Prompt → [Planner/Gemini] → GST JSON → [Coder/Claude] → OpenSCAD �
    ```
 
 5. Run the app:
+
    ```bash
    npm run dev
    ```
@@ -114,6 +124,7 @@ User Prompt → [Planner/Gemini] → GST JSON → [Coder/Claude] → OpenSCAD �
 ## Deployment
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions including:
+
 - Supabase setup and database schema
 - Stripe configuration and webhook setup
 - Vercel deployment with environment variables
@@ -122,24 +133,26 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions includin
 ## Configuration
 
 ### AI Configuration
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GEMINI_API_KEY` | (required) | Google AI API key for Planner agent |
-| `GEMINI_MODEL` | `gemini-3-pro-preview` | Gemini model variant |
-| `THINKING_LEVEL` | `high` | Reasoning depth: `low`, `medium`, `high` |
-| `ANTHROPIC_API_KEY` | (optional) | Claude API key for Coder agent |
-| `USE_MULTI_AGENT` | `false` | Enable Planner→Coder→Validator pipeline |
+
+| Variable            | Default                | Description                              |
+| ------------------- | ---------------------- | ---------------------------------------- |
+| `GEMINI_API_KEY`    | (required)             | Google AI API key for Planner agent      |
+| `GEMINI_MODEL`      | `gemini-3-pro-preview` | Gemini model variant                     |
+| `THINKING_LEVEL`    | `high`                 | Reasoning depth: `low`, `medium`, `high` |
+| `ANTHROPIC_API_KEY` | (optional)             | Claude API key for Coder agent           |
+| `USE_MULTI_AGENT`   | `false`                | Enable Planner→Coder→Validator pipeline  |
 
 ### SaaS Configuration
-| Variable | Description |
-|----------|-------------|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
+
+| Variable                    | Description                             |
+| --------------------------- | --------------------------------------- |
+| `VITE_SUPABASE_URL`         | Supabase project URL                    |
+| `VITE_SUPABASE_ANON_KEY`    | Supabase anonymous key                  |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side) |
-| `STRIPE_SECRET_KEY` | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
-| `VITE_STRIPE_*_PRICE_ID` | Stripe price IDs for each plan |
-| `VITE_GA_MEASUREMENT_ID` | Google Analytics 4 ID (optional) |
+| `STRIPE_SECRET_KEY`         | Stripe secret key                       |
+| `STRIPE_WEBHOOK_SECRET`     | Stripe webhook signing secret           |
+| `VITE_STRIPE_*_PRICE_ID`    | Stripe price IDs for each plan          |
+| `VITE_GA_MEASUREMENT_ID`    | Google Analytics 4 ID (optional)        |
 
 ## Tech Stack
 
