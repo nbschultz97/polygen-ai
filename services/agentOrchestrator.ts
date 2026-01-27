@@ -62,6 +62,206 @@ export function needsFullRegeneration(prompt: string): boolean {
   return redesignPhrases.some((pattern) => pattern.test(prompt));
 }
 
+// ============================================================================
+// SOTA Interrogator - Force clarification for under-specified complex requests
+// ============================================================================
+
+// Complex mechanical part keywords that require detailed specs
+const COMPLEX_PART_KEYWORDS = [
+  'gear',
+  'thread',
+  'screw thread',
+  'metric thread',
+  'hinge',
+  'mechanism',
+  'rack and pinion',
+  'worm',
+  'helical',
+  'bevel',
+  'sprocket',
+  'cam',
+  'linkage',
+  'bearing',
+  'bushing',
+  'snap fit',
+  'living hinge',
+  'ball joint',
+];
+
+// Minimum word count for complex parts (below this = needs clarification)
+const MIN_WORDS_FOR_COMPLEX = 20;
+
+/**
+ * SOTA Interrogator: Detect under-specified complex requests
+ *
+ * Forces clarification when:
+ * 1. Prompt is short (< 20 words) AND
+ * 2. Contains complex mechanical part keywords
+ *
+ * Returns clarification questions to ask, or null if no clarification needed
+ */
+export function interrogatePrompt(prompt: string): {
+  needsClarification: boolean;
+  partType: string;
+  questions: Array<{ question: string; suggestions: string[] }>;
+} | null {
+  const words = prompt.trim().split(/\s+/).length;
+
+  // Only interrogate short prompts
+  if (words >= MIN_WORDS_FOR_COMPLEX) {
+    return null;
+  }
+
+  // Check for complex part keywords
+  const lowerPrompt = prompt.toLowerCase();
+  const matchedKeyword = COMPLEX_PART_KEYWORDS.find((kw) => lowerPrompt.includes(kw));
+
+  if (!matchedKeyword) {
+    return null;
+  }
+
+  console.log(
+    `Interrogator: Detected under-specified complex part "${matchedKeyword}" (${words} words < ${MIN_WORDS_FOR_COMPLEX})`
+  );
+
+  // Generate context-specific clarification questions
+  const questions = generateInterrogatorQuestions(matchedKeyword);
+
+  return {
+    needsClarification: true,
+    partType: matchedKeyword,
+    questions,
+  };
+}
+
+/**
+ * Generate clarification questions based on the type of complex part
+ */
+function generateInterrogatorQuestions(
+  partType: string
+): Array<{ question: string; suggestions: string[] }> {
+  const commonQuestions = [
+    {
+      question: 'What are the overall dimensions?',
+      suggestions: ['Small (< 50mm)', 'Medium (50-100mm)', 'Large (> 100mm)', 'Custom...'],
+    },
+  ];
+
+  switch (partType) {
+    case 'gear':
+      return [
+        {
+          question: 'What type of gear do you need?',
+          suggestions: ['Spur gear', 'Helical gear', 'Bevel gear', 'Rack and pinion'],
+        },
+        {
+          question: 'How many teeth?',
+          suggestions: ['12 teeth', '24 teeth', '36 teeth', 'Custom...'],
+        },
+        {
+          question: 'What module (tooth size)?',
+          suggestions: ['Module 1 (small)', 'Module 2 (medium)', 'Module 3 (large)', 'Custom...'],
+        },
+        {
+          question: 'What is the bore (center hole) diameter?',
+          suggestions: ['5mm', '8mm', '10mm', 'No hole'],
+        },
+      ];
+
+    case 'thread':
+    case 'screw thread':
+    case 'metric thread':
+      return [
+        {
+          question: 'What thread size?',
+          suggestions: ['M3', 'M4', 'M5', 'M6', 'M8', 'Custom...'],
+        },
+        {
+          question: 'Thread type?',
+          suggestions: ['External (bolt)', 'Internal (nut)', 'Both (threaded rod)'],
+        },
+        {
+          question: 'Thread length?',
+          suggestions: ['10mm', '20mm', '30mm', 'Custom...'],
+        },
+      ];
+
+    case 'hinge':
+    case 'living hinge':
+      return [
+        {
+          question: 'What type of hinge?',
+          suggestions: ['Living hinge (flexible)', 'Pin hinge (separate parts)', 'Piano hinge'],
+        },
+        {
+          question: 'How wide should the hinge be?',
+          suggestions: ['20mm', '40mm', '60mm', 'Custom...'],
+        },
+        {
+          question: 'What angle range is needed?',
+          suggestions: ['90° (door)', '180° (fold flat)', '270° (wrap around)'],
+        },
+      ];
+
+    case 'mechanism':
+    case 'linkage':
+      return [
+        {
+          question: 'What should this mechanism do?',
+          suggestions: ['Linear motion', 'Rotary motion', 'Oscillating motion', 'Custom...'],
+        },
+        {
+          question: 'What are the input and output?',
+          suggestions: ['Manual input', 'Motor driven', 'Spring loaded'],
+        },
+        ...commonQuestions,
+      ];
+
+    case 'snap fit':
+      return [
+        {
+          question: 'What type of snap fit?',
+          suggestions: ['Cantilever (most common)', 'Annular (ring)', 'Torsional'],
+        },
+        {
+          question: 'Should it be permanent or removable?',
+          suggestions: ['Permanent', 'Removable (easy release)', 'Semi-permanent'],
+        },
+        {
+          question: 'Wall thickness of mating parts?',
+          suggestions: ['1.5mm', '2mm', '3mm', 'Custom...'],
+        },
+      ];
+
+    case 'bearing':
+    case 'bushing':
+      return [
+        {
+          question: 'What shaft diameter?',
+          suggestions: ['5mm', '8mm', '10mm', 'Custom...'],
+        },
+        {
+          question: 'Bearing type?',
+          suggestions: ['Plain bushing', 'Ball bearing race', 'Flanged'],
+        },
+        ...commonQuestions,
+      ];
+
+    default:
+      return [
+        {
+          question: `What specific features do you need for the ${partType}?`,
+          suggestions: ['Standard design', 'Heavy duty', 'Compact', 'Custom...'],
+        },
+        ...commonQuestions,
+        {
+          question: 'What material will you print this in?',
+          suggestions: ['PLA', 'PETG', 'ABS', 'Nylon'],
+        },
+      ];
+  }
+}
+
 /**
  * Helper to add a history entry to an asset
  * Maintains undo/redo capability by tracking code versions
@@ -143,6 +343,7 @@ export interface OrchestratorInput {
 /**
  * Main orchestration function - uses unified or multi-agent pipeline
  * SOTA Complexity Router: Forces Multi-Agent (GST) pipeline for complex designs
+ * SOTA Interrogator: Forces clarification for under-specified complex requests
  * Source: Sadik et al. (2025) - GST improves fidelity from 44.6% to 75.6%
  */
 export async function orchestrateGeneration(
@@ -150,6 +351,27 @@ export async function orchestrateGeneration(
   callbacks: OrchestratorCallbacks,
   abortSignal?: AbortSignal
 ): Promise<GeneratedAsset> {
+  // SOTA Interrogator: Force clarification for under-specified complex requests
+  // If prompt is short (< 20 words) AND contains complex part keywords,
+  // return clarification questions before attempting generation
+  if (!input.isEdit && !input.existingAsset?.scadCode) {
+    const interrogation = interrogatePrompt(input.userPrompt);
+    if (interrogation) {
+      console.log(
+        `Orchestrator: Interrogator triggered for under-specified "${interrogation.partType}"`
+      );
+
+      // Return asset with clarification questions
+      const asset: GeneratedAsset = {
+        clarifications: interrogation.questions,
+        specSummary: [`Complex ${interrogation.partType} - awaiting specifications`],
+      };
+
+      callbacks.onStepChange('spec-review');
+      return asset;
+    }
+  }
+
   // SOTA Complexity Router: Detect complex requests that need structural planning
   // These keywords indicate designs that benefit from GST intermediate format
   // Semantic complexity detection:
@@ -648,6 +870,7 @@ export const agentOrchestrator = {
   redoHistory,
   navigateHistory,
   needsFullRegeneration,
+  interrogatePrompt,
 };
 
 export default agentOrchestrator;

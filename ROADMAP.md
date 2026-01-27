@@ -2,7 +2,7 @@
 
 This document outlines planned features and improvements for PolyGen AI, informed by deep technical research on AI-driven CAD generation.
 
-## Current Version: 3.0.0
+## Current Version: 3.4.0
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architecture decisions.
@@ -10,6 +10,18 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 ---
 
 ## Completed
+
+### v3.4.0 - SOTA Architecture
+
+- [x] 3-Tier Library System with tactical.scad (Picatinny/MOLLE modules)
+- [x] WASM filesystem library mounting
+- [x] Visual Critic with Claude Vision integration
+- [x] Diff-based code editing (fixBrokenModule, smartFix)
+- [x] Projection guard for 2D operations
+- [x] Interrogator for under-specified complex prompts
+- [x] Benchmark suite with 10 golden set prompts (Sv/Sd metrics)
+- [x] GitHub library scraper service
+- [x] Refactoring agent for code cleanup
 
 ### v3.0.0 - SaaS Platform
 
@@ -76,7 +88,7 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 
 - [ ] Two-phase validation: preview() for iteration, render() for export
 - [ ] Parallel variation generation (3 candidates, pick best)
-- [ ] Visual feedback loop (render PNG → feed back to VLM)
+- [x] Visual feedback loop (render PNG → feed back to VLM) ✅ v3.4.0
 
 ### Enhanced Error Recovery
 
@@ -98,13 +110,13 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 
 ### Visual Reasoning
 
-- [ ] VLM component assignment (90.6% user preference in research)
+- [x] VLM component assignment (90.6% user preference in research) ✅ v3.4.0 Visual Critic
 - [ ] Image-to-GST direct conversion
 - [ ] Sketch-to-Prototype support (hand-drawn → CAD)
 
 ### Symbolic Patching
 
-- [ ] Diff-based code updates (preserve token context)
+- [x] Diff-based code updates (preserve token context) ✅ v3.4.0
 - [ ] Variable-level edits without full regeneration
 - [ ] GST-aware parameter propagation
 

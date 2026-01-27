@@ -5,6 +5,31 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2026-01-27
+
+### Added
+
+- **3-Tier Library System**: Built-in tactical library (`tactical.scad`) automatically mounted in WASM filesystem at `/libraries/`. Use with `use <libraries/tactical.scad>`. Includes MIL-STD-1913 Picatinny rail and TW-PL-507F MOLLE clip modules with proper specifications
+- **Visual Critic Service**: Claude Vision integration for post-render visual analysis. Detects inverted text, disconnected parts, scale mismatches, and other visual issues that geometric validation misses
+- **Diff-Based Editing**: New `fixBrokenModule()` and `smartFix()` functions in coderService.ts. On validation error, requests only the broken module and patches it back, reducing token usage and preserving working code
+- **Projection Guard**: Detects 2D projection operations (laser cutting, DXF export) and returns user-friendly error explaining these aren't supported in browser WASM
+- **Interrogator System**: Detects under-specified complex prompts (gears, threads, hinges, mechanisms, snap-fits, bearings) with <20 words and returns targeted clarification questions before generation
+- **Benchmark Suite**: Golden set with 10 hard prompts (snap-fit lid, rack and pinion, living hinge, threaded cap, ball bearing holder, cam mechanism, dovetail joint, spring clip, planetary gear, picatinny phone mount). Measures Sv (volumetric similarity) and Sd (dimensional accuracy)
+- **GitHub Library Scraper**: `librarySearchService.ts` discovers external OpenSCAD libraries from GitHub based on prompt keywords
+- **Refactoring Agent**: `refactoringAgent.ts` strips top-level geometry, parameterizes magic numbers, and validates scraped library modules for compatibility
+
+### Technical
+
+- Created `public/libraries/tactical.scad` with 9 modules: `picatinny_rail()`, `picatinny_rail_male()`, `picatinny_groove()`, `molle_clip()`, `molle_adapter_plate()`, `picatinny_molle_adapter()`, `rcube()`, `counterbore()`, `tube()`
+- Updated `openscadLoader.ts` with library caching, WASM filesystem mounting, and `checkForProjection()` guard
+- Added `visualCriticService.ts` with canvas screenshot capture and Claude Vision API integration
+- Updated `validatorClient.ts` with `validateWithVisualCritic()` function
+- Added `interrogatePrompt()` and `generateInterrogatorQuestions()` to agentOrchestrator.ts
+- Created `tests/benchmark/goldenSet.json` and `benchmarkRunner.ts` with Sv/Sd calculation algorithms
+- Updated system prompts in unifiedGeneratorService.ts and coderService.ts with library signatures (not full code)
+
+---
+
 ## [3.3.1] - 2026-01-27
 
 ### Fixed

@@ -1,0 +1,247 @@
+{
+  "version": "1.0.0",
+  "description": "Golden set of hard prompts for benchmarking SOTA success rate and volumetric similarity (Sv)",
+  "metrics": {
+    "Sv": "Volumetric Similarity - IoU of generated vs target bounding boxes",
+    "Sd": "Dimensional Accuracy - 1 - |Dg - Dt| / Dg per axis",
+    "successRate": "Percentage of prompts that compile without errors"
+  },
+  "thresholds": {
+    "Sv_pass": 0.7,
+    "Sd_pass": 0.8,
+    "successRate_target": 0.75
+  },
+  "prompts": [
+    {
+      "id": "snap-fit-lid",
+      "category": "snap_fit",
+      "difficulty": "hard",
+      "prompt": "Create a snap-fit lid for a 60mm diameter cylindrical container with 2mm wall thickness",
+      "expectedFeatures": [
+        "circular lid geometry",
+        "snap-fit lip/rim",
+        "clearance for container wall",
+        "detent or catch mechanism"
+      ],
+      "targetDimensions": {
+        "diameter": 64,
+        "height": 8,
+        "wallThickness": 2,
+        "tolerance": 0.3
+      },
+      "targetBoundingBox": {
+        "min": [-32, -32, 0],
+        "max": [32, 32, 8]
+      },
+      "criticalParams": ["snap_clearance", "lid_overlap", "detent_depth"]
+    },
+    {
+      "id": "rack-and-pinion",
+      "category": "gear",
+      "difficulty": "very_hard",
+      "prompt": "Create a rack and pinion gear set with module 2 and 12 teeth on the pinion",
+      "expectedFeatures": [
+        "involute tooth profile",
+        "proper gear mesh",
+        "rack with matching pitch",
+        "mounting holes"
+      ],
+      "targetDimensions": {
+        "pinionDiameter": 28,
+        "rackLength": 80,
+        "module": 2,
+        "toothCount": 12
+      },
+      "targetBoundingBox": {
+        "min": [-14, -40, 0],
+        "max": [14, 40, 10]
+      },
+      "criticalParams": ["module", "pressure_angle", "tooth_count", "addendum", "dedendum"]
+    },
+    {
+      "id": "living-hinge",
+      "category": "hinge",
+      "difficulty": "hard",
+      "prompt": "Create a box with a living hinge that opens 180 degrees, 50mm x 30mm x 20mm",
+      "expectedFeatures": [
+        "thin flexible hinge section",
+        "proper hinge geometry for PLA/PETG",
+        "box with lid attached",
+        "hinge rated for 180 degree bend"
+      ],
+      "targetDimensions": {
+        "length": 50,
+        "width": 30,
+        "height": 20,
+        "hingeThickness": 0.4
+      },
+      "targetBoundingBox": {
+        "min": [0, 0, 0],
+        "max": [50, 30, 40]
+      },
+      "criticalParams": ["hinge_thickness", "hinge_length", "relief_cuts"]
+    },
+    {
+      "id": "threaded-cap",
+      "category": "thread",
+      "difficulty": "hard",
+      "prompt": "Create a threaded bottle cap with M30x3 threads that screws onto a bottle neck",
+      "expectedFeatures": [
+        "metric thread profile",
+        "proper thread pitch",
+        "knurled grip exterior",
+        "sealing lip"
+      ],
+      "targetDimensions": {
+        "outerDiameter": 35,
+        "innerDiameter": 30,
+        "threadPitch": 3,
+        "height": 15
+      },
+      "targetBoundingBox": {
+        "min": [-17.5, -17.5, 0],
+        "max": [17.5, 17.5, 15]
+      },
+      "criticalParams": ["thread_pitch", "thread_depth", "thread_angle", "clearance"]
+    },
+    {
+      "id": "ball-bearing-holder",
+      "category": "bearing",
+      "difficulty": "hard",
+      "prompt": "Create a holder for a 608 bearing (22mm OD, 8mm ID, 7mm thick) with press-fit tolerance",
+      "expectedFeatures": [
+        "precise bearing pocket",
+        "press-fit interference",
+        "mounting flange",
+        "shaft clearance hole"
+      ],
+      "targetDimensions": {
+        "bearingOD": 22,
+        "bearingID": 8,
+        "bearingThickness": 7,
+        "flangeOD": 35,
+        "interference": 0.1
+      },
+      "targetBoundingBox": {
+        "min": [-17.5, -17.5, 0],
+        "max": [17.5, 17.5, 10]
+      },
+      "criticalParams": ["pocket_diameter", "interference_fit", "shaft_clearance"]
+    },
+    {
+      "id": "cam-mechanism",
+      "category": "mechanism",
+      "difficulty": "very_hard",
+      "prompt": "Create an eccentric cam with a follower that provides 10mm of linear motion",
+      "expectedFeatures": [
+        "eccentric cam profile",
+        "follower with flat or roller contact",
+        "shaft bore",
+        "smooth motion profile"
+      ],
+      "targetDimensions": {
+        "camDiameter": 40,
+        "eccentricity": 5,
+        "followerTravel": 10,
+        "shaftDiameter": 8
+      },
+      "targetBoundingBox": {
+        "min": [-25, -25, 0],
+        "max": [25, 25, 20]
+      },
+      "criticalParams": ["eccentricity", "cam_profile", "follower_contact"]
+    },
+    {
+      "id": "dovetail-joint",
+      "category": "joinery",
+      "difficulty": "medium",
+      "prompt": "Create interlocking dovetail joint pieces, 40mm wide with 15 degree angle",
+      "expectedFeatures": [
+        "male dovetail profile",
+        "female dovetail socket",
+        "proper angle for wood/plastic",
+        "slide-fit clearance"
+      ],
+      "targetDimensions": {
+        "width": 40,
+        "depth": 20,
+        "angle": 15,
+        "clearance": 0.2
+      },
+      "targetBoundingBox": {
+        "min": [0, 0, 0],
+        "max": [40, 40, 20]
+      },
+      "criticalParams": ["dovetail_angle", "clearance", "depth"]
+    },
+    {
+      "id": "spring-clip",
+      "category": "snap_fit",
+      "difficulty": "hard",
+      "prompt": "Create a spring-loaded belt clip that attaches to a 40mm wide belt",
+      "expectedFeatures": [
+        "spring arm geometry",
+        "belt channel",
+        "retention bump",
+        "mounting plate"
+      ],
+      "targetDimensions": {
+        "beltWidth": 40,
+        "beltThickness": 4,
+        "clipDepth": 15,
+        "springDeflection": 3
+      },
+      "targetBoundingBox": {
+        "min": [0, 0, 0],
+        "max": [50, 25, 20]
+      },
+      "criticalParams": ["spring_arm_thickness", "deflection", "retention_angle"]
+    },
+    {
+      "id": "planetary-gear",
+      "category": "gear",
+      "difficulty": "very_hard",
+      "prompt": "Create a planetary gear set with 3 planet gears, sun gear with 12 teeth, module 1.5",
+      "expectedFeatures": [
+        "sun gear centered",
+        "3 planet gears evenly spaced",
+        "ring gear with internal teeth",
+        "proper gear ratios"
+      ],
+      "targetDimensions": {
+        "sunTeeth": 12,
+        "planetTeeth": 9,
+        "ringTeeth": 30,
+        "module": 1.5
+      },
+      "targetBoundingBox": {
+        "min": [-25, -25, 0],
+        "max": [25, 25, 8]
+      },
+      "criticalParams": ["module", "sun_teeth", "planet_teeth", "ring_teeth", "carrier_radius"]
+    },
+    {
+      "id": "picatinny-phone-mount",
+      "category": "tactical",
+      "difficulty": "medium",
+      "prompt": "Create a phone mount that attaches to a Picatinny rail, for a phone 75mm wide",
+      "expectedFeatures": [
+        "MIL-STD-1913 Picatinny interface",
+        "phone cradle with adjustable grip",
+        "tilt mechanism",
+        "secure locking"
+      ],
+      "targetDimensions": {
+        "phoneWidth": 75,
+        "railSlots": 3,
+        "tiltAngle": 45
+      },
+      "targetBoundingBox": {
+        "min": [-40, -20, 0],
+        "max": [40, 30, 60]
+      },
+      "criticalParams": ["picatinny_groove_width", "phone_cradle_width", "retention_force"],
+      "usesLibrary": "tactical.scad"
+    }
+  ]
+}
