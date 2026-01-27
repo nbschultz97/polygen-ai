@@ -26,6 +26,8 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const prevCodeRef = useRef<string>('');
+  const hasAutoRenderedRef = useRef(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
   const [isDirty, setIsDirty] = useState(true);
   const [renderStats, setRenderStats] = useState<{ time: number; vertices: number } | null>(null);
   const [stlData, setStlData] = useState<Uint8Array | null>(null);
+  const [complexityWarning, setComplexityWarning] = useState<string | null>(null);
 
   const downloadSTL = useCallback(() => {
     if (!stlData) return;
@@ -154,17 +157,75 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
     );
   }, []);
 
+  // Complexity analysis to prevent browser hangs
+  const analyzeComplexity = useCallback(
+    (
+      scadCode: string
+    ): {
+      hasDangerousComplexity: boolean;
+      hasThreading: boolean;
+      maxFn: number;
+      warning?: string;
+    } => {
+      // Detect explicit high $fn values (e.g., $fn=128, $fn = 200)
+      const fnMatches = scadCode.match(/\$fn\s*[=:]\s*(\d+)/gi) || [];
+      const fnValues = fnMatches.map((m) => parseInt(m.replace(/\$fn\s*[=:]\s*/i, ''), 10));
+      const maxFn = fnValues.length > 0 ? Math.max(...fnValues) : 0;
+
+      // Detect threading patterns that generate many triangles
+      const hasThreading = /thread|screw_thread|metric_thread|knurl|gear_tooth/i.test(scadCode);
+
+      // Detect high sphere/cylinder counts with high $fn
+      const hasManyCircularOps =
+        (scadCode.match(/sphere|cylinder|circle|rotate_extrude/gi) || []).length > 20;
+
+      const hasDangerousComplexity =
+        maxFn > 100 || (hasThreading && maxFn > 64) || (hasManyCircularOps && maxFn > 64);
+
+      let warning: string | undefined;
+      if (hasDangerousComplexity) {
+        if (maxFn > 100) {
+          warning = `High resolution detected ($fn=${maxFn}). Rendering may be slow.`;
+        } else if (hasThreading) {
+          warning = 'Threading detected with high resolution. Applying safe settings.';
+        }
+      }
+
+      return { hasDangerousComplexity, hasThreading, maxFn, warning };
+    },
+    []
+  );
+
   const compileAndRender = useCallback(async () => {
     if (!code || !code.trim() || loading) return;
 
-    // MOBILE GUARD: Inject low-poly settings to prevent crashing
-    const renderCode = isMobile()
-      ? `$fn=32; $fs=0.5; $fa=5; // MOBILE GUARD ACTIVE\n` + code
-      : code;
+    // Analyze complexity before rendering
+    const complexity = analyzeComplexity(code);
+    const mobile = isMobile();
+
+    // Smart complexity guard: Apply safe settings based on device AND code complexity
+    let renderCode = code;
+    let activeWarning: string | null = null;
+
+    if (mobile) {
+      // Mobile: Always use safe settings, extra conservative for threading
+      const safeFn = complexity.hasThreading ? 24 : 32;
+      renderCode = `$fn=${safeFn}; $fs=0.5; $fa=5; // MOBILE GUARD ACTIVE\n` + code;
+      if (complexity.hasThreading) {
+        activeWarning = 'Mobile + threading: using $fn=24 for stability';
+      }
+    } else if (complexity.hasDangerousComplexity) {
+      // Desktop with dangerous complexity: Cap at reasonable values
+      const cappedFn = complexity.hasThreading ? 48 : 64;
+      renderCode = `$fn=${cappedFn}; $fs=0.3; $fa=3; // COMPLEXITY GUARD ACTIVE\n` + code;
+      activeWarning = complexity.warning || 'Complexity reduced for stability';
+      console.warn('Complexity guard activated:', activeWarning);
+    }
 
     const startTime = performance.now();
     setLoading(true);
     setError(null);
+    setComplexityWarning(activeWarning);
 
     let errorLog = '';
     let instance: any = null;
@@ -330,6 +391,23 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
     return () => clearTimeout(timer);
   }, [code, autoUpdate, isDirty, compileAndRender]);
 
+  // Auto-render on first code generation (when code goes from empty to having content)
+  // This makes the 3D preview show automatically after initial generation
+  useEffect(() => {
+    const prevCode = prevCodeRef.current;
+    prevCodeRef.current = code;
+
+    // Only auto-render once when we first receive code
+    if (code && code.trim() && !prevCode && !hasAutoRenderedRef.current && !loading) {
+      hasAutoRenderedRef.current = true;
+      // Small delay to ensure scene is ready
+      const timer = setTimeout(() => {
+        compileAndRender();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [code, loading, compileAndRender]);
+
   return (
     <div className="relative w-full h-full bg-[#0f172a] overflow-hidden group font-sans">
       <div ref={containerRef} className="w-full h-full" />
@@ -396,6 +474,12 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
                   {renderStats.vertices.toLocaleString()}
                 </span>
               </div>
+              {complexityWarning && (
+                <div className="flex items-center gap-1.5 text-amber-400 pt-1">
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                  <span className="text-[9px]">{complexityWarning}</span>
+                </div>
+              )}
             </div>
             {stlData && (
               <button

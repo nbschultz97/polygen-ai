@@ -264,9 +264,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                     ...prev,
                     {
                       role: 'model',
-                      text: 'Done! Your OpenSCAD code is ready. Click **Open in OpenSCAD** to edit and render it.',
+                      text: 'Done! Your 3D model is rendering now. Switch to the **3D Preview** tab to see it.',
                     },
                   ]);
+                  // Auto-switch to 3D view on successful generation
+                  setViewMode('3d');
+                  if (isMobile) {
+                    setMobileTab('preview');
+                  }
                 } else {
                   setMessages((prev) => [
                     ...prev,

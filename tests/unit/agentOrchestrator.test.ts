@@ -56,6 +56,8 @@ vi.mock('../../services/previewImageService', () => ({
   },
 }));
 
+import { coderService } from '../../services/coderService';
+import { plannerService } from '../../services/plannerService';
 import { previewImageService } from '../../services/previewImageService';
 import { analyzeForQuickFixes } from '../../services/quickFixAnalyzer';
 import { unifiedGeneratorService } from '../../services/unifiedGeneratorService';
@@ -68,7 +70,24 @@ describe('Agent Orchestrator', () => {
     vi.clearAllMocks();
     mockCallbacks = createMockCallbacks();
 
-    // Default mock for unified generator (used by default pipeline)
+    // Default mock for multi-agent pipeline (now the default)
+    // Planner returns GST
+    vi.mocked(plannerService.generateGST).mockResolvedValue({
+      needsClarification: false,
+      gst: mockGST,
+    });
+
+    // Coder returns SCAD code
+    vi.mocked(coderService.generateCode).mockResolvedValue({
+      scadCode: mockScadCode,
+    });
+
+    // Edit mode uses editCode
+    vi.mocked(coderService.editCode).mockResolvedValue({
+      scadCode: mockScadCode,
+    });
+
+    // Also mock unified generator for fallback tests
     vi.mocked(unifiedGeneratorService.generate).mockResolvedValue({
       gst: mockGST,
       scadCode: mockScadCode,
@@ -81,17 +100,18 @@ describe('Agent Orchestrator', () => {
 
   describe('orchestrateGeneration - New Generation Flow', () => {
     it('should complete full pipeline successfully', async () => {
-      // Uses default mocks from beforeEach (unifiedGeneratorService + validatorClient)
+      // Uses default mocks from beforeEach (multi-agent pipeline)
       const input: OrchestratorInput = {
         userPrompt: 'Create a simple box',
       };
 
       const result = await orchestrateGeneration(input, mockCallbacks);
 
-      // Unified pipeline produces code directly (GST is optional)
+      // Multi-agent pipeline: planner → coder → validator
       expect(result.scadCode).toBe(mockScadCode);
       expect(result.validationResult?.success).toBe(true);
-      expect(unifiedGeneratorService.generate).toHaveBeenCalled();
+      expect(plannerService.generateGST).toHaveBeenCalled();
+      expect(coderService.generateCode).toHaveBeenCalled();
     });
 
     it('should call callbacks in correct order', async () => {
@@ -102,14 +122,14 @@ describe('Agent Orchestrator', () => {
 
       await orchestrateGeneration(input, mockCallbacks);
 
-      // Unified pipeline calls onCodeGenerated and onValidationComplete
+      // Multi-agent pipeline calls onCodeGenerated and onValidationComplete
       expect(mockCallbacks.onCodeGenerated).toHaveBeenCalledWith(mockScadCode);
       expect(mockCallbacks.onValidationComplete).toHaveBeenCalledWith(mockValidationSuccess);
     });
 
     it('should handle clarification needed', async () => {
-      // Mock unified service to return clarification needed
-      vi.mocked(unifiedGeneratorService.generate).mockResolvedValueOnce({
+      // Mock planner to return clarification needed
+      vi.mocked(plannerService.generateGST).mockResolvedValueOnce({
         needsClarification: true,
         clarifications: [{ question: 'What size?', suggestions: ['Small', 'Medium', 'Large'] }],
       });
@@ -138,8 +158,6 @@ describe('Agent Orchestrator', () => {
     });
   });
 
-  // TODO: These tests need to be updated for unified pipeline
-  // The unified pipeline doesn't use separate plannerService/coderService
   describe('orchestrateGeneration - Edit Mode', () => {
     it('should handle edit mode with existing asset', async () => {
       const input: OrchestratorInput = {
@@ -153,9 +171,9 @@ describe('Agent Orchestrator', () => {
 
       const result = await orchestrateGeneration(input, mockCallbacks);
 
-      expect(unifiedGeneratorService.generate).toHaveBeenCalledWith(
+      // Edit mode uses coderService.editCode
+      expect(coderService.editCode).toHaveBeenCalledWith(
         expect.objectContaining({
-          isEdit: true,
           existingCode: 'cube([10, 10, 10]);',
         }),
         undefined
@@ -172,21 +190,17 @@ describe('Agent Orchestrator', () => {
 
       await orchestrateGeneration(input, mockCallbacks);
 
-      // Should still call unified generator
-      expect(unifiedGeneratorService.generate).toHaveBeenCalled();
+      // Should fall back to normal generation flow
+      expect(plannerService.generateGST).toHaveBeenCalled();
     });
   });
 
   describe('orchestrateGeneration - Retry Logic', () => {
     it('should retry on validation failure', async () => {
       // First attempt fails validation, second succeeds
-      vi.mocked(unifiedGeneratorService.generate)
-        .mockResolvedValueOnce({
-          gst: mockGST,
-          scadCode: 'invalid code',
-          needsClarification: false,
-        })
-        .mockResolvedValueOnce({ gst: mockGST, scadCode: mockScadCode, needsClarification: false });
+      vi.mocked(coderService.generateCode)
+        .mockResolvedValueOnce({ scadCode: 'invalid code' })
+        .mockResolvedValueOnce({ scadCode: mockScadCode });
 
       vi.mocked(validatorClient.validate)
         .mockResolvedValueOnce(mockValidationFailure)
@@ -198,14 +212,14 @@ describe('Agent Orchestrator', () => {
 
       const result = await orchestrateGeneration(input, mockCallbacks);
 
-      expect(unifiedGeneratorService.generate).toHaveBeenCalledTimes(2);
+      expect(coderService.generateCode).toHaveBeenCalledTimes(2);
       expect(result.validationResult?.success).toBe(true);
     });
 
     it('should pass validation errors on retry', async () => {
-      vi.mocked(unifiedGeneratorService.generate)
-        .mockResolvedValueOnce({ gst: mockGST, scadCode: 'invalid', needsClarification: false })
-        .mockResolvedValueOnce({ gst: mockGST, scadCode: mockScadCode, needsClarification: false });
+      vi.mocked(coderService.generateCode)
+        .mockResolvedValueOnce({ scadCode: 'invalid' })
+        .mockResolvedValueOnce({ scadCode: mockScadCode });
 
       vi.mocked(validatorClient.validate)
         .mockResolvedValueOnce(mockValidationFailure)
@@ -218,7 +232,7 @@ describe('Agent Orchestrator', () => {
       await orchestrateGeneration(input, mockCallbacks);
 
       // Second call should include validation errors
-      expect(unifiedGeneratorService.generate).toHaveBeenLastCalledWith(
+      expect(coderService.generateCode).toHaveBeenLastCalledWith(
         expect.objectContaining({
           validationErrors: expect.arrayContaining([expect.stringMatching(/Compilation Failed/i)]),
         }),
@@ -227,11 +241,7 @@ describe('Agent Orchestrator', () => {
     });
 
     it('should stop after MAX_RETRY_ATTEMPTS', async () => {
-      vi.mocked(unifiedGeneratorService.generate).mockResolvedValue({
-        gst: mockGST,
-        scadCode: 'bad code',
-        needsClarification: false,
-      });
+      vi.mocked(coderService.generateCode).mockResolvedValue({ scadCode: 'bad code' });
       vi.mocked(validatorClient.validate).mockResolvedValue(mockValidationFailure);
 
       const input: OrchestratorInput = {
@@ -240,7 +250,7 @@ describe('Agent Orchestrator', () => {
 
       const result = await orchestrateGeneration(input, mockCallbacks);
 
-      expect(unifiedGeneratorService.generate).toHaveBeenCalled();
+      expect(coderService.generateCode).toHaveBeenCalled();
       expect(result.validationResult?.success).toBe(false);
     });
   });
@@ -249,7 +259,7 @@ describe('Agent Orchestrator', () => {
     it('should throw on abort during generation', async () => {
       const controller = new AbortController();
 
-      vi.mocked(unifiedGeneratorService.generate).mockImplementation(async () => {
+      vi.mocked(plannerService.generateGST).mockImplementation(async () => {
         controller.abort();
         throw new DOMException('Aborted', 'AbortError');
       });
@@ -281,7 +291,7 @@ describe('Agent Orchestrator', () => {
     it('should call onError callback on generation failure', async () => {
       const error = new Error('Generation failed');
       // Reject for all retry attempts
-      vi.mocked(unifiedGeneratorService.generate).mockRejectedValue(error);
+      vi.mocked(plannerService.generateGST).mockRejectedValue(error);
 
       const input: OrchestratorInput = {
         userPrompt: 'Create a box',
@@ -385,7 +395,8 @@ describe('Agent Orchestrator', () => {
 
       await orchestrateGeneration(input, mockCallbacks);
 
-      expect(unifiedGeneratorService.generate).toHaveBeenCalledWith(
+      // Multi-agent passes image data to planner
+      expect(plannerService.generateGST).toHaveBeenCalledWith(
         expect.objectContaining({
           imageData,
         }),
@@ -405,7 +416,8 @@ describe('Agent Orchestrator', () => {
 
       await orchestrateGeneration(input, mockCallbacks);
 
-      expect(unifiedGeneratorService.generate).toHaveBeenCalledWith(
+      // Multi-agent passes conversation history to planner
+      expect(plannerService.generateGST).toHaveBeenCalledWith(
         expect.objectContaining({
           conversationHistory: history,
         }),

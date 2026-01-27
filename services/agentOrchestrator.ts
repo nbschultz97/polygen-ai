@@ -24,13 +24,15 @@ import type {
   CodeHistoryEntry,
 } from '../types';
 
-// Use unified pipeline by default (single Claude call)
+// Use multi-agent pipeline by default for better success rate (75% vs 44%)
+// Research shows GST intermediate format significantly improves complex designs
 // For Vite builds, use import.meta.env; for Node, use process.env
-const USE_MULTI_AGENT =
+const USE_UNIFIED_ONLY =
   typeof import.meta !== 'undefined'
-    ? (import.meta as any).env?.VITE_USE_MULTI_AGENT === 'true'
-    : process.env.USE_MULTI_AGENT === 'true';
-const USE_UNIFIED_PIPELINE = !USE_MULTI_AGENT;
+    ? (import.meta as any).env?.VITE_USE_UNIFIED_PIPELINE === 'true'
+    : process.env.USE_UNIFIED_PIPELINE === 'true';
+const USE_UNIFIED_PIPELINE = USE_UNIFIED_ONLY;
+const USE_MULTI_AGENT = !USE_UNIFIED_ONLY;
 
 const MAX_RETRY_ATTEMPTS = 3; // Increased from 2 for better error recovery
 
@@ -527,8 +529,8 @@ async function orchestrateMultiAgent(
  * API keys are server-side only; availability determined by USE_MULTI_AGENT flag
  */
 export function isMultiAgentAvailable(): boolean {
-  // Always available - unified pipeline is the default
-  return true;
+  // Multi-agent is now the default for better success rate
+  return USE_MULTI_AGENT;
 }
 
 /**
