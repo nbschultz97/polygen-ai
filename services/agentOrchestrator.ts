@@ -1,11 +1,15 @@
 /**
  * Agent Orchestrator
- * Coordinates the multi-agent pipeline: Planner -> Coder -> Validator
- * Enhanced with closed-loop validation feedback for reliable code generation
+ * Supports two pipelines:
+ * 1. UNIFIED (default): Single Claude call for planning + coding
+ * 2. MULTI-AGENT: Separate Gemini (planner) + Claude (coder) calls
+ *
+ * Unified pipeline is faster and more reliable (no translation loss)
  */
 
 import { plannerService } from './plannerService';
 import { coderService } from './coderService';
+import { unifiedGeneratorService } from './unifiedGeneratorService';
 import { validatorClient } from './validatorClient';
 import { analyzeForQuickFixes } from './quickFixAnalyzer';
 import { previewImageService } from './previewImageService';
@@ -19,6 +23,10 @@ import type {
   OrchestratorCallbacks,
   CodeHistoryEntry,
 } from '../types';
+
+// Use unified pipeline by default (single Claude call)
+// Set USE_MULTI_AGENT=true to use separate Gemini + Claude calls
+const USE_UNIFIED_PIPELINE = process.env.USE_MULTI_AGENT !== 'true';
 
 const MAX_RETRY_ATTEMPTS = 3; // Increased from 2 for better error recovery
 
@@ -101,9 +109,157 @@ export interface OrchestratorInput {
 }
 
 /**
- * Main orchestration function - runs the full multi-agent pipeline
+ * Main orchestration function - uses unified or multi-agent pipeline
  */
 export async function orchestrateGeneration(
+  input: OrchestratorInput,
+  callbacks: OrchestratorCallbacks,
+  abortSignal?: AbortSignal
+): Promise<GeneratedAsset> {
+  // Use unified pipeline by default (faster, more reliable)
+  if (USE_UNIFIED_PIPELINE) {
+    return orchestrateUnified(input, callbacks, abortSignal);
+  }
+
+  // Fall back to multi-agent pipeline if configured
+  return orchestrateMultiAgent(input, callbacks, abortSignal);
+}
+
+/**
+ * Unified pipeline - single Claude call for planning + coding
+ * Faster and more reliable (no GST translation overhead)
+ */
+async function orchestrateUnified(
+  input: OrchestratorInput,
+  callbacks: OrchestratorCallbacks,
+  abortSignal?: AbortSignal
+): Promise<GeneratedAsset> {
+  let asset: GeneratedAsset = input.existingAsset ? { ...input.existingAsset } : {};
+  let attempts = 0;
+
+  try {
+    console.log('Orchestrator: Using unified Claude pipeline');
+    callbacks.onStepChange('coding');
+
+    while (attempts < MAX_RETRY_ATTEMPTS) {
+      try {
+        const result = await unifiedGeneratorService.generate(
+          {
+            userPrompt: input.userPrompt,
+            imageData: input.imageData,
+            existingCode: asset.scadCode,
+            existingGST: asset.gst,
+            conversationHistory: input.conversationHistory,
+            validationErrors: attempts > 0 ? asset.validationResult?.errors : undefined,
+            isEdit: input.isEdit && !!asset.scadCode,
+          },
+          abortSignal
+        );
+
+        if (abortSignal?.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
+
+        // Handle clarification needed
+        if (result.needsClarification) {
+          console.log('Orchestrator: Needs clarification');
+          asset.clarifications = result.clarifications;
+          callbacks.onStepChange('spec-review');
+          return asset;
+        }
+
+        // Store generated code
+        if (result.scadCode) {
+          asset.scadCode = result.scadCode;
+          callbacks.onCodeGenerated(result.scadCode);
+        }
+
+        // Validate
+        console.log('Orchestrator: Validating code');
+        callbacks.onStepChange('validating');
+
+        const validation = await validatorClient.validate({
+          scadCode: asset.scadCode!,
+          gst: asset.gst,
+        });
+
+        asset.validationResult = validation;
+        callbacks.onValidationComplete(validation);
+
+        // Success!
+        if (validation.success) {
+          console.log(`Orchestrator: Validation passed on attempt ${attempts + 1}`);
+
+          // Generate smart fixes
+          if (asset.gst) {
+            const smartFixes = analyzeForQuickFixes(asset.gst, validation, asset.scadCode!);
+            asset.smartFixes = smartFixes;
+            callbacks.onSmartFixesGenerated(smartFixes);
+          }
+
+          // Apply teaching mode if enabled
+          if (input.enableTeachingMode && asset.scadCode) {
+            console.log('Orchestrator: Generating educational annotations');
+            const explanation = explainCode(asset.scadCode, true);
+            asset.conceptsUsed = explanation.conceptsUsed;
+            asset.learningTips = explanation.tips;
+            asset.annotatedCode = explanation.enhancedCode;
+          }
+
+          // Track in history
+          asset = pushHistory(asset, input.userPrompt);
+
+          callbacks.onStepChange('complete');
+          return asset;
+        }
+
+        // Validation failed - retry
+        const errorCategories = categorizeErrors(validation.errors, 0, asset.scadCode!);
+        console.log(
+          `Orchestrator: Validation failed (attempt ${attempts + 1}/${MAX_RETRY_ATTEMPTS})`
+        );
+        console.log(`Orchestrator: Errors: ${getErrorSummary(errorCategories)}`);
+
+        attempts++;
+
+        if (attempts < MAX_RETRY_ATTEMPTS) {
+          callbacks.onStepChange('coding');
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          throw error;
+        }
+
+        attempts++;
+        console.error(`Orchestrator: Error (attempt ${attempts}):`, error);
+
+        if (attempts >= MAX_RETRY_ATTEMPTS) {
+          throw error;
+        }
+
+        callbacks.onStepChange('coding');
+      }
+    }
+
+    // All retries exhausted
+    console.log('Orchestrator: Max retries reached');
+    callbacks.onStepChange('complete');
+    return asset;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error;
+    }
+
+    callbacks.onError(error instanceof Error ? error : new Error(String(error)), 'coding');
+    throw error;
+  }
+}
+
+/**
+ * Multi-agent pipeline - Gemini (planner) + Claude (coder)
+ * Legacy mode, used when USE_MULTI_AGENT=true
+ */
+async function orchestrateMultiAgent(
   input: OrchestratorInput,
   callbacks: OrchestratorCallbacks,
   abortSignal?: AbortSignal
@@ -345,26 +501,34 @@ export async function orchestrateGeneration(
  * API keys are server-side only; availability determined by USE_MULTI_AGENT flag
  */
 export function isMultiAgentAvailable(): boolean {
-  // API keys are checked server-side in /api/gemini and /api/claude
-  // Frontend just checks if multi-agent mode is enabled
-  return process.env.USE_MULTI_AGENT === 'true';
+  // Always available - unified pipeline is the default
+  return true;
+}
+
+/**
+ * Check if using unified pipeline
+ */
+export function isUnifiedPipeline(): boolean {
+  return USE_UNIFIED_PIPELINE;
 }
 
 /**
  * Get status of all agents (serverless - API keys are server-side)
  */
 export function getAgentStatus(): {
+  pipeline: 'unified' | 'multi-agent';
   planner: { available: boolean; model: string };
   coder: { available: boolean; model: string };
   validator: { available: boolean };
 } {
   return {
+    pipeline: USE_UNIFIED_PIPELINE ? 'unified' : 'multi-agent',
     planner: {
-      available: true, // Actual availability checked server-side
+      available: !USE_UNIFIED_PIPELINE, // Only used in multi-agent mode
       model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
     },
     coder: {
-      available: process.env.USE_MULTI_AGENT === 'true',
+      available: true, // Claude is always the coder
       model: process.env.CODER_MODEL || 'claude-sonnet-4-20250514',
     },
     validator: {
@@ -377,6 +541,7 @@ export function getAgentStatus(): {
 export const agentOrchestrator = {
   orchestrateGeneration,
   isMultiAgentAvailable,
+  isUnifiedPipeline,
   getAgentStatus,
   undoHistory,
   redoHistory,
