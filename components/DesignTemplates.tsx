@@ -8,7 +8,7 @@ import {
   Frame,
   Cylinder,
   CircleDot,
-  Layers
+  Layers,
 } from 'lucide-react';
 
 interface Template {
@@ -25,64 +25,73 @@ const TEMPLATES: Template[] = [
     name: 'Phone Stand',
     icon: Smartphone,
     description: 'Adjustable phone/tablet holder',
-    prompt: 'A phone stand that holds my phone at a comfortable viewing angle for watching videos. Should work with a phone in a case (about 10mm thick). Needs to be stable and not tip over.'
+    prompt:
+      'A phone stand that holds my phone at a comfortable viewing angle for watching videos. Should work with a phone in a case (about 10mm thick). Needs to be stable and not tip over.',
   },
   {
     id: 'box-lid',
     name: 'Box with Lid',
     icon: Box,
     description: 'Storage container with snap lid',
-    prompt: 'A small storage box with a snap-fit lid. Inside dimensions roughly 80x60x40mm. The lid should click on securely but be easy to remove. Include a small lip so the lid sits flush.'
+    prompt:
+      'A small storage box with a snap-fit lid. Inside dimensions roughly 80x60x40mm. The lid should click on securely but be easy to remove. Include a small lip so the lid sits flush.',
   },
   {
     id: 'cable-clip',
     name: 'Cable Organizer',
     icon: Cable,
     description: 'Desk cable management clips',
-    prompt: 'Cable management clips that stick to the desk (with adhesive pad recess on bottom). Should hold 2-3 cables of various sizes (USB, power cords). Needs slots for different cable diameters.'
+    prompt:
+      'Cable management clips that stick to the desk (with adhesive pad recess on bottom). Should hold 2-3 cables of various sizes (USB, power cords). Needs slots for different cable diameters.',
   },
   {
     id: 'bracket',
     name: 'L-Bracket',
     icon: Frame,
     description: 'Mounting bracket with holes',
-    prompt: 'A sturdy L-bracket for mounting something to a wall or surface. About 50mm on each side. Include countersunk screw holes for M4 screws, 2 holes per side. Add ribs for strength.'
+    prompt:
+      'A sturdy L-bracket for mounting something to a wall or surface. About 50mm on each side. Include countersunk screw holes for M4 screws, 2 holes per side. Add ribs for strength.',
   },
   {
     id: 'knob',
     name: 'Control Knob',
     icon: CircleDot,
     description: 'Replacement knob with set screw',
-    prompt: 'A control knob for a 6mm D-shaft (flat side). About 25mm diameter, 15mm tall. Knurled grip on the outside, set screw hole (M3) on the side to secure to shaft. Include a pointer line on top.'
+    prompt:
+      'A control knob for a 6mm D-shaft (flat side). About 25mm diameter, 15mm tall. Knurled grip on the outside, set screw hole (M3) on the side to secure to shaft. Include a pointer line on top.',
   },
   {
     id: 'container',
     name: 'Divided Tray',
     icon: Layers,
     description: 'Organizer with compartments',
-    prompt: 'A desk organizer tray with multiple compartments for small items. About 150x100mm total, with 6 compartments of varying sizes. Rounded corners, 30mm tall walls.'
+    prompt:
+      'A desk organizer tray with multiple compartments for small items. About 150x100mm total, with 6 compartments of varying sizes. Rounded corners, 30mm tall walls.',
   },
   {
     id: 'hook',
     name: 'Wall Hook',
     icon: Grip,
     description: 'Coat/bag hook with screws',
-    prompt: 'A wall-mounted hook for hanging coats or bags. Should support decent weight (5kg+). Include screw holes for mounting. Modern minimal design with smooth curves.'
+    prompt:
+      'A wall-mounted hook for hanging coats or bags. Should support decent weight (5kg+). Include screw holes for mounting. Modern minimal design with smooth curves.',
   },
   {
     id: 'spacer',
     name: 'Custom Spacer',
     icon: Cylinder,
     description: 'Standoff or spacer ring',
-    prompt: 'A set of spacers/standoffs: outer diameter 10mm, inner hole 4.2mm (for M4 bolt). Make versions in heights: 3mm, 5mm, 10mm, 15mm. Chamfered edges.'
+    prompt:
+      'A set of spacers/standoffs: outer diameter 10mm, inner hole 4.2mm (for M4 bolt). Make versions in heights: 3mm, 5mm, 10mm, 15mm. Chamfered edges.',
   },
   {
     id: 'tool-holder',
     name: 'Tool Holder',
     icon: Wrench,
     description: 'Pegboard or wall mount',
-    prompt: 'A wall-mounted holder for small hand tools (screwdrivers, pliers). Should mount to pegboard (standard 25mm hole spacing) or have screw holes for direct wall mount. Hold 4-5 tools.'
-  }
+    prompt:
+      'A wall-mounted holder for small hand tools (screwdrivers, pliers). Should mount to pegboard (standard 25mm hole spacing) or have screw holes for direct wall mount. Hold 4-5 tools.',
+  },
 ];
 
 interface DesignTemplatesProps {
@@ -97,9 +106,11 @@ const DesignTemplates: React.FC<DesignTemplatesProps> = ({ onSelectTemplate, isV
     <div className="p-4 border-b border-white/[0.06]">
       <div className="flex items-center gap-2 mb-3">
         <Layers className="w-4 h-4 text-violet-400" />
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Quick Start Templates</span>
+        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+          Quick Start Templates
+        </span>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {TEMPLATES.map((template) => (
           <button
             key={template.id}
@@ -110,7 +121,7 @@ const DesignTemplates: React.FC<DesignTemplatesProps> = ({ onSelectTemplate, isV
             <span className="text-[11px] font-medium text-gray-300 group-hover:text-white transition-colors">
               {template.name}
             </span>
-            <span className="text-[9px] text-gray-600 mt-0.5 line-clamp-1">
+            <span className="text-[11px] text-gray-600 mt-0.5 line-clamp-1">
               {template.description}
             </span>
           </button>

@@ -1,6 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import { Send, ImagePlus, X } from 'lucide-react';
-import { ImageData } from '../types';
+import type { ImageData } from '../types';
 
 interface ChatInputProps {
   input: string;
@@ -23,22 +23,25 @@ const ChatInput: React.FC<ChatInputProps> = ({
   attachedImage,
   imagePreview,
   onImageUpload,
-  onClearImage
+  onClearImage,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      onSend();
-    }
-  }, [onSend]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        onSend();
+      }
+    },
+    [onSend]
+  );
 
   const placeholder = attachedImage
-    ? "Describe what you want from this image..."
+    ? 'Describe what you want from this image...'
     : hasExistingCode
-      ? "Describe what to change..."
-      : "Describe what you want to create...";
+      ? 'Describe what to change...'
+      : 'Describe what you want to create...';
 
   return (
     <div className="p-3 border-t border-white/[0.06]">
@@ -51,9 +54,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
           />
           <button
             onClick={onClearImage}
-            className="absolute -top-1 -right-1 p-0.5 bg-red-500 hover:bg-red-400 rounded-full text-white transition-colors"
+            className="absolute -top-2 -right-2 min-w-[44px] min-h-[44px] flex items-center justify-center bg-red-500 hover:bg-red-400 rounded-full text-white transition-colors"
+            aria-label="Remove attached image"
           >
-            <X className="w-3 h-3" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -77,17 +81,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isProcessing}
-            className="p-2 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 text-gray-400 hover:text-white rounded-lg transition-all"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 text-gray-400 hover:text-white rounded-lg transition-all"
             title="Attach image to recreate"
+            aria-label="Attach image"
           >
-            <ImagePlus className="w-4 h-4" />
+            <ImagePlus className="w-5 h-5" />
           </button>
           <button
             onClick={onSend}
             disabled={isProcessing || (!input.trim() && !attachedImage)}
-            className="p-2 bg-violet-600 hover:bg-violet-500 disabled:bg-white/[0.06] disabled:text-gray-600 text-white rounded-lg transition-all"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-violet-600 hover:bg-violet-500 disabled:bg-white/[0.06] disabled:text-gray-600 text-white rounded-lg transition-all"
+            aria-label="Send message"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-5 h-5" />
           </button>
         </div>
       </div>
