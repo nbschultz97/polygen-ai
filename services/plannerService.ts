@@ -336,6 +336,97 @@ Response:
 User: "Make the holes bigger for M4 screws"
 (When conversation has existing design)
 Response: Build new GST with hole_diameter changed from 3.4 to 4.5mm
+
+## EXAMPLE 4: Complex Multi-Part Assembly (TACTICAL)
+User: "Female picatinny rail mount with a solid plate in between and MOLLE clips on the back"
+(After clarification: 100mm x 50mm plate, 3-slot picatinny, 2 MOLLE columns, 5mm thick)
+
+Response:
+{
+  "version": "1.0",
+  "name": "picatinny_molle_adapter",
+  "description": "Plate carrier mount adapter: female Picatinny rail (bottom) for drone attachment, solid plate (center), MOLLE clips (top) for plate carrier",
+  "globalParameters": [
+    { "name": "plate_width", "value": 100, "unit": "mm" },
+    { "name": "plate_depth", "value": 50, "unit": "mm" },
+    { "name": "plate_thickness", "value": 5, "unit": "mm" }
+  ],
+  "root": {
+    "id": "main",
+    "name": "adapter_assembly",
+    "type": "union",
+    "children": [
+      {
+        "id": "base_plate",
+        "name": "center_plate",
+        "type": "cuboid",
+        "description": "Solid plate between interfaces",
+        "parameters": [
+          { "name": "width", "value": 100, "unit": "mm" },
+          { "name": "depth", "value": 50, "unit": "mm" },
+          { "name": "height", "value": 5, "unit": "mm" }
+        ]
+      },
+      {
+        "id": "picatinny_mount",
+        "name": "female_picatinny",
+        "type": "cuboid",
+        "description": "Female Picatinny mount - dovetail groove to grip MIL-STD-1913 rail",
+        "parameters": [
+          { "name": "width", "value": 30, "unit": "mm", "description": "3 slots = 30mm" },
+          { "name": "depth", "value": 22, "unit": "mm", "description": "Rail width + walls" },
+          { "name": "height", "value": 15, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "center", "position": [0, 0, -10], "orientation": "BOTTOM" }],
+        "children": [
+          {
+            "id": "picatinny_groove",
+            "name": "dovetail_groove",
+            "type": "cuboid",
+            "booleanOp": "subtract",
+            "description": "Dovetail groove 20.6mm base, 21.2mm top",
+            "parameters": [
+              { "name": "width", "value": 30, "unit": "mm" },
+              { "name": "depth", "value": 21, "unit": "mm" },
+              { "name": "height", "value": 10, "unit": "mm" }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "molle_clip_left",
+        "name": "molle_clip",
+        "type": "cuboid",
+        "description": "MOLLE clip - hooks over 25mm webbing with 38mm spacing",
+        "parameters": [
+          { "name": "width", "value": 28, "unit": "mm" },
+          { "name": "depth", "value": 38, "unit": "mm" },
+          { "name": "height", "value": 40, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "base", "position": [-30, 0, 5], "orientation": "TOP" }]
+      },
+      {
+        "id": "molle_clip_right",
+        "name": "molle_clip",
+        "type": "cuboid",
+        "description": "Second MOLLE clip for stability",
+        "parameters": [
+          { "name": "width", "value": 28, "unit": "mm" },
+          { "name": "depth", "value": 38, "unit": "mm" },
+          { "name": "height", "value": 40, "unit": "mm" }
+        ],
+        "anchors": [{ "name": "base", "position": [30, 0, 5], "orientation": "TOP" }]
+      }
+    ]
+  }
+}
+
+KEY POINTS FOR MULTI-PART ASSEMBLIES:
+1. Each functional part has its OWN component in children[]
+2. Use descriptive names: "female_picatinny", "molle_clip", not "part1", "part2"
+3. Position components using anchors relative to center plate
+4. Include detailed descriptions for complex interfaces
+5. Sub-components (like dovetail groove) can be nested with booleanOp: "subtract"
 `;
 
 /**
@@ -354,18 +445,28 @@ export async function generateGST(
     throw new DOMException('Request was aborted', 'AbortError');
   }
 
-  // Build the prompt
+  // Build the prompt with conversation history
+  const historySection =
+    input.conversationHistory && input.conversationHistory.length > 0
+      ? `## CONVERSATION HISTORY (the user has already answered questions!)
+${input.conversationHistory.join('\n')}
+
+IMPORTANT: The user has ALREADY provided answers above. Use them to build the complete design NOW.
+Do NOT ask the same questions again. Proceed to generate the full GST.
+`
+      : '';
+
   let prompt: string;
   if (input.imageData) {
     prompt = `REFERENCE IMAGE ATTACHED: Analyze this image and create a 3D printable version.
 Estimate dimensions from context.
 
-${prefsContext}
+${historySection}${prefsContext}
 
 USER REQUEST:
 ${input.userPrompt}`;
   } else {
-    prompt = `${prefsContext}
+    prompt = `${historySection}${prefsContext}
 
 USER REQUEST:
 ${input.userPrompt}`;

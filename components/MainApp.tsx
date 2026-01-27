@@ -16,6 +16,7 @@ import {
   Edit3,
   ExternalLink,
   Eye,
+  FileJson,
   HelpCircle,
   ImagePlus,
   Loader2,
@@ -44,7 +45,7 @@ import {
 } from '../services/agentOrchestrator';
 import type { ImageData } from '../services/geminiService';
 import { APP_VERSION, processArchitectRequest } from '../services/geminiService';
-import { copyToClipboard, exportToOpenSCAD } from '../services/openscadExport';
+import { copyToClipboard, exportToOpenSCAD, exportSession } from '../services/openscadExport';
 import type { GeneratedAsset, Message, WorkflowStep } from '../types';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
@@ -402,6 +403,35 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
       }
     }
   }, [currentAsset]);
+
+  // Export session for debugging and back-briefs
+  const handleExportSession = useCallback(async () => {
+    const result = await exportSession({
+      version: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      conversation: messages.map((m) => ({
+        role: m.role,
+        text: m.text,
+      })),
+      generatedCode: currentAsset?.scadCode,
+      gst: currentAsset?.gst,
+      validationResult: currentAsset?.validationResult
+        ? {
+            success: currentAsset.validationResult.success,
+            errors: currentAsset.validationResult.errors,
+            warnings: currentAsset.validationResult.warnings,
+            triangleCount: currentAsset.validationResult.triangleCount,
+            isManifold: currentAsset.validationResult.isManifold,
+            volume: currentAsset.validationResult.volume,
+            boundingBox: currentAsset.validationResult.boundingBox,
+          }
+        : undefined,
+      codeHistory: currentAsset?.history,
+    });
+    if (result.success) {
+      console.log('Session exported:', result.filePath);
+    }
+  }, [messages, currentAsset]);
 
   // Undo/Redo handlers
   const handleUndo = useCallback(() => {
@@ -936,6 +966,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                         <Copy className="w-3.5 h-3.5" />
                       )}
                       <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
+                    </button>
+                    <button
+                      onClick={handleExportSession}
+                      className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
+                      title="Export session for debugging"
+                    >
+                      <FileJson className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Session</span>
                     </button>
                     <button
                       onClick={handleExport}

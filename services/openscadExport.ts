@@ -12,7 +12,10 @@ export interface ExportResult {
 /**
  * Generate a filename based on the spec or timestamp
  */
-export const generateFileName = (spec?: { product_class?: string; mount_target?: string }): string => {
+export const generateFileName = (spec?: {
+  product_class?: string;
+  mount_target?: string;
+}): string => {
   const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
   if (spec?.product_class) {
@@ -67,21 +70,19 @@ export const exportToOpenSCAD = async (
       setTimeout(() => {
         document.body.removeChild(iframe);
       }, 1000);
-    } catch (e) {
+    } catch {
       // Protocol handler failed, that's okay - file was still downloaded
-      console.log('Protocol handler not available, file downloaded instead');
     }
 
     return {
       success: true,
-      filePath: fileName
+      filePath: fileName,
     };
-
   } catch (error: any) {
     console.error('Export failed:', error);
     return {
       success: false,
-      error: error.message || 'Failed to export file'
+      error: error.message || 'Failed to export file',
     };
   }
 };
@@ -96,5 +97,67 @@ export const copyToClipboard = async (code: string): Promise<boolean> => {
   } catch (error) {
     console.error('Clipboard copy failed:', error);
     return false;
+  }
+};
+
+/**
+ * Session export data structure for debugging and back-briefs
+ */
+export interface SessionExportData {
+  version: string;
+  exportedAt: string;
+  conversation: { role: string; text: string; timestamp?: number }[];
+  generatedCode?: string;
+  gst?: object;
+  validationResult?: {
+    success: boolean;
+    errors?: string[];
+    warnings?: string[];
+    triangleCount?: number;
+    isManifold?: boolean;
+    volume?: number;
+    boundingBox?: object;
+  };
+  codeHistory?: { code: string; prompt: string; timestamp: number }[];
+}
+
+/**
+ * Export entire session for debugging and AI back-briefs
+ * Includes conversation, generated code, GST, validation results
+ */
+export const exportSession = async (data: SessionExportData): Promise<ExportResult> => {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `polygen_session_${timestamp}.json`;
+
+    // Format the export with pretty printing for readability
+    const content = JSON.stringify(data, null, 2);
+
+    // Create blob and download
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    // Trigger download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Clean up
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    return {
+      success: true,
+      filePath: fileName,
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to export session';
+    console.error('Session export failed:', error);
+    return {
+      success: false,
+      error: errorMessage,
+    };
   }
 };

@@ -5,6 +5,25 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-01-26
+
+### Fixed
+
+- **Conversation History Bug**: Planner was ignoring conversation history - user answers to clarification questions were not being included in the prompt, causing the planner to generate incomplete designs
+- **Wrong Output for Complex Assemblies**: When users asked for multi-part assemblies (e.g., "Picatinny mount + plate + MOLLE clips"), the planner was only generating simple plates with holes instead of the full assembly
+
+### Added
+
+- **Complex Assembly Example**: Added comprehensive example to planner prompt showing how to structure multi-part tactical assemblies with Picatinny mounts, center plates, and MOLLE clips
+- **Conversation History in Planner Prompt**: Planner now explicitly includes conversation history with a reminder to use the user's previous answers
+
+### Technical
+
+- Modified `plannerService.ts` to build prompt with `## CONVERSATION HISTORY` section
+- Added "IMPORTANT: The user has ALREADY provided answers above" instruction to prevent repeated questions
+
+---
+
 ## [3.2.0] - 2026-01-26
 
 ### Added
