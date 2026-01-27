@@ -5,6 +5,33 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - 2026-01-27
+
+### Added
+
+- **P_succ Scoring**: Success probability metric `P_succ = M * (0.65*Sv + 0.35*Sd)` combining manifold status (M), volumetric similarity (Sv), and dimensional similarity (Sd). Provides quantitative confidence for validation results
+- **Vision ROI Gating**: Smart triggering for expensive VLM calls. Only invokes Visual Critic when P_succ is in the uncertain zone (0.8-0.95). Below 0.8 = clear geometric fail, above 0.95 = clear pass
+- **6x6 Visual Anchor Grid**: Toggle-able reference grid in ScadRenderer with color-coded corner markers (red/green/blue/yellow). Helps VLM spatial reasoning for orientation analysis
+- **Atomic LMP Rule**: New rule #4 in Coder prompts requiring each GST component be wrapped in its own module with local variables. Prevents variable shadowing bugs in large assemblies
+- **$L_{sig}$ Protocol**: Unknown module recovery system. Detects tactical library modules in "Unknown module" errors and provides exact function signatures for Claude to retry with correct syntax
+
+### Fixed
+
+- **WASM Heap Data Leak**: STL data from `FS.readFile()` was a VIEW into WASM heap, not a copy. Using `stlData.buffer` parsed the entire heap, producing garbage bounding box values (8.48e-33 to 1.86e+34). Fixed with explicit `new Uint8Array(rawStl)` copy
+- **Tactical Library Auto-Injection**: Prompt contradiction between generation and edit prompts ("NO libraries" rule conflicted with tactical library instructions). Fixed with Tactical Guard that auto-injects `use <libraries/tactical.scad>` when picatinny*/molle* modules are detected
+- **Bounding Box Sanity Checks**: Enhanced validation to reject subnormal/denormalized values (< 1e-6), coordinates > 10m, and unrealistic dimensions. Returns null for corrupt data instead of garbage values
+
+### Technical
+
+- Added `pSucc`, `sv`, `sd` fields to ValidationResult type in types.ts
+- Created `calculatePsucc()` and `shouldTriggerVision()` functions in validatorClient.ts
+- Added 6x6 anchor grid with Three.js Group in ScadRenderer.tsx (Grid3X3 toggle button)
+- Added `TACTICAL_MODULE_SIGNATURES` map and `generateTacticalRecoveryPrompt()` in errorCategorizer.ts
+- Updated Coder prompts with Atomic LMP pattern (module encapsulation with local\_ prefixed variables)
+- All 118 tests passing
+
+---
+
 ## [3.4.0] - 2026-01-27
 
 ### Added
