@@ -490,19 +490,35 @@ export const validateScadCode = async (
 
     // Parse triangle count from STL binary (bytes 80-83 are uint32 little-endian triangle count)
     let triangleCount = 0;
+    let triangleCountCorrected = false;
     if (stlData.length >= 84) {
       const view = new DataView(stlData.buffer, stlData.byteOffset, stlData.byteLength);
-      triangleCount = view.getUint32(80, true); // little-endian
+      const rawTriangleCount = view.getUint32(80, true); // little-endian
 
       // Sanity check: each triangle is 50 bytes, plus 84-byte header
       // If the claimed count doesn't match actual file size, STL is malformed
-      const expectedSize = 84 + triangleCount * 50;
-      if (triangleCount > 10000000 || expectedSize > stlData.length + 100) {
-        // 10M triangles or size mismatch = likely garbage data
+      const expectedSize = 84 + rawTriangleCount * 50;
+      const actualTriangles = Math.floor((stlData.length - 84) / 50);
+
+      if (rawTriangleCount > 10000000 || expectedSize > stlData.length + 100) {
+        // Raw value is invalid - use estimated count from file size
         console.warn(
-          `STL triangle count ${triangleCount} seems invalid (file size: ${stlData.length}, expected: ${expectedSize})`
+          `STL triangle count ${rawTriangleCount} seems invalid (file size: ${stlData.length}, expected: ${expectedSize}). Using estimated count: ${actualTriangles}`
         );
-        triangleCount = Math.floor((stlData.length - 84) / 50); // Estimate from actual size
+        triangleCount = actualTriangles;
+        triangleCountCorrected = true;
+      } else {
+        triangleCount = rawTriangleCount;
+      }
+
+      // Additional sanity: cap at 1M triangles max for a single model
+      // Anything beyond this is likely a parsing error or pathological geometry
+      if (triangleCount > 1000000) {
+        console.warn(
+          `Triangle count ${triangleCount} exceeds 1M limit. Capping to file-derived value: ${actualTriangles}`
+        );
+        triangleCount = Math.min(actualTriangles, 1000000);
+        triangleCountCorrected = true;
       }
     }
 
@@ -513,6 +529,13 @@ export const validateScadCode = async (
         ...errorLog
           .split('\n')
           .filter((line) => line.toLowerCase().includes('warning') && !line.includes('GL_INVALID'))
+      );
+    }
+
+    // Add warning if triangle count was corrected (indicates potential STL parsing issue)
+    if (triangleCountCorrected) {
+      successWarnings.push(
+        `STL triangle count was corrected (possible parsing issue). Reported: ${triangleCount} triangles.`
       );
     }
 

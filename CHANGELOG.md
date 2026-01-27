@@ -17,10 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Critical Memory Leak**: OpenSCAD WASM instances now explicitly call `instance.delete()` to free C++ objects from WASM heap. Previously, memory accumulated ~10-50MB per render, causing heap exhaustion after 5-10 renders on mobile devices
+- **Claude Explanation Text in SCAD Output**: Claude sometimes outputs explanation text before the code block ("Looking at this design..."). Enhanced `extractScadCode` function now searches for code blocks anywhere in the response and strips non-OpenSCAD text
+- **STL Triangle Count Garbage Values**: Triangle counts like 892M were being displayed. Improved parsing to calculate actual triangles from file size and cap at 1M max
 
 ### Technical
 
 - Added complexity keyword regex: `assembly|parts|mechanism|gear|hinge|housing|enclosure|case|bracket|mount|adapter|joint|contact|fit|connect|multi|picatinny|molle|rail`
+- Enhanced `extractScadCode()` in both coderService.ts and unifiedGeneratorService.ts to handle explanation text before code blocks
+- Improved STL triangle count parsing in scadValidation.ts with file-size validation and 1M cap
 - Added `calculateDimensionalAccuracy()` function with Sd formula: `Sd = 1 - |Dg - Dt| / Dg`
 - Updated `cleanupInstance()` in openscadLoader.ts to call `instance.delete()` for WASM heap cleanup
 - Enhanced UNIFIED_SYSTEM_PROMPT with Micro-Lib section and educational example comments
