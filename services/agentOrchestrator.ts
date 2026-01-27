@@ -156,6 +156,9 @@ async function orchestrateUnified(
             conversationHistory: input.conversationHistory,
             validationErrors: attempts > 0 ? asset.validationResult?.errors : undefined,
             isEdit: input.isEdit && !!asset.scadCode,
+            // Enable streaming if callback is provided
+            onChunk: callbacks.onCodeChunk,
+            useStreaming: !!callbacks.onCodeChunk,
           },
           abortSignal
         );

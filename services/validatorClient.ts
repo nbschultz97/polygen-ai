@@ -1,15 +1,12 @@
 /**
  * Validator Client (Browser-Only / Serverless)
  * Uses openscad-wasm in the browser for all validation
+ * Runs in Web Worker to keep UI responsive
  * No backend required - fully client-side
  */
 
-import {
-  GeometricStructureTree,
-  ValidationResult,
-  GSTBoundingBox
-} from '../types';
-import { validateScadCode } from './scadValidation';
+import type { GeometricStructureTree, ValidationResult } from '../types';
+import { workerValidationService } from './workerValidationService';
 
 /**
  * Auto-inject epsilon if missing from code with boolean operations
@@ -51,7 +48,10 @@ function preprocessCode(code: string): { code: string; fixes: string[] } {
   if (hasCurves && !hasFn) {
     // Insert $fn after eps declaration or at the beginning
     if (processedCode.includes('eps = 0.01;')) {
-      processedCode = processedCode.replace('eps = 0.01;', 'eps = 0.01;\n$fn = 64; // Smooth curves');
+      processedCode = processedCode.replace(
+        'eps = 0.01;',
+        'eps = 0.01;\n$fn = 64; // Smooth curves'
+      );
     } else {
       processedCode = '// Auto-injected quality setting\n$fn = 64;\n\n' + processedCode;
     }
@@ -62,31 +62,37 @@ function preprocessCode(code: string): { code: string; fixes: string[] } {
 }
 
 /**
- * Validate OpenSCAD code using browser WASM
+ * Validate OpenSCAD code using Web Worker (or main thread fallback)
+ * Keeps UI responsive during 1-5s WASM compilation
  */
 export async function validate(input: {
   scadCode: string;
   gst?: GeometricStructureTree;
+  abortSignal?: AbortSignal;
 }): Promise<ValidationResult> {
   try {
     // Preprocess code to fix common issues
     const { code: processedCode, fixes } = preprocessCode(input.scadCode);
 
-    // Use existing browser-based WASM validation
-    const result = await validateScadCode(processedCode);
+    // Use Web Worker for validation (falls back to main thread if needed)
+    const result = await workerValidationService.validate(
+      processedCode,
+      { useManifoldBackend: true, previewMode: false },
+      input.abortSignal
+    );
 
     // Build validation result
     const validationResult: ValidationResult = {
       success: result.success,
       errors: result.error ? [result.error] : [],
       warnings: [...(result.warnings || [])],
-      isManifold: result.success, // Assume manifold if compilation succeeded
-      triangleCount: result.triangleCount
+      isManifold: result.isManifold ?? result.success,
+      triangleCount: result.triangleCount,
     };
 
     // Add preprocessing fixes as informational warnings
     if (fixes.length > 0 && result.success) {
-      validationResult.warnings.push(...fixes.map(f => `Auto-fix applied: ${f}`));
+      validationResult.warnings.push(...fixes.map((f) => `Auto-fix applied: ${f}`));
     }
 
     // Compare to GST bounding box if provided
@@ -97,30 +103,42 @@ export async function validate(input: {
     }
 
     return validationResult;
-
   } catch (error) {
+    // Re-throw abort errors
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error;
+    }
+
     console.error('Browser validation failed:', error);
     return {
       success: false,
       errors: [`Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
       warnings: [],
-      isManifold: false
+      isManifold: false,
     };
   }
 }
 
 /**
- * Check if validation is available (WASM loaded)
- * Always returns true since we use browser WASM
+ * Check if validation is available
+ * Returns true if Worker is available or fallback is possible
  */
 export function isValidatorAvailable(): boolean {
-  return true; // Browser WASM is always available
+  return true; // Worker or main thread fallback always available
+}
+
+/**
+ * Check if Worker validation is being used (vs main thread fallback)
+ */
+export function isUsingWorker(): boolean {
+  return workerValidationService.isAvailable();
 }
 
 // Export as object for consistent API
 export const validatorClient = {
   validate,
-  isValidatorAvailable
+  isValidatorAvailable,
+  isUsingWorker,
 };
 
 export default validatorClient;

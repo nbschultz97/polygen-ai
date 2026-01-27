@@ -7,6 +7,7 @@
 import type { GeometricStructureTree, ImageData } from '../types';
 import { getAuthToken } from './apiClient';
 import { loadPreferences, getPreferencesForPrompt } from './preferencesService';
+import { streamClaudeResponse } from './streamingClient';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 
@@ -179,6 +180,10 @@ export interface UnifiedInput {
   conversationHistory?: string[];
   validationErrors?: string[];
   isEdit?: boolean;
+  /** Streaming callback: receives each chunk and accumulated text */
+  onChunk?: (chunk: string, fullText: string) => void;
+  /** Enable streaming (defaults to true when onChunk is provided) */
+  useStreaming?: boolean;
 }
 
 export interface UnifiedOutput {
@@ -232,18 +237,30 @@ async function callClaude(
     messages.push({ role: 'user', content: prompt });
   }
 
+  // Build request body with prompt caching support
+  // Research: Caching system prompts reduces costs by 50%+ for multi-turn conversations
+  const requestBody = {
+    model: process.env.CODER_MODEL || DEFAULT_MODEL,
+    max_tokens: 8192,
+    // Use structured system message format for prompt caching
+    // The cache_control flag tells Claude to cache this content
+    system: [
+      {
+        type: 'text',
+        text: systemPrompt,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+    messages,
+  };
+
   const response = await fetch('/api/claude', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      model: process.env.CODER_MODEL || DEFAULT_MODEL,
-      max_tokens: 8192,
-      system: systemPrompt,
-      messages,
-    }),
+    body: JSON.stringify(requestBody),
     signal: abortSignal,
   });
 
@@ -262,6 +279,74 @@ async function callClaude(
   }
 
   return content.text;
+}
+
+/**
+ * Call Claude API with streaming support via SSE
+ * Provides real-time feedback during 30-60s generation
+ */
+async function callClaudeStreaming(
+  prompt: string,
+  systemPrompt: string,
+  imageData?: ImageData,
+  onChunk?: (chunk: string, fullText: string) => void,
+  abortSignal?: AbortSignal
+): Promise<string> {
+  // Build messages array (same as callClaude)
+  type MessageContent =
+    | { type: 'text'; text: string }
+    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
+  type Message = { role: 'user' | 'assistant'; content: string | MessageContent[] };
+  const messages: Message[] = [];
+
+  if (imageData) {
+    // Multimodal message with image
+    messages.push({
+      role: 'user',
+      content: [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: imageData.mimeType,
+            data: imageData.base64,
+          },
+        },
+        {
+          type: 'text',
+          text: prompt,
+        },
+      ],
+    });
+  } else {
+    messages.push({ role: 'user', content: prompt });
+  }
+
+  // Build request body with prompt caching support
+  const requestBody = {
+    model: process.env.CODER_MODEL || DEFAULT_MODEL,
+    max_tokens: 8192,
+    system: [
+      {
+        type: 'text',
+        text: systemPrompt,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+    messages,
+  };
+
+  return streamClaudeResponse(
+    requestBody,
+    {
+      onChunk: onChunk || (() => {}),
+      onComplete: () => {},
+      onError: (error) => {
+        throw error;
+      },
+    },
+    abortSignal
+  );
 }
 
 /**
@@ -331,7 +416,21 @@ Generate the OpenSCAD code for this design. Output ONLY valid SCAD code unless y
   }
 
   try {
-    const text = await callClaude(prompt, systemPrompt, input.imageData, abortSignal);
+    // Use streaming if callback provided (default behavior)
+    const useStreaming = input.useStreaming !== false && !!input.onChunk;
+
+    let text: string;
+    if (useStreaming) {
+      text = await callClaudeStreaming(
+        prompt,
+        systemPrompt,
+        input.imageData,
+        input.onChunk,
+        abortSignal
+      );
+    } else {
+      text = await callClaude(prompt, systemPrompt, input.imageData, abortSignal);
+    }
 
     if (abortSignal?.aborted) {
       throw new DOMException('Request was aborted', 'AbortError');

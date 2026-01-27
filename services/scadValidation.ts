@@ -1,5 +1,22 @@
 import { loadOpenSCAD, cleanupInstance } from './openscadLoader';
 
+/**
+ * Validation configuration options
+ * Research shows Manifold backend provides "orders of magnitude" faster boolean operations
+ */
+export interface ValidationOptions {
+  /** Use Manifold geometry kernel instead of CGAL (10x+ faster) */
+  useManifoldBackend?: boolean;
+  /** Use preview mode for faster iteration (skip full render) */
+  previewMode?: boolean;
+}
+
+// Default to Manifold backend for performance (research-validated)
+const DEFAULT_OPTIONS: ValidationOptions = {
+  useManifoldBackend: true,
+  previewMode: false,
+};
+
 export interface ValidationResult {
   success: boolean;
   error?: string;
@@ -259,7 +276,10 @@ function preValidateCode(code: string): string[] {
   return warnings;
 }
 
-export const validateScadCode = async (code: string): Promise<ValidationResult> => {
+export const validateScadCode = async (
+  code: string,
+  options: ValidationOptions = DEFAULT_OPTIONS
+): Promise<ValidationResult> => {
   if (!code || typeof code !== 'string') {
     return { success: false, error: 'Code is empty or invalid' };
   }
@@ -348,7 +368,18 @@ export const validateScadCode = async (code: string): Promise<ValidationResult> 
     }
 
     instance.FS.writeFile('/input.scad', trimmedCode);
-    const exitCode = instance.callMain(['/input.scad', '-o', 'output.stl']);
+
+    // Build command arguments
+    // Research: Manifold backend provides "orders of magnitude" faster boolean operations
+    const args = ['/input.scad', '-o', 'output.stl'];
+    if (options.useManifoldBackend) {
+      args.push('--backend=Manifold');
+    }
+    if (options.previewMode) {
+      args.push('--preview');
+    }
+
+    const exitCode = instance.callMain(args);
 
     if (exitCode !== 0) {
       return {

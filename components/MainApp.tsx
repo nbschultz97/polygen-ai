@@ -94,6 +94,9 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   const [isEditingCode, setIsEditingCode] = useState(false);
   const [editedCode, setEditedCode] = useState('');
 
+  // Streaming code state - shows progressive generation
+  const [streamingCode, setStreamingCode] = useState('');
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -220,6 +223,9 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
         setConceptPreview(null);
       }
 
+      // Clear streaming state for new generation
+      setStreamingCode('');
+
       setWorkflowStep('processing');
 
       try {
@@ -244,7 +250,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                 console.log('Preview image generated');
                 setConceptPreview(imageUrl);
               },
-              onCodeGenerated: (code) => console.log('Code generated:', code.length, 'chars'),
+              onCodeGenerated: (code) => {
+                setStreamingCode(''); // Clear streaming state on completion
+                console.log('Code generated:', code.length, 'chars');
+              },
+              onCodeChunk: (_chunk, fullText) => {
+                // Update streaming code display in real-time
+                setStreamingCode(fullText);
+              },
               onValidationComplete: (result) => {
                 if (result.success) {
                   setMessages((prev) => [
@@ -964,7 +977,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                             minWidth: '2.5rem',
                           }}
                         >
-                          {currentAsset.scadCode}
+                          {streamingCode || currentAsset.scadCode}
                         </SyntaxHighlighter>
                       </div>
                     )

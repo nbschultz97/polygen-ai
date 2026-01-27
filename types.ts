@@ -233,6 +233,8 @@ export interface OrchestratorCallbacks {
   onGSTGenerated: (gst: GeometricStructureTree) => void;
   onPreviewImageGenerated?: (imageUrl: string) => void;
   onCodeGenerated: (code: string) => void;
+  /** Streaming callback: called with each chunk of generated code during streaming */
+  onCodeChunk?: (chunk: string, fullText: string) => void;
   onValidationComplete: (result: ValidationResult) => void;
   onSmartFixesGenerated: (fixes: SmartQuickFix[]) => void;
   onError: (error: Error, step: WorkflowStep) => void;
