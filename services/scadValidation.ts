@@ -324,9 +324,26 @@ export const validateScadCode = async (code: string): Promise<ValidationResult> 
         : wrapper;
 
     if (!instance?.FS) {
+      // Try using high-level renderToStl API as fallback
+      if ('renderToStl' in wrapper && typeof wrapper.renderToStl === 'function') {
+        try {
+          await wrapper.renderToStl(trimmedCode);
+          return {
+            success: true,
+            warnings: ['Validated using fallback mode.', ...preWarnings],
+          };
+        } catch (renderErr: any) {
+          return {
+            success: false,
+            error: `Compilation failed: ${renderErr?.message || 'Unknown error'}`,
+            warnings: preWarnings,
+          };
+        }
+      }
+      console.error('OpenSCAD getInstance() returned:', instance);
       return {
         success: false,
-        error: 'OpenSCAD instance failed to initialize properly',
+        error: 'OpenSCAD WASM failed to initialize. Try refreshing the page.',
       };
     }
 

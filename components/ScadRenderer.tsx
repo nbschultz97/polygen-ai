@@ -216,7 +216,8 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
           : wrapper;
 
       if (!instance?.FS) {
-        throw new Error('OpenSCAD instance failed to initialize');
+        console.error('OpenSCAD getInstance() returned:', instance);
+        throw new Error('OpenSCAD WASM failed to initialize. Try refreshing the page.');
       }
 
       instance.FS.writeFile('/input.scad', renderCode);
