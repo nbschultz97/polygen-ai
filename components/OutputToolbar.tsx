@@ -1,9 +1,9 @@
 import React from 'react';
-import { Code, Eye, Copy, Check, ExternalLink, FileJson } from 'lucide-react';
+import { Code, Eye, Copy, Check, ExternalLink, FileJson, GitCompare } from 'lucide-react';
 
 interface OutputToolbarProps {
-  viewMode: 'code' | '3d';
-  setViewMode: (mode: 'code' | '3d') => void;
+  viewMode: 'code' | '3d' | 'compare';
+  setViewMode: (mode: 'code' | '3d' | 'compare') => void;
   productClass?: string;
   copied: boolean;
   exported: boolean;
@@ -43,6 +43,15 @@ const OutputToolbar: React.FC<OutputToolbarProps> = ({
           >
             <Eye className="w-3.5 h-3.5" />
             3D Preview
+          </button>
+          <button
+            onClick={() => setViewMode('compare')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all ${
+              viewMode === 'compare' ? 'bg-violet-600 text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <GitCompare className="w-3.5 h-3.5" />
+            Compare
           </button>
         </div>
         {productClass && (

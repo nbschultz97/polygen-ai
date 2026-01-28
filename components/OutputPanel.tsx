@@ -7,6 +7,7 @@ import SmartQuickFixes from './SmartQuickFixes';
 import SpecReviewPanel from './SpecReviewPanel';
 import ConceptPreviewPanel from './ConceptPreviewPanel';
 import EmptyOutputPanel from './EmptyOutputPanel';
+import ValidationDiff from './ValidationDiff';
 
 interface OutputPanelProps {
   currentAsset: GeneratedAsset | null;
@@ -33,7 +34,7 @@ const OutputPanel: React.FC<OutputPanelProps> = ({
   onApproveSpec,
   onApplyFix,
 }) => {
-  const [viewMode, setViewMode] = useState<'code' | '3d'>('code');
+  const [viewMode, setViewMode] = useState<'code' | '3d' | 'compare'>('code');
 
   const isProcessing = ['processing', 'planning', 'coding', 'validating'].includes(workflowStep);
 
@@ -55,8 +56,10 @@ const OutputPanel: React.FC<OutputPanelProps> = ({
         <div className="flex-1 overflow-hidden">
           {viewMode === 'code' ? (
             <CodeView code={currentAsset.scadCode} />
-          ) : (
+          ) : viewMode === '3d' ? (
             <ScadRenderer code={currentAsset.scadCode} isProUser={true} />
+          ) : (
+            <ValidationDiff asset={currentAsset} />
           )}
         </div>
 
