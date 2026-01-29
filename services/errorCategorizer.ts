@@ -124,21 +124,38 @@ const ERROR_PATTERNS: Array<{
     pitfallRef: 'difference-penetration',
   },
 
-  // CSG/Boolean operation issues
+  // CSG/Boolean operation issues — Manifold Guard
+  {
+    pattern: /not a valid 2-manifold/i,
+    category: 'manifold',
+    severity: 'critical',
+    suggestedFix:
+      'MANIFOLD ERROR: Non-manifold geometry detected. Apply these fixes: (1) Add epsilon=0.01 to ALL difference() cuts — extend cutters by epsilon on every axis. (2) Use hull() to connect adjacent parts instead of relying on exact edge alignment. (3) Ensure no zero-thickness walls or coincident faces exist.',
+    pitfallRef: 'manifold-guard',
+  },
   {
     pattern: /non-?manifold/i,
     category: 'manifold',
-    severity: 'warning',
+    severity: 'critical',
     suggestedFix:
-      'Geometry is not watertight. Ensure boolean operations have slight overlap (use epsilon offset).',
-    pitfallRef: 'epsilon-overlap',
+      'MANIFOLD ERROR: Geometry is not watertight. Ensure all difference() operations use epsilon=0.01 offset, and use hull() for part connectivity instead of exact edge alignment.',
+    pitfallRef: 'manifold-guard',
+  },
+  {
+    pattern: /self[- ]intersect/i,
+    category: 'manifold',
+    severity: 'critical',
+    suggestedFix:
+      'MANIFOLD ERROR: Self-intersecting geometry. Split complex boolean chains into sequential steps and ensure epsilon overlap on all cuts.',
+    pitfallRef: 'manifold-guard',
   },
   {
     pattern: /degenerate/i,
-    category: 'csg_operation',
-    severity: 'warning',
+    category: 'manifold',
+    severity: 'critical',
     suggestedFix:
-      'Degenerate geometry detected. Check for zero-thickness walls or coincident faces.',
+      'MANIFOLD ERROR: Degenerate geometry (zero-thickness walls or coincident faces). Increase wall thickness to minimum 1.2mm and add epsilon=0.01 to boolean overlaps.',
+    pitfallRef: 'manifold-guard',
   },
 
   // Recursion errors

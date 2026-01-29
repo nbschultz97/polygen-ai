@@ -57,6 +57,64 @@ union() {
 }`,
     keywords: ['manifold', 'coincident', 'touching', 'edge', 'face', 'overlap']
   },
+  {
+    id: 'manifold-guard',
+    category: 'manifold',
+    title: 'Manifold Guard: Prevent Non-Manifold Geometry',
+    description: 'Non-manifold geometry (edges shared by >2 faces, zero-thickness walls, T-junctions) makes models unprintable. The Manifold Guard enforces three rules: (1) epsilon on ALL difference() cuts, (2) hull() for connectivity instead of edge alignment, (3) no coincident faces between union() children.',
+    badExample: `// WRONG - multiple manifold violations
+difference() {
+  cube([20, 20, 10]);
+  translate([5, 5, 0])
+    cylinder(h=10, d=8);  // No epsilon: coincident top/bottom faces
+}
+// Parts touching at exact edge (T-junction)
+union() {
+  cube([20, 10, 5]);
+  translate([20, 0, 0]) cube([10, 10, 5]);  // Shares exact edge
+}`,
+    goodExample: `// CORRECT - Manifold Guard applied
+epsilon = 0.01;
+difference() {
+  cube([20, 20, 10]);
+  translate([5, 5, -epsilon])
+    cylinder(h=10 + epsilon*2, d=8);  // Oversized by epsilon
+}
+// hull() connectivity instead of edge alignment
+hull() {
+  translate([0, 0, 0]) cube([20, 10, 5]);
+  translate([18, 0, 0]) cube([12, 10, 5]);  // Overlap via hull
+}`,
+    keywords: ['manifold', 'non-manifold', '2-manifold', 'watertight', 'self-intersect', 'degenerate', 'T-junction', 'coincident', 'unprintable']
+  },
+  {
+    id: 'manifold-hull-connectivity',
+    category: 'manifold',
+    title: 'Use hull() for Part Connectivity (Not Edge Alignment)',
+    description: 'When connecting two parts, use hull() with keyframe primitives instead of relying on exact coordinate math. hull() guarantees a watertight solid between any two convex shapes, eliminating manifold errors at joints.',
+    badExample: `// WRONG - elbow via exact coordinate alignment (fragile, manifold-prone)
+module elbow() {
+  cylinder(h=20, d=10);
+  translate([0, 0, 20])
+    rotate([0, 90, 0])
+      cylinder(h=20, d=10);  // T-junction at joint
+}`,
+    goodExample: `// CORRECT - hull() elbow (guaranteed manifold)
+module elbow(d=10, len=20) {
+  hull() {
+    cylinder(h=1, d=d);
+    translate([0, 0, len])
+      sphere(d=d);  // Keyframe at bend point
+  }
+  hull() {
+    translate([0, 0, len])
+      sphere(d=d);  // Same keyframe
+    translate([len, 0, len])
+      cylinder(h=1, d=d);
+  }
+}`,
+    keywords: ['hull', 'elbow', 'joint', 'connection', 'connectivity', 'bend', 'manifold', 'T-junction']
+  },
 
   // ============================================
   // Variable Scope Pitfalls
