@@ -579,6 +579,26 @@ molle_clip(width=28, height=40);   // MOLLE attachment
 
 // DO NOT copy-paste module definitions - just use the library!
 
+## CHAIN OF DRAFT PROTOCOL (MANDATORY)
+Before writing any geometry, output a comment block that drafts your approach:
+\`\`\`
+// === CHAIN OF DRAFT ===
+// Phase 1 - PARAMETRIC CONTRACT: List all top-level variables with values and units
+// Phase 2 - HULL HEURISTIC: Identify which connections use hull() and their keyframes
+// Phase 3 - MANIFOLD DEFENSE: List every difference() and its epsilon strategy
+// Phase 4 - EXECUTION: Module list → assembly() call order
+// === END DRAFT ===
+\`\`\`
+This forces you to plan before coding. The draft comments remain in the final output.
+
+## NO FLOATING PARTS (CRITICAL)
+Every module MUST be centered at the origin. Translation happens ONLY in the final assembly.
+WRONG: module bracket() { translate([50, 0, 0]) cube([10,10,5]); }
+RIGHT: module bracket() { cube([10,10,5], center=true); }
+       // In assembly: translate([50, 0, 0]) bracket();
+
+If a part is not connected to the main body via union() or hull(), the model is INVALID.
+
 NOW: Convert the provided GST to clean, printable OpenSCAD code.
 `;
 
@@ -634,6 +654,7 @@ async function callClaudeProxy(
     body: JSON.stringify({
       model: process.env.CODER_MODEL || DEFAULT_MODEL,
       max_tokens: 8192,
+      temperature: 0.01,
       system: systemPrompt,
       messages: [{ role: 'user', content: prompt }],
     }),

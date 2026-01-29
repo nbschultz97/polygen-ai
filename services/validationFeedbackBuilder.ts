@@ -141,15 +141,27 @@ export function buildValidationFeedback(
     promptGuidance += `\n\`\`\`\n\n`;
   }
 
-  // Section 4: Relevant Pitfalls
+  // Section 4: Manifold Guard — targeted manifold feedback
+  const hasManifoldErrors = categorizedErrors.some(e => e.category === 'manifold');
+  if (hasManifoldErrors) {
+    promptGuidance += `### MANIFOLD GUARD — CRITICAL FIX PROTOCOL\n\n`;
+    promptGuidance += `Non-manifold geometry was detected. This makes the model unprintable. Apply ALL of these fixes:\n\n`;
+    promptGuidance += `1. **Epsilon on ALL difference() cuts**: Define \`epsilon = 0.01;\` at the top. Every cutter in difference() must be oversized by epsilon on every axis:\n`;
+    promptGuidance += `   \`translate([x, y, -epsilon]) cylinder(h = h + epsilon*2, d = d);\`\n\n`;
+    promptGuidance += `2. **hull() for connectivity**: Do NOT connect parts by exact edge alignment. Use \`hull() { shape_A(); shape_B(); }\` to guarantee watertight joints.\n\n`;
+    promptGuidance += `3. **No coincident faces**: union() children must overlap by at least epsilon. Never place two faces at the exact same coordinate.\n\n`;
+    promptGuidance += `4. **No zero-thickness walls**: Minimum wall thickness = 1.2mm for printability.\n\n`;
+  }
+
+  // Section 5: Relevant Pitfalls
   if (relevantPitfalls.length > 0) {
     promptGuidance += formatPitfallGuidance(relevantPitfalls, detailed);
   }
 
-  // Section 5: Retry Instructions
+  // Section 6: Retry Instructions
   promptGuidance += getRetryInstructions(attemptNumber, maxAttempts);
 
-  // Section 6: OpenSCAD Quick Rules (always include)
+  // Section 7: OpenSCAD Quick Rules (always include)
   promptGuidance += `
 ### CRITICAL OPENSCAD RULES
 - Variables are IMMUTABLE: define before use, last assignment wins globally
