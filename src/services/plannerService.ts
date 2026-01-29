@@ -584,6 +584,11 @@ function parsePlannerResponse(text: string): PlannerOutput {
     // Ensure globalParameters exists
     gst.globalParameters = gst.globalParameters || [];
 
+    // ============================================
+    // GST FORMALIZATION: Structural validation
+    // ============================================
+    validateGSTStructure(gst);
+
     return {
       needsClarification: false,
       gst: gst as GeometricStructureTree,
@@ -595,6 +600,84 @@ function parsePlannerResponse(text: string): PlannerOutput {
     throw new Error(
       `Failed to parse Planner response: ${error instanceof Error ? error.message : 'Invalid JSON'}`
     );
+  }
+}
+
+// Valid GST component types from the taxonomy
+const VALID_COMPONENT_TYPES = new Set([
+  // Primitives
+  'cuboid', 'cylinder', 'sphere', 'cone',
+  // Compound
+  'tube', 'rcube', 'wedge',
+  // Functional
+  'screw_hole', 'counterbore', 'slot', 'chamfer', 'fillet',
+  // Connectivity (Hull Heuristic)
+  'hulled_connection', 'elbow',
+  // Boolean operations
+  'union', 'difference', 'intersection', 'hull',
+]);
+
+const SUBTRACTIVE_TYPES = new Set(['screw_hole', 'counterbore', 'slot', 'chamfer']);
+
+/**
+ * GST Formalization: Validate and fix structural issues in the GST
+ * Ensures the planner output conforms to the expected schema
+ */
+function validateGSTStructure(gst: any): void {
+  const warnings: string[] = [];
+
+  // Validate root has a boolean operation type
+  if (gst.root && !['union', 'difference', 'intersection', 'hull'].includes(gst.root.type)) {
+    warnings.push(`Root type "${gst.root.type}" is not a boolean op — wrapping in union`);
+    gst.root = { id: 'main', name: 'assembly', type: 'union', children: [gst.root] };
+  }
+
+  // Ensure root has id
+  if (gst.root && !gst.root.id) {
+    gst.root.id = 'main';
+  }
+
+  // Recursively validate children
+  function validateNode(node: any, path: string): void {
+    if (!node) return;
+
+    // Ensure every node has an id
+    if (!node.id) {
+      node.id = `${path}_${node.name || node.type || 'node'}`;
+    }
+
+    // Warn on unknown types but don't reject (planner may innovate)
+    if (node.type && !VALID_COMPONENT_TYPES.has(node.type)) {
+      warnings.push(`Unknown component type "${node.type}" at ${path} — coder will interpret as custom`);
+    }
+
+    // Auto-fix: subtractive types must have booleanOp: "subtract"
+    if (SUBTRACTIVE_TYPES.has(node.type) && node.booleanOp !== 'subtract') {
+      node.booleanOp = 'subtract';
+      warnings.push(`Auto-fixed: ${node.type} at ${path} now has booleanOp="subtract"`);
+    }
+
+    // Validate parameters have name+value
+    if (node.parameters) {
+      for (const param of node.parameters) {
+        if (!param.name || param.value === undefined) {
+          warnings.push(`Parameter missing name or value at ${path}`);
+        }
+        // Default unit to mm
+        if (!param.unit) param.unit = 'mm';
+      }
+    }
+
+    // Recurse into children
+    if (node.children) {
+      node.children.forEach((child: any, i: number) => validateNode(child, `${path}.children[${i}]`));
+    }
+  }
+
+  validateNode(gst.root, 'root');
+
+  if (warnings.length > 0) {
+    console.log(`GST Validation (${warnings.length} fixes applied):`, warnings);
   }
 }
 

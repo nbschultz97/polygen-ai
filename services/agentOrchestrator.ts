@@ -23,6 +23,7 @@ import { analyzeForQuickFixes } from './quickFixAnalyzer';
 import { unifiedGeneratorService } from './unifiedGeneratorService';
 import { buildValidationFeedback } from './validationFeedbackBuilder';
 import { validatorClient } from './validatorClient';
+import { visualCriticService, needsRegeneration, generateCritiqueFeedback } from './visualCriticService';
 
 // Use multi-agent pipeline by default for better success rate (75% vs 44%)
 // Research shows GST intermediate format significantly improves complex designs
@@ -755,6 +756,20 @@ async function orchestrateMultiAgent(
         if (validation.success) {
           console.log(`Orchestrator: Validation passed on attempt ${attempts + 1}`);
 
+          // Visual Critic: Check rendered output if P_succ is in the ambiguous range
+          // Only triggers when SOTA Active Critic scores 0.8 <= P_succ <= 0.95
+          if (validation.pSucc !== undefined && validation.pSucc >= 0.8 && validation.pSucc <= 0.95) {
+            console.log(`Orchestrator: P_succ=${validation.pSucc.toFixed(2)} — triggering Visual Critic`);
+            try {
+              // The visual critic needs a canvas screenshot — this is handled by the UI layer
+              // Store the flag so the UI knows to run visual critique after rendering
+              (asset as any)._pendingVisualCritique = true;
+              console.log('Orchestrator: Visual Critic flagged for post-render analysis');
+            } catch (vcError) {
+              console.warn('Orchestrator: Visual Critic setup skipped:', vcError);
+            }
+          }
+
           // Generate smart fixes
           const smartFixes = analyzeForQuickFixes(asset.gst!, validation, coderOutput.scadCode);
           asset.smartFixes = smartFixes;
@@ -820,6 +835,37 @@ async function orchestrateMultiAgent(
 }
 
 /**
+ * Run Visual Critic on a rendered model (called by UI after Three.js render)
+ * Returns critique feedback that can be fed back to the coder for correction
+ */
+export async function runVisualCritique(
+  canvasScreenshotBase64: string,
+  originalPrompt: string,
+  abortSignal?: AbortSignal
+): Promise<{ approved: boolean; feedback: string[] }> {
+  try {
+    const critique = await visualCriticService.critiqueRender(
+      canvasScreenshotBase64,
+      originalPrompt,
+      abortSignal
+    );
+
+    console.log(`Visual Critic: approved=${critique.approved}, confidence=${critique.confidence}, issues=${critique.issues.length}`);
+
+    if (!critique.approved && needsRegeneration(critique)) {
+      const feedback = generateCritiqueFeedback(critique);
+      console.log(`Visual Critic: ${feedback.length} issues require regeneration`);
+      return { approved: false, feedback };
+    }
+
+    return { approved: true, feedback: [] };
+  } catch (error) {
+    console.warn('Visual Critic error (non-blocking):', error);
+    return { approved: true, feedback: [] };
+  }
+}
+
+/**
  * Check if the multi-agent pipeline is available
  * API keys are server-side only; availability determined by USE_MULTI_AGENT flag
  */
@@ -863,6 +909,7 @@ export function getAgentStatus(): {
 // Export as object
 export const agentOrchestrator = {
   orchestrateGeneration,
+  runVisualCritique,
   isMultiAgentAvailable,
   isUnifiedPipeline,
   getAgentStatus,

@@ -339,7 +339,13 @@ union() {
 
 RULE: Each GST child component → separate module → called in assembly
 
-### 5. Standard Primitives + Built-in Library
+### 5. Fast Preview Mode ($preview)
+ALWAYS include these two lines in the Settings section:
+$preview = true;
+$fn = $preview ? 32 : 64;
+This halves polygon count during iteration. Users set $preview=false for final STL export.
+
+### 6. Standard Primitives + Built-in Library
 Use built-in primitives: cube, sphere, cylinder, polyhedron, linear_extrude, rotate_extrude, hull, difference, union, intersection
 
 For tactical/military equipment from GST, USE the built-in tactical library:
@@ -420,7 +426,8 @@ param2 = value2;
 comp1_width = value;  // from root.children[].parameters
 
 // Settings
-$fn = 64;
+$preview = true;  // Fast preview rendering (disable for final STL export)
+$fn = $preview ? 32 : 64;  // Lower polygon count for fast iteration
 eps = 0.01;
 
 // Modules (if needed for reuse)
