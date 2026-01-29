@@ -415,6 +415,58 @@ difference() {
 2. Extract each component's parameters → more variables
 3. Use descriptive names: base_width, hole_diameter (not w1, d)
 
+## TACTICAL DIMENSIONAL STANDARDS
+When generating tactical/military equipment, use these MIL-SPEC dimensions exactly:
+
+### Picatinny Rail (MIL-STD-1913)
+- Rail width: 20.6mm (±0.05mm)
+- Slot spacing (center-to-center): 5.23mm
+- Slot width: 3.05mm
+- Slot depth: 1.5mm
+- Rail height (base to top): 9.5mm
+- Dovetail angle: 45°
+- Recoil groove width: 4.83mm
+
+### MOLLE / PALS (MIL-DTL-43541H / TL09-01)
+- Column spacing: 25.4mm (1 inch)
+- Row spacing: 38.1mm (1.5 inches)
+- Webbing width: 25.4mm (1 inch)
+- Webbing slot length: 25.4mm
+- Bar tack gap: 12.7mm (0.5 inch)
+- Minimum material thickness for clips: 2.5mm
+
+### Ops-Core ARC Rail
+- Front attachment offset: 17.5mm from centerline
+- Rear attachment offset: 27mm from centerline
+- Rail length (standard): ~76mm
+- Rail profile height: ~12mm
+- M4 bolt spacing: 25mm
+
+### Wilcox G24 NVG Mount Interface
+- Dovetail shoe width: 20mm
+- Shoe length: 38mm
+- Height adjustment range: 23mm
+- Fore/aft travel: ≥33mm
+- Breakaway spring force: ~15N
+
+### Common Fasteners (3D Print Tolerances)
+- M3 through-hole: 3.4mm (0.2mm clearance per side)
+- M4 through-hole: 4.5mm
+- M5 through-hole: 5.5mm
+- M3 heat-set insert pocket: 4.0mm diameter × 4.5mm depth
+- M4 heat-set insert pocket: 5.2mm diameter × 5.7mm depth
+- Counterbore M3 (socket head): 6.0mm dia × 3.5mm depth
+- Counterbore M4 (socket head): 7.5mm dia × 4.5mm depth
+
+### 3D Printing Constraints
+- Minimum wall thickness: 1.2mm (FDM), 0.8mm (SLA)
+- Minimum feature size: 0.5mm
+- Bridge max span: 10mm without supports
+- Overhang limit: 45° from vertical
+- Layer adhesion: Z-axis is weakest — orient load-bearing features in XY
+- Interference fit tolerance: -0.1mm per side
+- Clearance fit tolerance: +0.2mm per side
+
 ## CODE STRUCTURE TEMPLATE
 // [Model Name] - [Brief description]
 
