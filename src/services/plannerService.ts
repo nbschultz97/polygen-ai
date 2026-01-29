@@ -8,6 +8,7 @@
 import type { GeometricStructureTree, SpecData, PlannerInput, PlannerOutput } from '../types';
 import { loadPreferences, getPreferencesForPrompt } from './preferencesService';
 import { getAuthToken } from './apiClient';
+import { getTemplateIndex } from './gstTemplates';
 
 // System prompt for the Planner agent - Enhanced with Component Type Taxonomy
 const PLANNER_SYSTEM_PROMPT = `
@@ -508,7 +509,7 @@ ${input.userPrompt}`;
       body: JSON.stringify({
         prompt,
         imageData: input.imageData,
-        systemInstruction: PLANNER_SYSTEM_PROMPT,
+        systemInstruction: PLANNER_SYSTEM_PROMPT + '\n\n' + getTemplateIndex(),
         responseMimeType: 'application/json',
         temperature: 0.7,
       }),
