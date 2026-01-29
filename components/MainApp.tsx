@@ -41,6 +41,7 @@ import {
   isMultiAgentAvailable,
   orchestrateGeneration,
   redoHistory,
+  runVisualCritique,
   undoHistory,
 } from '../services/agentOrchestrator';
 import type { ImageData } from '../services/geminiService';
@@ -101,6 +102,44 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Visual Critic: auto-trigger after render when _pendingVisualCritique is set
+  const visualCriticRunningRef = useRef(false);
+  const handleSendRef = useRef<(text: string) => void>(() => {});
+  const handleRenderComplete = useCallback(async (screenshotBase64: string) => {
+    const asset = currentAsset;
+    if (!asset || !(asset as any)._pendingVisualCritique || visualCriticRunningRef.current) return;
+
+    // Clear the flag and prevent re-entry
+    (asset as any)._pendingVisualCritique = false;
+    visualCriticRunningRef.current = true;
+
+    try {
+      console.log('Visual Critic: auto-triggering post-render analysis');
+      const prompt = messages.find(m => m.role === 'user')?.text || '';
+      const result = await runVisualCritique(screenshotBase64, prompt);
+
+      if (!result.approved) {
+        console.log(`Visual Critic: disapproved with ${result.feedback.length} issues`);
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'model',
+            text: `Visual Critic detected issues:\n${result.feedback.map(f => `- ${f}`).join('\n')}\n\nAttempting automatic repair...`,
+          },
+        ]);
+        // Feed feedback back as a refinement prompt
+        const feedbackPrompt = `VISUAL CRITIC REPAIR: Fix these issues in the current model:\n${result.feedback.join('\n')}`;
+        handleSendRef.current(feedbackPrompt);
+      } else {
+        console.log('Visual Critic: render approved');
+      }
+    } catch (err) {
+      console.warn('Visual Critic: auto-trigger failed (non-blocking):', err);
+    } finally {
+      visualCriticRunningRef.current = false;
+    }
+  }, [currentAsset, messages]);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -411,6 +450,9 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
       recordGeneration,
     ]
   );
+
+  // Keep ref in sync for Visual Critic auto-trigger
+  handleSendRef.current = handleSend;
 
   const handleApproveSpec = useCallback(() => {
     handleSend('APPROVE_SPEC');
@@ -1090,7 +1132,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                       </div>
                     )
                   ) : (
-                    <ScadRenderer code={currentAsset.scadCode} isProUser={isProUser} />
+                    <ScadRenderer code={currentAsset.scadCode} isProUser={isProUser} onRenderComplete={handleRenderComplete} />
                   )}
                 </div>
 
