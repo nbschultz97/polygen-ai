@@ -254,20 +254,48 @@ export const createOpenSCADInstance = async (options: {
 
   // createOpenSCAD returns OpenSCADInstance with high-level API
   // We need getInstance() to access the low-level FS and callMain interface
+  console.log('[openscadLoader] Calling createOpenSCAD...');
   const wrapper = await OpenSCAD({
     noInitialRun: true,
     print: options.onPrint || (() => {}),
     printErr: options.onPrintErr || (() => {}),
   });
+  console.log(
+    '[openscadLoader] createOpenSCAD returned:',
+    typeof wrapper,
+    Object.keys(wrapper || {})
+  );
 
   // The wrapper has renderToStl() and getInstance()
   // getInstance() returns the low-level OpenSCAD with FS and callMain
   let instance: OpenSCADInstance;
   if ('getInstance' in wrapper && typeof wrapper.getInstance === 'function') {
     instance = wrapper.getInstance() as OpenSCADInstance;
-  } else {
-    // Fallback: if it's already the low-level instance
+    console.log('[openscadLoader] Got low-level instance via getInstance()');
+  } else if (wrapper?.FS && wrapper?.callMain) {
+    // Already the low-level instance
     instance = wrapper as OpenSCADInstance;
+    console.log('[openscadLoader] Wrapper is already low-level instance');
+  } else {
+    console.error('[openscadLoader] Unexpected wrapper shape:', wrapper);
+    throw new Error(
+      'OpenSCAD WASM initialized but returned unexpected object. ' +
+        `Has getInstance: ${'getInstance' in wrapper}, Has FS: ${!!wrapper?.FS}, Has callMain: ${!!wrapper?.callMain}`
+    );
+  }
+
+  // Validate the instance has required methods
+  if (
+    !instance.FS?.writeFile ||
+    !instance.FS?.readFile ||
+    typeof instance.callMain !== 'function'
+  ) {
+    console.error('[openscadLoader] Instance missing required methods:', {
+      hasWriteFile: !!instance.FS?.writeFile,
+      hasReadFile: !!instance.FS?.readFile,
+      hasCallMain: typeof instance.callMain,
+    });
+    throw new Error('OpenSCAD WASM instance is missing required FS or callMain methods');
   }
 
   // Wait for libraries to finish loading, then mount them

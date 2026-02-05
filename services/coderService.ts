@@ -508,6 +508,51 @@ module rcube(size, r) {
     }
 }
 
+### Pattern: Shell / Hollow Enclosure (CRITICAL - most common pattern)
+// Cases, boxes, enclosures MUST be shells, NOT solid blocks with holes
+module shell_box(outer, wall, corner_r) {
+    // outer = [width, depth, height], wall = wall thickness
+    inner = [outer[0] - wall*2, outer[1] - wall*2, outer[2] - wall];
+    difference() {
+        rcube(outer, corner_r);
+        translate([0, 0, wall])  // Open top
+            rcube([inner[0], inner[1], inner[2] + eps], corner_r - wall);
+    }
+}
+
+### Pattern: Lid with Tongue Joint
+module lid_with_tongue(outer, wall, tongue_depth) {
+    inner = [outer[0] - wall*2, outer[1] - wall*2, outer[2] - wall];
+    union() {
+        // Lid shell
+        difference() {
+            rcube(outer, 2);
+            translate([0, 0, -wall])
+                rcube([inner[0], inner[1], inner[2] + eps], 1);
+        }
+        // Tongue that fits inside the box
+        translate([0, 0, -tongue_depth/2])
+            rcube([inner[0] - 0.4, inner[1] - 0.4, tongue_depth], 1);  // 0.4mm clearance
+    }
+}
+
+### Pattern: Living Hinge (thin flexible section)
+module living_hinge(width, gap) {
+    // Place between two parts - thin section flexes
+    translate([0, 0, 0])
+        cube([width, gap, 0.4], center=true);  // 0.4mm for PLA/PETG flex
+}
+
+### Pattern: Snap-Fit Clip (cantilever beam)
+module snap_clip(width, length, hook_depth) {
+    // Cantilever beam with hook at end
+    union() {
+        cube([width, 1.5, length], center=false);  // Beam
+        translate([0, 0, length])
+            cube([width, 1.5 + hook_depth, 2], center=false);  // Hook
+    }
+}
+
 ### Pattern: Tube
 module tube(od, id, h) {
     difference() {
@@ -535,6 +580,12 @@ picatinny_groove(length=50);       // For subtractive grooves
 molle_clip(width=28, height=40);   // MOLLE attachment
 
 // DO NOT copy-paste module definitions - just use the library!
+
+## DESIGN QUALITY RULES
+1. SHELL, NOT SOLID: Enclosures/cases/boxes must be hollow shells with uniform wall thickness. NEVER create a solid block and cut a pocket - create the outer shape, then subtract the inner cavity.
+2. FUNCTIONAL FEATURES: If the GST says "hinge", create a WORKING hinge mechanism. If it says "latch", create a WORKING snap-fit. Don't fake features with decorative bumps.
+3. PROPER CLEARANCE: Mating parts need 0.2mm clearance for normal fit, 0.4mm for loose fit. Lids need tongue+groove joints, not just sitting on top.
+4. REALISTIC PROPORTIONS: A phone case should look like a phone case, not a solid brick. Wall thickness should be 2-3mm, not 10mm.
 
 NOW: Convert the provided GST to clean, printable OpenSCAD code.
 `;

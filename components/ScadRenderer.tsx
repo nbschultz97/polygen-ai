@@ -375,16 +375,29 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
           // Use createOpenSCADInstance which properly mounts tactical libraries to /libraries/
           // This is CRITICAL for code that uses: use <libraries/tactical.scad>
           instance = await createOpenSCADInstance({
-            onPrint: () => {},
+            onPrint: (text: string) => {
+              console.log('[ScadRenderer] stdout:', text);
+            },
             onPrintErr: (text: string) => {
-              // Filter benign GL errors often seen in WASM
-              if (
-                text &&
-                text.toLowerCase().includes('error') &&
-                !text.includes('GL_INVALID_OPERATION') &&
-                !text.includes('GL_INVALID_ENUM')
-              ) {
-                errorLog += text + '\n';
+              // Log ALL stderr for debugging - the 3D viewer has been failing silently
+              console.warn('[ScadRenderer] stderr:', text);
+              // Capture errors and warnings (not just "error" keyword)
+              if (text) {
+                const lower = text.toLowerCase();
+                // Skip benign GL errors from Emscripten
+                if (text.includes('GL_INVALID_OPERATION') || text.includes('GL_INVALID_ENUM')) {
+                  return;
+                }
+                // Capture anything that looks like an error or warning
+                if (
+                  lower.includes('error') ||
+                  lower.includes('warning') ||
+                  lower.includes('deprecated') ||
+                  lower.includes('not found') ||
+                  lower.includes('failed')
+                ) {
+                  errorLog += text + '\n';
+                }
               }
             },
           });
@@ -406,14 +419,31 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
           }
 
           instance.FS.writeFile('/input.scad', renderCode);
-          // F5/F6 Strategy: Preview uses --preview for speed, Full uses Manifold for accuracy
-          const args = ['/input.scad', '-o', 'output.stl'];
+          // F5/F6 Strategy: Preview uses default backend, Full uses Manifold for accuracy
+          // CRITICAL: Use absolute paths - Emscripten CWD is '/' but OpenSCAD may resolve differently
+          const args = ['/input.scad', '-o', '/output.stl'];
           if (!isPreview) {
             args.push('--backend=Manifold');
           }
-          const exitCode = instance.callMain(args);
 
-          if (exitCode !== 0 || (errorLog.includes('ERROR') && !errorLog.includes('GL_INVALID'))) {
+          console.log('[ScadRenderer] callMain args:', args);
+          let exitCode: number;
+          try {
+            exitCode = instance.callMain(args);
+          } catch (wasmErr: any) {
+            throw new Error(`WASM execution failed: ${wasmErr?.message || wasmErr}`);
+          }
+
+          console.log(
+            '[ScadRenderer] callMain exitCode:',
+            exitCode,
+            'errorLog:',
+            errorLog.slice(0, 200)
+          );
+          if (
+            exitCode !== 0 ||
+            (errorLog.toLowerCase().includes('error') && !errorLog.includes('GL_INVALID'))
+          ) {
             throw new Error(`Compiler Error:\n${errorLog || 'Exit Code ' + exitCode}`);
           }
 
@@ -425,9 +455,11 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
           try {
             const rawStl = instance.FS.readFile('/output.stl');
             stlData = new Uint8Array(rawStl); // Explicit copy - CRITICAL
-          } catch {
+          } catch (readErr: any) {
+            console.error('[ScadRenderer] Failed to read /output.stl:', readErr);
             throw new Error(
-              'Failed to read output STL. Check for infinite recursion or empty geometry.'
+              `Failed to read output STL: ${readErr?.message || 'file not found'}. ` +
+                'Check for infinite recursion or empty geometry.'
             );
           }
 
@@ -611,7 +643,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
           setLoading(false);
         }
       },
-      [code, loading, analyzeComplexity, isMobile, renderMode, onRenderComplete]
+      [code, loading, analyzeComplexity, isMobile, renderMode, onRenderComplete, uploadedStlData]
     );
 
     // Auto-update logic with debounce - always uses fast preview mode

@@ -5,6 +5,29 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.3] - 2026-02-05
+
+### Fixed
+
+- **3D Viewer Output Path Mismatch**: `ScadRenderer.tsx` used relative path `'output.stl'` in `callMain` args but absolute `'/output.stl'` in `readFile`. Both now use absolute paths, matching the openscad-wasm package's own `renderToStl()` implementation.
+- **Silent Error Swallowing in 3D Viewer**: `onPrintErr` handler only captured stderr lines containing "error", silently discarding warnings, deprecation notices, and critical WASM messages. Now logs ALL stderr to console and captures errors, warnings, deprecated, not-found, and failed messages.
+- **Case-Sensitive Error Check**: Error condition checked `errorLog.includes('ERROR')` (uppercase only), missing mixed-case errors like "Error: undefined variable". Now uses case-insensitive check.
+- **Missing Dependency in compileAndRender**: `uploadedStlData` was used in the callback but missing from the React dependency array.
+
+### Changed
+
+- **Planner Prompt Overhaul**: Reduced tactical/military focus, added general-purpose design quality rules including shell construction guidance, functional feature patterns (hinges, snap-fits, latches), dimensional accuracy requirements, and printability constraints.
+- **Coder Prompt Overhaul**: Added shell/enclosure construction patterns (`shell_box`, `lid_with_tongue`, `living_hinge`, `snap_clip`), design quality rules requiring hollow shells instead of solid blocks, and functional feature requirements.
+- **GST boundingBox Now Required**: Planner prompt instructs Gemini to always include `boundingBox` field in GST output, enabling meaningful sv/sd/pSucc quality metrics instead of defaulting to 1.0.
+
+### Technical
+
+- Added comprehensive diagnostic logging throughout ScadRenderer (stdout, stderr, callMain args/exitCode, readFile errors)
+- Added instance validation in `openscadLoader.ts` with detailed error messages when WASM returns unexpected object shapes
+- Wrapped `callMain` in try/catch to surface WASM execution failures instead of silent crashes
+
+---
+
 ## [3.6.2] - 2026-02-05
 
 ### Fixed
