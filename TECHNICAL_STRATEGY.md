@@ -228,13 +228,13 @@ Instead of regenerating full scripts, request "diffs" or specific variable updat
 | `manifold`       | Warning  | Non-watertight mesh                  |
 | `file_io`        | Critical | Include/use statement failures       |
 
-### Research-Recommended Additions
+### Research-Recommended Additions (All Implemented)
 
-| Category           | Severity | Detection Method                              |
-| ------------------ | -------- | --------------------------------------------- |
-| `disconnected`     | High     | Multiple separate solids not attached         |
-| `scale_mismatch`   | High     | Volume deviates >100% from GST intent         |
-| `hallucinated_lib` | Medium   | Unknown function calls (e.g., `super_gear()`) |
+| Category           | Severity | Detection Method                              | Status    |
+| ------------------ | -------- | --------------------------------------------- | --------- |
+| `disconnected`     | High     | Multiple separate solids not attached         | ✅ v3.5.0 |
+| `scale_mismatch`   | High     | Volume deviates >100% from GST intent         | ✅ v3.5.0 |
+| `hallucinated_lib` | Medium   | Unknown function calls (e.g., `super_gear()`) | ✅ v3.5.0 |
 
 ### Validation Strategies
 
@@ -393,7 +393,7 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 
 - **Goal**: Structural integrity via hierarchy.
 - **Strategy**: Force the AI to define `parent`, `child`, and `anchor_point` logic in JSON before writing a single line of SCAD.
-- **Status**: [IN PROGRESS] - Optimizing for Multi-Part Mating ($T_c$).
+- **Status**: [COMPLETE] - GST hierarchy enforced with tactical template library (v3.6.0).
 
 ### 10.3 The Visual Critic (The VLM Eye)
 
@@ -411,16 +411,16 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 - [x] Quantitative Metrics ($S_v, S_d$ in code)
 - [x] Tactical Guard (Auto-Injection)
 
-### Phase 2: Tier 5 Autonomy (v3.6.0)
+### Phase 2: Tier 5 Autonomy ✅ COMPLETE
 
-- [ ] **Visual Anchor Grid** (6x6 VLM feedback)
-- [ ] **P_succ Gating** (Vision ROI optimization)
-- [ ] **Atomic LMP** (Scope isolation enforcement)
-- [ ] **L_sig Protocol** (Signature recovery)
+- [x] **Visual Anchor Grid** (6x6 VLM feedback) ✅ v3.5.5
+- [x] **P_succ Gating** (Vision ROI optimization) ✅ v3.5.3
+- [x] **Atomic LMP** (Scope isolation enforcement) ✅ v3.5.5
+- [x] **L_sig Protocol** (Signature recovery) ✅ v3.5.4
 
 ### Phase 3: Tier 6 Self-Correction (v4.0.0)
 
-- [ ] **Golden Set** automated benchmarking
+- [x] **Golden Set** automated benchmarking ✅ v3.5.5
 - [ ] **Small Model Distillation** (drop COGS)
 - [ ] **CadQuery Server Engine** (Pro tier)
 
@@ -435,8 +435,8 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 
 ---
 
-_Last Updated: January 2026_
-_Version: 3.5.0_
+_Last Updated: February 2026_
+_Version: 3.6.1_
 
 ```
 

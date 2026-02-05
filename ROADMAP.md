@@ -2,7 +2,7 @@
 
 This document outlines planned features and improvements for PolyGen AI, informed by deep technical research on AI-driven CAD generation.
 
-## Current Version: 3.6.0
+## Current Version: 3.6.1
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architecture decisions.
@@ -10,6 +10,15 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 ---
 
 ## Completed
+
+### v3.6.1 - STL Metrics Pipeline & Diagnostics
+
+- [x] Fixed STL metrics pipeline (volume/boundingBox missing due to raw header triangle count)
+- [x] Fixed gstMatch never assigned to validation result
+- [x] Enhanced session export with SOTA metrics (pSucc, sv, sd) and pipeline diagnostics
+- [x] Added 429 rate limit detection in orchestrator
+- [x] Added WASM metric integrity tests (5 unit tests)
+- [x] Deleted 88KB zombie code from src/services/
 
 ### v3.6.0 - Preview/Render Split & STL Remix
 

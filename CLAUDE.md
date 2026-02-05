@@ -90,6 +90,8 @@ Validates OpenSCAD code using browser-based WASM. Features:
 - Two-phase validation (preview/render)
 - Manifold mesh checking
 - Pre-validation warnings
+- STL metrics extraction (volume, bounding box, triangle count) with sanity checks
+- WASM heap corruption defense (defensive STL copy, coordinate/volume range validation)
 
 ### errorCategorizer.ts
 
@@ -114,13 +116,19 @@ Based on deep technical research, these optimizations are implemented or planned
 3. **Pitfalls Database** - 12 common OpenSCAD mistakes
 4. **Prompt Caching** - Claude cache_control for cost reduction
 5. **Manifold Backend** - 10x faster boolean operations
+6. **Response Streaming** - Real-time feedback during generation (v3.5.0)
+7. **Web Worker Offloading** - WASM execution in background thread (v3.5.0)
+8. **Visual Feedback Loop** - Render → Claude Vision analysis (v3.4.0)
+9. **SOTA Quality Metrics** - P_succ scoring with Sv/Sd dimensional accuracy (v3.5.3)
+10. **STL Metrics Pipeline** - Volume, bounding box, triangle count extraction from WASM output (v3.6.1)
+11. **Session Export Diagnostics** - SOTA metrics + pipeline info in exports for debugging (v3.6.1)
+12. **429 Rate Limit Detection** - Actionable error messages on API throttling (v3.6.1)
 
-### Planned (v3.1.0)
+### Planned
 
-1. Response streaming for long generations
-2. Web Worker offloading for WASM
-3. Visual feedback loop (render → VLM analysis)
-4. Parallel variation generation
+1. Parallel variation generation (3 candidates, pick best)
+2. Small model distillation (Gemini Flash to drop COGS)
+3. CadQuery server engine for Pro tier
 
 ## Common Patterns
 
@@ -226,7 +234,7 @@ validateScadCode(code, { useManifoldBackend: true });
 
 - `package.json` → `version` field
 - `README.md` → version badge at top (`**v3.x.x**`)
-- `components/LandingPage.tsx` → footer version display (`v3.x.x`)
+- `services/geminiService.ts` → `APP_VERSION` constant (single source of truth, imported by LandingPage, AppHeader, MainApp, App)
 
 ### 2. Changelog
 
@@ -246,8 +254,10 @@ Update `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com/) 
 
 Before pushing to main:
 
-- [ ] Version updated in all 3 locations
+- [ ] Version updated in all 3 locations (package.json, README.md, geminiService.ts APP_VERSION)
 - [ ] CHANGELOG.md has new entry
+- [ ] ROADMAP.md version updated + new completed section if applicable
+- [ ] TECHNICAL_STRATEGY.md version/date footer updated + phase checkboxes updated
 - [ ] README.md reflects current features
 - [ ] Tests pass (`pnpm test`)
 - [ ] TypeScript compiles (`pnpm typecheck`)
