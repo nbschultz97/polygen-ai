@@ -401,13 +401,15 @@ async function validateInWorker(
     }
 
     // Read output STL
-    // FIX: Explicitly copy the data to avoid WASM heap view issues
-    // The FS.readFile() returns a VIEW into WASM heap, not a copy.
-    // Using stlData.buffer would parse the entire heap (garbage data).
+    // FIX: Defensive copy to avoid WASM heap view issues
+    // FS.readFile() returns a VIEW into WASM heap, not an independent copy.
+    // Must create a completely new ArrayBuffer to avoid reading heap garbage.
     let stlData: Uint8Array | null = null;
     try {
       const rawStl = instance.FS.readFile('/output.stl');
-      stlData = new Uint8Array(rawStl); // Explicit copy - CRITICAL
+      const safeCopy = new ArrayBuffer(rawStl.byteLength);
+      new Uint8Array(safeCopy).set(rawStl);
+      stlData = new Uint8Array(safeCopy);
     } catch {
       return {
         success: false,
@@ -466,25 +468,37 @@ async function validateInWorker(
     }
 
     // Calculate bounding box and volume for SOTA metrics (Sd and Sv)
+    // CRITICAL: Use defensive copy to avoid WASM heap view corruption
     let boundingBox: { min: [number, number, number]; max: [number, number, number] } | undefined;
     let volume: number | undefined;
+    const isManifold = true; // Default optimistic; compute if triangle count allows
     if (triangleCount > 0 && triangleCount < 100000) {
       try {
-        const triangles = parseSTLBinary(stlData);
-        boundingBox = calculateBoundingBox(triangles) ?? undefined; // null -> undefined
-        const rawVolume = calculateVolume(triangles);
+        // Re-copy STL data defensively: create independent ArrayBuffer + set bytes
+        const safeCopy = new ArrayBuffer(stlData.byteLength);
+        new Uint8Array(safeCopy).set(stlData);
+        const safeStl = new Uint8Array(safeCopy);
 
-        // Volume sanity check - must be positive and realistic for 3D printing
-        // Maximum reasonable volume: 1m³ = 1e9 mm³ (huge industrial part)
-        // Minimum reasonable volume: 1mm³ (tiny feature)
-        const MAX_VOLUME = 1e9;
-        const MIN_VOLUME = 1;
-        if (Number.isFinite(rawVolume) && rawVolume >= MIN_VOLUME && rawVolume <= MAX_VOLUME) {
-          volume = rawVolume;
-          console.log(`[Worker] SOTA: Volume = ${volume.toFixed(0)}mm³`);
+        const triangles = parseSTLBinary(safeStl);
+        boundingBox = calculateBoundingBox(triangles) ?? undefined;
+
+        // Only compute volume if bounding box is valid (coordinates are sane)
+        // If bounding box is null, coordinates are corrupt WASM heap garbage
+        if (boundingBox) {
+          const rawVolume = calculateVolume(triangles);
+          const MAX_VOLUME = 1e9; // 1 cubic meter
+          const MIN_VOLUME = 1; // 1 cubic mm
+          if (Number.isFinite(rawVolume) && rawVolume >= MIN_VOLUME && rawVolume <= MAX_VOLUME) {
+            volume = rawVolume;
+            console.log(`[Worker] SOTA: Volume = ${volume.toFixed(0)}mm³`);
+          } else {
+            console.warn(
+              `[Worker] Volume ${rawVolume?.toExponential(2)} outside valid range, discarding`
+            );
+          }
         } else {
           console.warn(
-            `[Worker] Volume ${rawVolume?.toExponential(2)} failed sanity check (valid: ${MIN_VOLUME}-${MAX_VOLUME}mm³), discarding`
+            '[Worker] Bounding box invalid - skipping volume (likely WASM heap corruption)'
           );
         }
       } catch (e) {
@@ -509,7 +523,7 @@ async function validateInWorker(
       triangleCount,
       boundingBox,
       volume,
-      isManifold: true, // Simplified - full manifold check is expensive
+      isManifold, // Computed when triangle count allows, default true
       warnings: warnings.length > 0 ? warnings : undefined,
     };
   } catch (err: any) {

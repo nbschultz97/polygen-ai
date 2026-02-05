@@ -516,7 +516,10 @@ export const validateScadCode = async (
           warnings: preWarnings,
         };
       }
-      stlData = new Uint8Array(rawStl); // Explicit copy - CRITICAL
+      // Defensive copy: create independent ArrayBuffer to avoid WASM heap views
+      const safeCopy = new ArrayBuffer(rawStl.byteLength);
+      new Uint8Array(safeCopy).set(rawStl);
+      stlData = new Uint8Array(safeCopy);
     } catch {
       return {
         success: false,
@@ -612,20 +615,26 @@ export const validateScadCode = async (
         }
 
         // Calculate physical properties for SOTA benchmarking (Sd and Sv metrics)
-        boundingBox = calculateBoundingBox(triangles) ?? undefined; // null -> undefined
-        const rawVolume = calculateVolume(triangles);
+        // Re-parse from defensive copy for metrics
+        const safeCopyForMetrics = new ArrayBuffer(stlData.byteLength);
+        new Uint8Array(safeCopyForMetrics).set(stlData);
+        const safeTriangles = parseSTLBinary(new Uint8Array(safeCopyForMetrics));
 
-        // Volume sanity check - must be positive and realistic for 3D printing
-        // Maximum reasonable volume: 1m³ = 1e9 mm³ (huge industrial part)
-        // Minimum reasonable volume: 1mm³ (tiny feature)
-        const MAX_VOLUME = 1e9;
-        const MIN_VOLUME = 1;
-        if (Number.isFinite(rawVolume) && rawVolume >= MIN_VOLUME && rawVolume <= MAX_VOLUME) {
-          volume = rawVolume;
+        boundingBox = calculateBoundingBox(safeTriangles) ?? undefined;
+
+        // Only compute volume if bounding box is valid (coordinates are sane)
+        // If bounding box is null, coordinates are corrupt WASM heap garbage
+        if (boundingBox) {
+          const rawVolume = calculateVolume(safeTriangles);
+          const MAX_VOLUME = 1e9; // 1 cubic meter
+          const MIN_VOLUME = 1; // 1 cubic mm
+          if (Number.isFinite(rawVolume) && rawVolume >= MIN_VOLUME && rawVolume <= MAX_VOLUME) {
+            volume = rawVolume;
+          } else {
+            console.warn(`Volume ${rawVolume?.toExponential(2)} outside valid range, discarding`);
+          }
         } else {
-          console.warn(
-            `Volume ${rawVolume?.toExponential(2)} failed sanity check (valid: ${MIN_VOLUME}-${MAX_VOLUME}mm³), discarding`
-          );
+          console.warn('Bounding box invalid - skipping volume (likely WASM heap corruption)');
         }
       } catch (manifoldErr) {
         console.warn('Manifold check skipped:', manifoldErr);
