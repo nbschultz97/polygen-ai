@@ -1,25 +1,40 @@
-# PolyGen AI Technical Strategy
+# PolyGen Technical Strategy v3.6.5 ("The Vanilla Architect")
 
-> Research-backed architecture decisions for optimizing the text-to-3D CAD generation pipeline.
-
-This document captures technical research findings and their implementation in PolyGen AI.
+> Research-backed architecture decisions for the PolyGen AI text-to-3D CAD generation platform.
 
 ---
 
-## Executive Summary
+## 1. Core Philosophy: Sovereign Engineering
 
-PolyGen AI targets a **$10k-$20k MRR** baseline by unlocking the utility of 3D printers for the "Non-Engineer" market. Our strategy centers on shifting from "probabilistic code generation" to **"Engineered Geometric Fidelity."**
+We are building a "Hardware Copilot" that respects user ownership.
 
-### Key Progress Benchmarks:
+- **Local First:** Execution happens on the client (WASM) or local machine (MCP).
+- **Vendor Neutral:** We output Vanilla OpenSCAD (.scad). No proprietary kernels, no library dependencies, no cloud lock-in.
+- **Manifold Guaranteed:** We do not generate "AI Slop." Every output is validated for printability using the Manifold kernel.
 
-- **Success Rate ($P_{succ}$)**: 90%+ Target for autonomous print-readiness.
-- **Reliability (Tier 4)**: Quantitatively validated metrics ($S_v, S_d$) with explicit WASM heap integrity.
-- **Revenue Deliverables**: Zero user-facing manifold errors and automated Vision-based self-correction.
-- **Cost Efficiency**: Future distillation of Claude-level reasoning into Gemini Flash to drop COGS.
+## 2. The "Vanilla Purge" Architecture
+
+We have formally deprecated BOSL2/MCAD libraries to eliminate LLM hallucinations.
+
+- **Planner (Gemini 3 Pro):** Handles high-level reasoning and "Topological Logic" (e.g., deciding to add a mounting boss for flat-to-round connections).
+- **Coder (Claude Sonnet 4):** Acts as a deterministic "Compiler." It converts GST JSON into raw OpenSCAD syntax using `hull()` and `difference()` with epsilon guards.
+- **Validator (Manifold-WASM):** The final gatekeeper. Checks for `is_manifold` and `volumetric_similarity` ($S_v$) before showing the user.
+
+## 3. Data Strategy: Visual-RFT
+
+We are building a proprietary dataset of "Geometric Repairs."
+
+- **The Loop:** User Prompt -> Broken Code -> Visual Critic Feedback -> Fixed Code.
+- **End Game:** Fine-tune a small model (Gemini Flash) on this dataset to predict "floating parts" and "intersections" without rendering, drastically lowering inference costs.
+- **Schema:** `supabase/visual_repair_log.sql` — tracks Sv metric and manifold status per repair.
+
+## 4. Infrastructure: The MCP Pivot
+
+To bypass browser memory limits (4GB WASM heap), we are building the **Polygen MCP Server**. This allows desktop agents (Claude Desktop, Cursor) to generate massive assemblies locally while using our reasoning engine.
 
 ---
 
-## 1. The Spatial Reasoning Gap
+## 5. The Spatial Reasoning Gap
 
 ### Problem
 
@@ -83,7 +98,7 @@ The GST is a hierarchical JSON representation that explicitly separates **assemb
 
 ---
 
-## 2. Programmatic CAD Engine Selection
+## 6. Programmatic CAD Engine Selection
 
 ### The OpenSCAD Trade-off
 
@@ -119,7 +134,7 @@ The GST is a hierarchical JSON representation that explicitly separates **assemb
 
 ---
 
-## 3. Performance Optimization
+## 7. Performance Optimization
 
 ### 3.1 Manifold Geometry Kernel
 
@@ -160,7 +175,7 @@ worker.onmessage = (e) => handleResult(e.data);
 
 ---
 
-## 4. API Cost Optimization
+## 8. API Cost Optimization
 
 ### 4.1 Response Streaming
 
@@ -214,7 +229,7 @@ Instead of regenerating full scripts, request "diffs" or specific variable updat
 
 ---
 
-## 5. Error Categorization Taxonomy
+## 9. Error Categorization Taxonomy
 
 ### Current Categories (errorCategorizer.ts)
 
@@ -250,7 +265,7 @@ Instead of regenerating full scripts, request "diffs" or specific variable updat
 
 ---
 
-## 6. Visual Reasoning (VLM Integration)
+## 10. Visual Reasoning (VLM Integration)
 
 ### Research Finding
 
@@ -280,7 +295,7 @@ Allow hand-drawn sketches as input:
 
 ---
 
-## 7. Multi-Agent Architecture
+## 11. Multi-Agent Architecture
 
 ### Current Pipeline (PolyGen)
 
@@ -330,7 +345,7 @@ const best = selectBestVariation(variations);
 
 ---
 
-## 8. Model Context Protocol (MCP)
+## 12. Model Context Protocol (MCP)
 
 ### Purpose
 
@@ -357,7 +372,7 @@ const mcp = new MCPServer({
 
 ---
 
-## 9. Growth & Market Strategy
+## 13. Growth & Market Strategy
 
 ### Avoid "Tinkerville" Trap
 
@@ -379,7 +394,7 @@ Patents are "perishable assets" - prioritize:
 
 ---
 
-## 10. The Revenue Roadmap (v3.5.0+)
+## 14. The Revenue Roadmap (v3.5.0+)
 
 To bridge the **"Valley of Death"** where users churn due to unprintable code, we prioritize three mandatory deliverables:
 
@@ -402,7 +417,7 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 
 ---
 
-## 11. Implementation Priority
+## 15. Implementation Priority
 
 ### Phase 1: Tier 4 Stabilization ✅ COMPLETE
 
@@ -425,10 +440,18 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 - [x] **STL Remix Hardening** (IMMUTABLE MESH + anti-polyhedron guard) ✅ v3.6.4
 - [x] **Anti-Slop Telemetry** schema (visual_repair_logs table) ✅ v3.6.4
 
-### Phase 3: Tier 6 Self-Correction (v4.0.0)
+### Phase 3: Engineering Cognition (v3.6.5)
 
+- [x] **Topological Design Patterns** in Planner (Adapter Boss, Hull Heuristic, Manifold Hole) ✅ v3.6.5
 - [x] **Golden Set** automated benchmarking ✅ v3.5.5
-- [ ] **Small Model Distillation** (drop COGS)
+- [ ] **Visual-RFT** dataset collection pipeline
+- [ ] **PolyGen MCP Server** for desktop integration
+
+### Phase 4: Market Expansion
+
+- [ ] **"Anti-OnShape" positioning** (file ownership, no rent-seeking)
+- [ ] **Parametric Applets** (shareable slider-based UIs)
+- [ ] **Small Model Distillation** (drop COGS via Gemini Flash fine-tuning)
 - [ ] **CadQuery Server Engine** (Pro tier)
 
 ---
@@ -443,7 +466,7 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 ---
 
 _Last Updated: February 2026_
-_Version: 3.6.4_
+_Version: 3.6.5_
 
 ```
 

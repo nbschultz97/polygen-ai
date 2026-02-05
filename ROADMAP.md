@@ -1,15 +1,50 @@
-# PolyGen AI Roadmap
+# PolyGen Roadmap: The Hardware Copilot
 
-This document outlines planned features and improvements for PolyGen AI, informed by deep technical research on AI-driven CAD generation.
+This document outlines the strategic execution plan for PolyGen AI, shifting from a "Web Wrapper" to a "Sovereign Engineering Platform."
 
-## Current Version: 3.6.4
+## Current Version: 3.6.5
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architecture decisions.
 
 ---
 
+## Strategic Phases
+
+### Phase 2: The Engineering Layer (Current - v3.6.5)
+
+**Objective:** Fix "Engineering Intuition" failures (e.g., flat parts on round surfaces).
+
+- [x] Topological Design Patterns (Adapter Bosses, Hull Heuristic, Manifold Holes) ✅ v3.6.5
+- [x] STL Remix Engine ("Import + Modify" workflow) ✅ v3.6.0
+- [x] Golden Set Benchmark (20 complex prompts) ✅ v3.5.5
+- [ ] Visual-RFT dataset collection pipeline
+- [ ] Visual Critic "Vibe Check" automation (catch floating parts via Vision ROI)
+
+### Phase 3: Sovereign Infrastructure (Next)
+
+**Objective:** Capture the "Power User" market via Local MCP.
+
+- [ ] PolyGen MCP Server (local API for Claude Desktop/Cursor)
+- [ ] "Privacy Premium" Tier ($19/mo local-only workflow)
+- [ ] Visual-RFT Model (fine-tuned Gemini Flash for instant geometry correction)
+
+### Phase 4: Market Expansion
+
+**Objective:** Viral growth and "Anti-OnShape" positioning.
+
+- [ ] "Anti-OnShape" Campaign (file ownership, no rent-seeking)
+- [ ] Parametric Applets (shareable slider-based UIs)
+
+---
+
 ## Completed
+
+### v3.6.5 - Engineering Cognition
+
+- [x] Topological Design Patterns in Planner (Adapter Boss, Hull Heuristic, Manifold Hole rules)
+- [x] Formalized "Sovereign Engineering" doctrine in TECHNICAL_STRATEGY.md
+- [x] Updated roadmap with Hardware Copilot forward-looking phases
 
 ### v3.6.4 - Operation Vanilla Purge
 
