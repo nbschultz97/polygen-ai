@@ -16,6 +16,8 @@ const ctx = self as any;
 interface ValidationOptions {
   useManifoldBackend?: boolean;
   previewMode?: boolean;
+  /** STL Remix: Binary STL data to mount as /user_upload.stl in WASM FS */
+  uploadedStlData?: Uint8Array;
 }
 
 interface ValidationResult {
@@ -364,6 +366,16 @@ async function validateInWorker(
     // Mount libraries into WASM filesystem
     mountLibraries(instance);
 
+    // STL Remix: Mount uploaded STL in WASM filesystem if available
+    if (options.uploadedStlData) {
+      try {
+        instance.FS.writeFile('/user_upload.stl', options.uploadedStlData);
+        console.log(`[Worker] Mounted user STL: ${options.uploadedStlData.length} bytes`);
+      } catch (stlErr) {
+        console.warn('[Worker] Failed to mount user STL:', stlErr);
+      }
+    }
+
     // Write input file
     instance.FS.writeFile('/input.scad', trimmedCode);
 
@@ -518,6 +530,11 @@ async function validateInWorker(
         }
         try {
           instance.FS.unlink('/output.stl');
+        } catch {
+          /* ignore */
+        }
+        try {
+          instance.FS.unlink('/user_upload.stl');
         } catch {
           /* ignore */
         }

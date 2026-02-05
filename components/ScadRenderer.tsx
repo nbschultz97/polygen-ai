@@ -18,9 +18,11 @@ import { cleanupInstance, createOpenSCADInstance } from '../services/openscadLoa
 interface ScadRendererProps {
   code: string;
   isProUser: boolean;
+  /** STL Remix: Binary STL data to mount in WASM filesystem as /user_upload.stl */
+  uploadedStlData?: Uint8Array;
 }
 
-const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => {
+const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser, uploadedStlData }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -34,12 +36,16 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
   const [error, setError] = useState<string | null>(null);
   const [autoUpdate, setAutoUpdate] = useState(false);
   const [isDirty, setIsDirty] = useState(true);
+  // F5/F6 Strategy: 'preview' = fast OpenCSG preview, 'full' = Manifold render for export
+  const [renderMode, setRenderMode] = useState<'preview' | 'full'>('preview');
+  const [isFullRenderValid, setIsFullRenderValid] = useState(false);
   const [renderStats, setRenderStats] = useState<{
     time: number;
     vertices: number;
     triangles: number;
     dimensions?: { x: number; y: number; z: number };
     volume?: number;
+    mode: 'preview' | 'full';
   } | null>(null);
   const [stlData, setStlData] = useState<Uint8Array | null>(null);
   const [complexityWarning, setComplexityWarning] = useState<string | null>(null);
@@ -61,9 +67,10 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
     URL.revokeObjectURL(url);
   }, [stlData]);
 
-  // Mark as dirty when code changes
+  // Mark as dirty when code changes - invalidate full render status
   useEffect(() => {
     setIsDirty(true);
+    setIsFullRenderValid(false);
   }, [code]);
 
   // Initialize ThreeJS Scene once
@@ -300,254 +307,284 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
     []
   );
 
-  const compileAndRender = useCallback(async () => {
-    if (!code || !code.trim() || loading) return;
+  const compileAndRender = useCallback(
+    async (mode: 'preview' | 'full' = renderMode) => {
+      if (!code || !code.trim() || loading) return;
 
-    // Analyze complexity before rendering
-    const complexity = analyzeComplexity(code);
-    const mobile = isMobile();
+      // Analyze complexity before rendering
+      const complexity = analyzeComplexity(code);
+      const mobile = isMobile();
+      const isPreview = mode === 'preview';
 
-    // Smart complexity guard: Apply safe settings based on device AND code complexity
-    let renderCode = code;
-    let activeWarning: string | null = null;
+      // Smart complexity guard: Apply safe settings based on device AND code complexity
+      let renderCode = code;
+      let activeWarning: string | null = null;
 
-    if (mobile) {
-      // Mobile: Always use safe settings, extra conservative for threading
-      const safeFn = complexity.hasThreading ? 24 : 32;
-      renderCode = `$fn=${safeFn}; $fs=0.5; $fa=5; // MOBILE GUARD ACTIVE\n` + code;
-      if (complexity.hasThreading) {
-        activeWarning = 'Mobile + threading: using $fn=24 for stability';
-      }
-    } else if (complexity.hasDangerousComplexity) {
-      // Desktop with dangerous complexity: Cap at reasonable values
-      const cappedFn = complexity.hasThreading ? 48 : 64;
-      renderCode = `$fn=${cappedFn}; $fs=0.3; $fa=3; // COMPLEXITY GUARD ACTIVE\n` + code;
-      activeWarning = complexity.warning || 'Complexity reduced for stability';
-      console.warn('Complexity guard activated:', activeWarning);
-    }
-
-    const startTime = performance.now();
-    setLoading(true);
-    setError(null);
-    setComplexityWarning(activeWarning);
-
-    let errorLog = '';
-    let instance: any = null;
-
-    // Remove existing model
-    const existingModel = sceneRef.current?.getObjectByName('modelGroup');
-    if (existingModel) {
-      // Dispose of existing model resources
-      existingModel.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry?.dispose();
-          if (object.material instanceof THREE.Material) {
-            object.material.dispose();
-          }
+      if (isPreview) {
+        // Preview mode: Use lower resolution for speed
+        const previewFn = mobile ? 16 : 32;
+        renderCode = `$fn=${previewFn}; $fs=1; $fa=8; // PREVIEW MODE\n` + code;
+        activeWarning = null;
+      } else if (mobile) {
+        // Full render on mobile: Conservative but higher quality than preview
+        const safeFn = complexity.hasThreading ? 24 : 32;
+        renderCode = `$fn=${safeFn}; $fs=0.5; $fa=5; // MOBILE GUARD ACTIVE\n` + code;
+        if (complexity.hasThreading) {
+          activeWarning = 'Mobile + threading: using $fn=24 for stability';
         }
-      });
-      sceneRef.current?.remove(existingModel);
-    }
+      } else if (complexity.hasDangerousComplexity) {
+        // Desktop with dangerous complexity: Cap at reasonable values
+        const cappedFn = complexity.hasThreading ? 48 : 64;
+        renderCode = `$fn=${cappedFn}; $fs=0.3; $fa=3; // COMPLEXITY GUARD ACTIVE\n` + code;
+        activeWarning = complexity.warning || 'Complexity reduced for stability';
+        console.warn('Complexity guard activated:', activeWarning);
+      }
 
-    try {
-      // Use createOpenSCADInstance which properly mounts tactical libraries to /libraries/
-      // This is CRITICAL for code that uses: use <libraries/tactical.scad>
-      instance = await createOpenSCADInstance({
-        onPrint: () => {},
-        onPrintErr: (text: string) => {
-          // Filter benign GL errors often seen in WASM
-          if (
-            text &&
-            text.toLowerCase().includes('error') &&
-            !text.includes('GL_INVALID_OPERATION') &&
-            !text.includes('GL_INVALID_ENUM')
-          ) {
-            errorLog += text + '\n';
+      const startTime = performance.now();
+      setLoading(true);
+      setError(null);
+      setRenderMode(mode);
+      setComplexityWarning(activeWarning);
+
+      let errorLog = '';
+      let instance: any = null;
+
+      // Remove existing model
+      const existingModel = sceneRef.current?.getObjectByName('modelGroup');
+      if (existingModel) {
+        // Dispose of existing model resources
+        existingModel.traverse((object) => {
+          if (object instanceof THREE.Mesh) {
+            object.geometry?.dispose();
+            if (object.material instanceof THREE.Material) {
+              object.material.dispose();
+            }
           }
-        },
-      });
-
-      if (!instance?.FS) {
-        console.error('OpenSCAD createOpenSCADInstance() returned:', instance);
-        throw new Error('OpenSCAD WASM failed to initialize. Try refreshing the page.');
+        });
+        sceneRef.current?.remove(existingModel);
       }
 
-      instance.FS.writeFile('/input.scad', renderCode);
-      const exitCode = instance.callMain(['/input.scad', '-o', 'output.stl']);
-
-      if (exitCode !== 0 || (errorLog.includes('ERROR') && !errorLog.includes('GL_INVALID'))) {
-        throw new Error(`Compiler Error:\n${errorLog || 'Exit Code ' + exitCode}`);
-      }
-
-      // Safely read STL data
-      // FIX: Explicitly copy the data to avoid WASM heap view issues
-      // The FS.readFile() returns a VIEW into WASM heap, not a copy.
-      // Using stlData.buffer would parse the entire heap (garbage data).
-      let stlData: Uint8Array | null = null;
       try {
-        const rawStl = instance.FS.readFile('/output.stl');
-        stlData = new Uint8Array(rawStl); // Explicit copy - CRITICAL
-      } catch {
-        throw new Error(
-          'Failed to read output STL. Check for infinite recursion or empty geometry.'
-        );
-      }
+        // Use createOpenSCADInstance which properly mounts tactical libraries to /libraries/
+        // This is CRITICAL for code that uses: use <libraries/tactical.scad>
+        instance = await createOpenSCADInstance({
+          onPrint: () => {},
+          onPrintErr: (text: string) => {
+            // Filter benign GL errors often seen in WASM
+            if (
+              text &&
+              text.toLowerCase().includes('error') &&
+              !text.includes('GL_INVALID_OPERATION') &&
+              !text.includes('GL_INVALID_ENUM')
+            ) {
+              errorLog += text + '\n';
+            }
+          },
+        });
 
-      if (!stlData || stlData.length <= 84) {
-        throw new Error(
-          'Render Successful, but scene is empty. Check boolean/difference operations.'
-        );
-      }
-
-      // Store STL data for download
-      setStlData(stlData);
-
-      // Validate triangle count before parsing - prevents renderer stalling
-      // FIX: STL header can contain garbage values (e.g., 892M triangles)
-      if (stlData.length >= 84) {
-        const view = new DataView(stlData.buffer as ArrayBuffer);
-        const rawTriangleCount = view.getUint32(80, true);
-
-        // Sanity check: each triangle is 50 bytes, plus 84-byte header
-        const actualTriangles = Math.floor((stlData.length - 84) / 50);
-
-        // If raw count is absurd (>10M) but file is small, use actual count
-        const triangleCount =
-          rawTriangleCount > 10000000 || rawTriangleCount * 50 + 84 > stlData.length + 100
-            ? actualTriangles
-            : rawTriangleCount;
-
-        // Cap at 1M triangles - anything beyond this will freeze the browser
-        if (triangleCount > 1000000) {
-          throw new Error(
-            `Model too complex (${triangleCount.toLocaleString()} triangles). ` +
-              'Reduce $fn values or simplify geometry. Max: 1,000,000 triangles.'
-          );
+        if (!instance?.FS) {
+          console.error('OpenSCAD createOpenSCADInstance() returned:', instance);
+          throw new Error('OpenSCAD WASM failed to initialize. Try refreshing the page.');
         }
 
-        // Warn at 500K+ triangles
-        if (triangleCount > 500000) {
-          setComplexityWarning(
-            `High triangle count (${triangleCount.toLocaleString()}). May render slowly.`
-          );
-        }
-      }
-
-      const loader = new STLLoader();
-      const geometry = loader.parse(stlData.buffer as ArrayBuffer);
-
-      if (!geometry || !geometry.attributes.position) {
-        throw new Error('Failed to parse STL geometry');
-      }
-
-      geometry.center();
-
-      const group = new THREE.Group();
-      group.name = 'modelGroup';
-
-      const material = new THREE.MeshStandardMaterial({
-        color: 0x818cf8,
-        roughness: 0.4,
-        metalness: 0.2,
-        flatShading: false,
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      group.add(mesh);
-
-      const edges = new THREE.EdgesGeometry(geometry, 20);
-      const line = new THREE.LineSegments(
-        edges,
-        new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.15, transparent: true })
-      );
-      group.add(line);
-
-      group.rotation.x = -Math.PI / 2;
-      sceneRef.current?.add(group);
-
-      // Auto-focus camera
-      if (cameraRef.current && controlsRef.current) {
-        const box = new THREE.Box3().setFromObject(group);
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-
-        if (maxDim > 0 && isFinite(maxDim)) {
-          const fov = cameraRef.current.fov * (Math.PI / 180);
-          let cameraZ = Math.abs((maxDim / 2) * Math.tan(fov * 2));
-          cameraZ *= 2.8;
-
-          const center = box.getCenter(new THREE.Vector3());
-          if (isFinite(center.x) && isFinite(center.y) && isFinite(center.z)) {
-            cameraRef.current.position.set(
-              center.x + cameraZ,
-              center.y + cameraZ,
-              center.z + cameraZ
-            );
-            cameraRef.current.lookAt(center);
-            controlsRef.current.target.copy(center);
-            controlsRef.current.update();
+        // STL Remix: Mount uploaded STL in WASM filesystem if available
+        if (uploadedStlData) {
+          try {
+            instance.FS.writeFile('/user_upload.stl', uploadedStlData);
+            console.log(`Mounted user STL: ${uploadedStlData.length} bytes`);
+          } catch (stlErr) {
+            console.warn('Failed to mount user STL:', stlErr);
           }
         }
+
+        instance.FS.writeFile('/input.scad', renderCode);
+        // F5/F6 Strategy: Preview uses --preview for speed, Full uses Manifold for accuracy
+        const args = ['/input.scad', '-o', 'output.stl'];
+        if (!isPreview) {
+          args.push('--backend=Manifold');
+        }
+        const exitCode = instance.callMain(args);
+
+        if (exitCode !== 0 || (errorLog.includes('ERROR') && !errorLog.includes('GL_INVALID'))) {
+          throw new Error(`Compiler Error:\n${errorLog || 'Exit Code ' + exitCode}`);
+        }
+
+        // Safely read STL data
+        // FIX: Explicitly copy the data to avoid WASM heap view issues
+        // The FS.readFile() returns a VIEW into WASM heap, not a copy.
+        // Using stlData.buffer would parse the entire heap (garbage data).
+        let stlData: Uint8Array | null = null;
+        try {
+          const rawStl = instance.FS.readFile('/output.stl');
+          stlData = new Uint8Array(rawStl); // Explicit copy - CRITICAL
+        } catch {
+          throw new Error(
+            'Failed to read output STL. Check for infinite recursion or empty geometry.'
+          );
+        }
+
+        if (!stlData || stlData.length <= 84) {
+          throw new Error(
+            'Render Successful, but scene is empty. Check boolean/difference operations.'
+          );
+        }
+
+        // Store STL data for download
+        setStlData(stlData);
+
+        // Validate triangle count before parsing - prevents renderer stalling
+        // FIX: STL header can contain garbage values (e.g., 892M triangles)
+        if (stlData.length >= 84) {
+          const view = new DataView(stlData.buffer as ArrayBuffer);
+          const rawTriangleCount = view.getUint32(80, true);
+
+          // Sanity check: each triangle is 50 bytes, plus 84-byte header
+          const actualTriangles = Math.floor((stlData.length - 84) / 50);
+
+          // If raw count is absurd (>10M) but file is small, use actual count
+          const triangleCount =
+            rawTriangleCount > 10000000 || rawTriangleCount * 50 + 84 > stlData.length + 100
+              ? actualTriangles
+              : rawTriangleCount;
+
+          // Cap at 1M triangles - anything beyond this will freeze the browser
+          if (triangleCount > 1000000) {
+            throw new Error(
+              `Model too complex (${triangleCount.toLocaleString()} triangles). ` +
+                'Reduce $fn values or simplify geometry. Max: 1,000,000 triangles.'
+            );
+          }
+
+          // Warn at 500K+ triangles
+          if (triangleCount > 500000) {
+            setComplexityWarning(
+              `High triangle count (${triangleCount.toLocaleString()}). May render slowly.`
+            );
+          }
+        }
+
+        const loader = new STLLoader();
+        const geometry = loader.parse(stlData.buffer as ArrayBuffer);
+
+        if (!geometry || !geometry.attributes.position) {
+          throw new Error('Failed to parse STL geometry');
+        }
+
+        geometry.center();
+
+        const group = new THREE.Group();
+        group.name = 'modelGroup';
+
+        const material = new THREE.MeshStandardMaterial({
+          color: 0x818cf8,
+          roughness: 0.4,
+          metalness: 0.2,
+          flatShading: false,
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        group.add(mesh);
+
+        const edges = new THREE.EdgesGeometry(geometry, 20);
+        const line = new THREE.LineSegments(
+          edges,
+          new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.15, transparent: true })
+        );
+        group.add(line);
+
+        group.rotation.x = -Math.PI / 2;
+        sceneRef.current?.add(group);
+
+        // Auto-focus camera
+        if (cameraRef.current && controlsRef.current) {
+          const box = new THREE.Box3().setFromObject(group);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+
+          if (maxDim > 0 && isFinite(maxDim)) {
+            const fov = cameraRef.current.fov * (Math.PI / 180);
+            let cameraZ = Math.abs((maxDim / 2) * Math.tan(fov * 2));
+            cameraZ *= 2.8;
+
+            const center = box.getCenter(new THREE.Vector3());
+            if (isFinite(center.x) && isFinite(center.y) && isFinite(center.z)) {
+              cameraRef.current.position.set(
+                center.x + cameraZ,
+                center.y + cameraZ,
+                center.z + cameraZ
+              );
+              cameraRef.current.lookAt(center);
+              controlsRef.current.target.copy(center);
+              controlsRef.current.update();
+            }
+          }
+        }
+
+        // Calculate SOTA metrics from geometry
+        const boundingBox = new THREE.Box3().setFromObject(group);
+        const dims = boundingBox.getSize(new THREE.Vector3());
+
+        // Calculate volume using signed tetrahedron method
+        // Each triangle forms a tetrahedron with origin, sum signed volumes
+        let calculatedVolume = 0;
+        const positions = geometry.attributes.position;
+        const triangleCount = positions.count / 3;
+
+        for (let i = 0; i < triangleCount; i++) {
+          const i0 = i * 3;
+          const v1 = [positions.getX(i0), positions.getY(i0), positions.getZ(i0)];
+          const v2 = [positions.getX(i0 + 1), positions.getY(i0 + 1), positions.getZ(i0 + 1)];
+          const v3 = [positions.getX(i0 + 2), positions.getY(i0 + 2), positions.getZ(i0 + 2)];
+
+          // Cross product v2 x v3
+          const crossX = v2[1] * v3[2] - v2[2] * v3[1];
+          const crossY = v2[2] * v3[0] - v2[0] * v3[2];
+          const crossZ = v2[0] * v3[1] - v2[1] * v3[0];
+
+          // Dot product v1 . cross
+          calculatedVolume += v1[0] * crossX + v1[1] * crossY + v1[2] * crossZ;
+        }
+        calculatedVolume = Math.abs(calculatedVolume / 6.0);
+
+        setRenderStats({
+          time: Math.round(performance.now() - startTime),
+          vertices: geometry.attributes.position.count,
+          triangles: triangleCount,
+          dimensions:
+            dims.x > 0 && dims.y > 0 && dims.z > 0
+              ? {
+                  x: Math.round(dims.x * 10) / 10,
+                  y: Math.round(dims.y * 10) / 10,
+                  z: Math.round(dims.z * 10) / 10,
+                }
+              : undefined,
+          volume: calculatedVolume > 0 ? Math.round(calculatedVolume) : undefined,
+          mode,
+        });
+        setIsDirty(false);
+        // Track whether we have a verified full render for export
+        if (!isPreview) {
+          setIsFullRenderValid(true);
+        }
+      } catch (err: any) {
+        console.error('Renderer Error:', err);
+        setError(err?.message || 'Failed to render. Please check your code.');
+      } finally {
+        // Clean up OpenSCAD instance
+        if (instance) {
+          cleanupInstance(instance);
+        }
+        setLoading(false);
       }
+    },
+    [code, loading, analyzeComplexity, isMobile, renderMode]
+  );
 
-      // Calculate SOTA metrics from geometry
-      const boundingBox = new THREE.Box3().setFromObject(group);
-      const dims = boundingBox.getSize(new THREE.Vector3());
-
-      // Calculate volume using signed tetrahedron method
-      // Each triangle forms a tetrahedron with origin, sum signed volumes
-      let calculatedVolume = 0;
-      const positions = geometry.attributes.position;
-      const triangleCount = positions.count / 3;
-
-      for (let i = 0; i < triangleCount; i++) {
-        const i0 = i * 3;
-        const v1 = [positions.getX(i0), positions.getY(i0), positions.getZ(i0)];
-        const v2 = [positions.getX(i0 + 1), positions.getY(i0 + 1), positions.getZ(i0 + 1)];
-        const v3 = [positions.getX(i0 + 2), positions.getY(i0 + 2), positions.getZ(i0 + 2)];
-
-        // Cross product v2 x v3
-        const crossX = v2[1] * v3[2] - v2[2] * v3[1];
-        const crossY = v2[2] * v3[0] - v2[0] * v3[2];
-        const crossZ = v2[0] * v3[1] - v2[1] * v3[0];
-
-        // Dot product v1 . cross
-        calculatedVolume += v1[0] * crossX + v1[1] * crossY + v1[2] * crossZ;
-      }
-      calculatedVolume = Math.abs(calculatedVolume / 6.0);
-
-      setRenderStats({
-        time: Math.round(performance.now() - startTime),
-        vertices: geometry.attributes.position.count,
-        triangles: triangleCount,
-        dimensions:
-          dims.x > 0 && dims.y > 0 && dims.z > 0
-            ? {
-                x: Math.round(dims.x * 10) / 10,
-                y: Math.round(dims.y * 10) / 10,
-                z: Math.round(dims.z * 10) / 10,
-              }
-            : undefined,
-        volume: calculatedVolume > 0 ? Math.round(calculatedVolume) : undefined,
-      });
-      setIsDirty(false);
-    } catch (err: any) {
-      console.error('Renderer Error:', err);
-      setError(err?.message || 'Failed to render. Please check your code.');
-    } finally {
-      // Clean up OpenSCAD instance
-      if (instance) {
-        cleanupInstance(instance);
-      }
-      setLoading(false);
-    }
-  }, [code, loading, analyzeComplexity, isMobile]);
-
-  // Auto-update logic with debounce
+  // Auto-update logic with debounce - always uses fast preview mode
   useEffect(() => {
     if (!autoUpdate || !isDirty) return;
 
     const timer = setTimeout(() => {
-      compileAndRender();
+      compileAndRender('preview');
     }, 2000); // 2 second delay to wait for user to finish typing
 
     return () => clearTimeout(timer);
@@ -559,12 +596,12 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
     const prevCode = prevCodeRef.current;
     prevCodeRef.current = code;
 
-    // Only auto-render once when we first receive code
+    // Only auto-render once when we first receive code - use preview for speed
     if (code && code.trim() && !prevCode && !hasAutoRenderedRef.current && !loading) {
       hasAutoRenderedRef.current = true;
       // Small delay to ensure scene is ready
       const timer = setTimeout(() => {
-        compileAndRender();
+        compileAndRender('preview');
       }, 800);
       return () => clearTimeout(timer);
     }
@@ -596,20 +633,39 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
             </button>
 
             <button
-              onClick={compileAndRender}
+              onClick={() => compileAndRender('preview')}
               disabled={loading || (!isDirty && !error)}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 isDirty || error
                   ? 'bg-white text-slate-950 hover:bg-slate-200'
                   : 'bg-slate-800 text-slate-500 cursor-default'
               }`}
+              title="Fast preview (F5) - lower resolution, instant feedback"
             >
-              {loading ? (
+              {loading && renderMode === 'preview' ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
                 <Play className="w-3 h-3 fill-current" />
               )}
-              RENDER MODEL
+              PREVIEW
+            </button>
+
+            <button
+              onClick={() => compileAndRender('full')}
+              disabled={loading || isFullRenderValid}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                !isFullRenderValid && !loading
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  : 'bg-slate-800 text-slate-500 cursor-default'
+              }`}
+              title="Full render (F6) - Manifold kernel, geometry verification, enables export"
+            >
+              {loading && renderMode === 'full' ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Download className="w-3 h-3" />
+              )}
+              VERIFY
             </button>
 
             <button
@@ -643,6 +699,15 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
         {renderStats && !loading && !error && (
           <div className="bg-slate-900/80 backdrop-blur border border-white/10 rounded-xl p-3 shadow-xl pointer-events-auto text-[10px] space-y-2">
             <div className="space-y-1">
+              {/* Mode badge */}
+              <div className="flex justify-between gap-4 text-slate-400">
+                <span>Mode:</span>
+                <span
+                  className={`font-mono font-bold ${renderStats.mode === 'full' ? 'text-emerald-400' : 'text-amber-400'}`}
+                >
+                  {renderStats.mode === 'full' ? 'VERIFIED' : 'PREVIEW'}
+                </span>
+              </div>
               <div className="flex justify-between gap-4 text-slate-400">
                 <span>Compile Time:</span>
                 <span className="text-emerald-400 font-mono">{renderStats.time}ms</span>
@@ -678,7 +743,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
                 </div>
               )}
             </div>
-            {stlData && (
+            {stlData && isFullRenderValid ? (
               <button
                 onClick={downloadSTL}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold transition-colors"
@@ -686,7 +751,16 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
                 <Download className="w-3 h-3" />
                 Download STL
               </button>
-            )}
+            ) : stlData ? (
+              <button
+                onClick={() => compileAndRender('full')}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-bold transition-colors"
+              >
+                <Download className="w-3 h-3" />
+                Verify to Download
+              </button>
+            ) : null}
           </div>
         )}
       </div>
@@ -700,9 +774,13 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
             <Loader2 className="w-12 h-12 text-indigo-500 opacity-20" />
           </div>
           <p className="mt-4 text-sm font-bold text-white tracking-widest uppercase">
-            Calculating CSG...
+            {renderMode === 'preview' ? 'Preview Rendering...' : 'Full Geometry Verification...'}
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">Initializing OpenSCAD Engine</p>
+          <p className="text-[10px] text-slate-400 mt-1">
+            {renderMode === 'preview'
+              ? 'Fast OpenCSG preview'
+              : 'Manifold kernel - computing exact geometry'}
+          </p>
         </div>
       )}
 
@@ -738,7 +816,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser }) => 
                 </pre>
                 <div className="flex gap-3 justify-center">
                   <button
-                    onClick={compileAndRender}
+                    onClick={() => compileAndRender('preview')}
                     className="px-6 py-2 bg-white text-slate-950 hover:bg-slate-200 rounded-xl font-bold text-sm transition-colors flex items-center gap-2"
                   >
                     <RotateCcw className="w-4 h-4" />

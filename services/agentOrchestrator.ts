@@ -13,6 +13,7 @@ import type {
   GeometricStructureTree,
   ImageData,
   OrchestratorCallbacks,
+  STLFileData,
 } from '../types';
 import { explainCode } from './codeExplainer';
 import { coderService } from './coderService';
@@ -334,6 +335,8 @@ export function redoHistory(asset: GeneratedAsset): GeneratedAsset | null {
 export interface OrchestratorInput {
   userPrompt: string;
   imageData?: ImageData;
+  /** STL Remix: Uploaded STL for modification workflow (import + modify) */
+  stlFile?: STLFileData;
   existingAsset?: GeneratedAsset;
   conversationHistory?: string[];
   enableTeachingMode?: boolean; // Enable educational annotations
@@ -417,6 +420,11 @@ async function orchestrateUnified(
   abortSignal?: AbortSignal
 ): Promise<GeneratedAsset> {
   let asset: GeneratedAsset = input.existingAsset ? { ...input.existingAsset } : {};
+
+  // STL Remix: Store uploaded STL data in asset for renderer access
+  if (input.stlFile) {
+    asset.uploadedStlData = input.stlFile.data;
+  }
   let attempts = 0;
 
   try {
@@ -435,6 +443,7 @@ async function orchestrateUnified(
           {
             userPrompt: input.userPrompt,
             imageData: input.imageData,
+            stlFile: input.stlFile,
             existingCode: forceFullRegeneration ? undefined : asset.scadCode,
             existingGST: forceFullRegeneration ? undefined : asset.gst,
             conversationHistory: input.conversationHistory,
@@ -477,6 +486,7 @@ async function orchestrateUnified(
         const validation = await validatorClient.validate({
           scadCode: asset.scadCode!,
           gst: asset.gst,
+          uploadedStlData: asset.uploadedStlData,
         });
 
         asset.validationResult = validation;
@@ -575,6 +585,11 @@ async function orchestrateMultiAgent(
   abortSignal?: AbortSignal
 ): Promise<GeneratedAsset> {
   let asset: GeneratedAsset = input.existingAsset ? { ...input.existingAsset } : {};
+
+  // STL Remix: Store uploaded STL data in asset for renderer access
+  if (input.stlFile) {
+    asset.uploadedStlData = input.stlFile.data;
+  }
   let attempts = 0;
 
   try {
@@ -619,6 +634,7 @@ async function orchestrateMultiAgent(
       const validation = await validatorClient.validate({
         scadCode: coderOutput.scadCode,
         gst: asset.gst,
+        uploadedStlData: asset.uploadedStlData,
       });
 
       asset.validationResult = validation;

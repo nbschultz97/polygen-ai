@@ -241,6 +241,8 @@ export async function validate(input: {
   scadCode: string;
   gst?: GeometricStructureTree;
   abortSignal?: AbortSignal;
+  /** STL Remix: Binary STL data to mount in WASM FS for import() support */
+  uploadedStlData?: Uint8Array;
 }): Promise<ValidationResult> {
   try {
     // Preprocess code to fix common issues
@@ -249,7 +251,7 @@ export async function validate(input: {
     // Use Web Worker for validation (falls back to main thread if needed)
     const result = await workerValidationService.validate(
       processedCode,
-      { useManifoldBackend: true, previewMode: false },
+      { useManifoldBackend: true, previewMode: false, uploadedStlData: input.uploadedStlData },
       input.abortSignal
     );
 
