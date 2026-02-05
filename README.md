@@ -8,7 +8,7 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 
 ## Live Demo
 
-🚀 Live at [polygen-ai.vercel.app](https://polygen-ai.vercel.app)
+🚀 Live at [polygen.ceradonsystems.com](https://polygen.ceradonsystems.com/)
 
 ## Features
 
@@ -20,6 +20,8 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 - **OpenSCAD Code Generation** - Outputs parametric, printable-ready pure OpenSCAD code
 - **Preview/Render Split** - Fast preview for iteration, full Manifold render for verified export
 - **In-App 3D Preview** - View your model in the browser with Three.js
+- **Visual Critic** - Auto-triggers AI vision analysis on renders to catch structural issues
+- **Parametric GST Templates** - Pre-built tactical templates for complex assemblies (Picatinny, MOLLE)
 - **STL Export** - Download STL files after verified render
 
 ### v2.2 Reliable Code Generation
