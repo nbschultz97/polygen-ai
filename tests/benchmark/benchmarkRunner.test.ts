@@ -402,7 +402,7 @@ describe('Golden Set Prompts', () => {
   });
 });
 
-describe('Benchmark Runner (Simulated)', () => {
+describe('Benchmark Framework (Unit Tests - Simulated)', () => {
   let report: BenchmarkReport;
 
   beforeAll(async () => {
@@ -442,12 +442,95 @@ describe('Benchmark Runner (Simulated)', () => {
   });
 });
 
+// ============================================================================
+// Real Pipeline Benchmark (Browser-Only, Gated by POLYGEN_BENCHMARK env var)
+// ============================================================================
+
+/**
+ * Real pipeline execution — requires browser environment + API keys
+ *
+ * ENVIRONMENT REQUIREMENTS:
+ * - Must run in Vitest Browser Mode (vitest --browser) or Playwright
+ * - orchestrateGeneration() depends on Web Workers + WASM (browser-only)
+ * - Requires GEMINI_API_KEY and ANTHROPIC_API_KEY environment variables
+ * - Costs real API tokens. Run manually, never in CI.
+ *
+ * Usage:
+ *   POLYGEN_BENCHMARK=true npx vitest --browser.enabled run tests/benchmark/benchmarkRunner.test.ts
+ */
+async function executeRealPipeline(prompt: GoldenPrompt): Promise<{
+  success: boolean;
+  boundingBox?: { min: number[]; max: number[] };
+  compilationTime: number;
+  errors: string[];
+}> {
+  // Dynamic import — only resolves in browser environment with WASM support
+  const { orchestrateGeneration } = await import('../../services/agentOrchestrator');
+
+  const startTime = Date.now();
+  const errors: string[] = [];
+
+  try {
+    const asset = await orchestrateGeneration(
+      { userPrompt: prompt.prompt, conversationHistory: [], isEdit: false },
+      {
+        onStepChange: () => {},
+        onGSTGenerated: () => {},
+        onCodeGenerated: () => {},
+        onCodeChunk: () => {},
+        onValidationComplete: (res) => {
+          if (!res.success) errors.push(...res.errors);
+        },
+        onSmartFixesGenerated: () => {},
+        onPreviewImageGenerated: () => {},
+        onError: (err) => errors.push(err.message),
+      },
+      new AbortController().signal
+    );
+
+    const success = asset.validationResult?.success ?? false;
+    return {
+      success,
+      boundingBox: asset.validationResult?.boundingBox as
+        | { min: number[]; max: number[] }
+        | undefined,
+      compilationTime: Date.now() - startTime,
+      errors,
+    };
+  } catch (e: unknown) {
+    return { success: false, compilationTime: 0, errors: [(e as Error).message] };
+  }
+}
+
+const IS_REAL_BENCHMARK = process.env.POLYGEN_BENCHMARK === 'true';
+
+describe.skipIf(!IS_REAL_BENCHMARK)('Benchmark Runner (REAL Pipeline)', () => {
+  // REQUIRES: Vitest Browser Mode (--browser.enabled) for WASM + Worker APIs
+  // REQUIRES: API keys (GEMINI_API_KEY, ANTHROPIC_API_KEY)
+  // Command: POLYGEN_BENCHMARK=true npx vitest --browser.enabled run tests/benchmark/benchmarkRunner.test.ts
+
+  it('should compile a simple box prompt', async () => {
+    const result = await executeRealPipeline(goldenSet.prompts[0] as GoldenPrompt);
+    expect(result.success).toBe(true);
+  }, 120_000); // 2 min timeout for API calls
+
+  it('should produce valid bounding box for first prompt', async () => {
+    const prompt = goldenSet.prompts[0] as GoldenPrompt;
+    const result = await executeRealPipeline(prompt);
+    if (result.success && result.boundingBox) {
+      const sv = calculateSv(result.boundingBox, prompt.targetBoundingBox);
+      expect(sv).toBeGreaterThan(0);
+    }
+  }, 120_000);
+});
+
 // Export for external use
 export {
   calculateSv,
   calculateSd,
   runSingleBenchmark,
   generateReport,
+  executeRealPipeline,
   type GoldenPrompt,
   type BenchmarkResult,
   type BenchmarkReport,

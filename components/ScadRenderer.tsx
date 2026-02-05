@@ -42,6 +42,9 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
     // F5/F6 Strategy: 'preview' = fast OpenCSG preview, 'full' = Manifold render for export
     const [renderMode, setRenderMode] = useState<'preview' | 'full'>('preview');
     const [isFullRenderValid, setIsFullRenderValid] = useState(false);
+    // Build log: surfaces stderr messages for debug visibility
+    const [stderrLog, setStderrLog] = useState<string[]>([]);
+
     const [renderStats, setRenderStats] = useState<{
       time: number;
       vertices: number;
@@ -347,6 +350,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
         const startTime = performance.now();
         setLoading(true);
         setError(null);
+        setStderrLog([]);
         setRenderMode(mode);
         setComplexityWarning(activeWarning);
 
@@ -397,6 +401,8 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
                   lower.includes('failed')
                 ) {
                   errorLog += text + '\n';
+                  // Surface to UI state for debug visibility
+                  setStderrLog((prev) => [...prev, text]);
                 }
               }
             },
@@ -883,6 +889,16 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
                   <pre className="text-xs text-left bg-black/40 p-4 rounded-xl text-red-300 overflow-auto max-h-[150px] whitespace-pre-wrap font-mono border border-red-900/30 mb-6">
                     {error}
                   </pre>
+                  {stderrLog.length > 0 && (
+                    <details className="mt-3 mb-6 text-left">
+                      <summary className="text-xs text-slate-400 cursor-pointer">
+                        Build Log ({stderrLog.length} messages)
+                      </summary>
+                      <pre className="text-[10px] text-slate-500 mt-1 max-h-[100px] overflow-auto bg-black/30 p-2 rounded-lg">
+                        {stderrLog.join('\n')}
+                      </pre>
+                    </details>
+                  )}
                   <div className="flex gap-3 justify-center">
                     <button
                       onClick={() => compileAndRender('preview')}

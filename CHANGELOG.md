@@ -5,6 +5,20 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.6] - 2026-02-05
+
+### Fixed
+
+- **3D Viewer Diagnostics**: Library mount verification with error surfacing (stderr visible in UI build log)
+
+### Added
+
+- **Session Debug Trace**: Black-box `debug_trace` field in session exports captures stderr, orchestrator events, and system messages
+- **Real Benchmark Mode**: `POLYGEN_BENCHMARK=true` flag enables real pipeline E2E tests (requires Vitest Browser Mode for WASM + Workers)
+- **Data Harvest Strategy**: Reinforcement learning feedback loop formalized in TECHNICAL_STRATEGY.md (opt-in user data for Gemini fine-tuning)
+
+---
+
 ## [3.6.5] - 2026-02-05
 
 ### Changed

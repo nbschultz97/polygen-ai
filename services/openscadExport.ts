@@ -158,6 +158,8 @@ export interface SessionExportData {
   /** Refactoring score for Tier 3 code quality (0-1) */
   refactoringScore?: number;
   codeHistory?: { code: string; prompt: string; timestamp: number; gst?: object }[];
+  /** Debug trace log for black-box recording */
+  debug_trace?: { timestamp: number; type: 'stdout' | 'stderr' | 'system'; message: string }[];
 }
 
 /**

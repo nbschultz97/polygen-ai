@@ -103,6 +103,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   // STL Remix: Uploaded STL file for modification workflow
   const [attachedSTL, setAttachedSTL] = useState<STLFileData | null>(null);
 
+  // Debug trace: black-box recorder for session exports
+  const [debugTrace, setDebugTrace] = useState<
+    { timestamp: number; type: 'stdout' | 'stderr' | 'system'; message: string }[]
+  >([]);
+  const pushTrace = useCallback((type: 'stdout' | 'stderr' | 'system', message: string) => {
+    setDebugTrace((prev) => [...prev.slice(-200), { timestamp: Date.now(), type, message }]);
+  }, []);
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stlInputRef = useRef<HTMLInputElement>(null);
@@ -338,7 +346,10 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
               conversationHistory: history,
             },
             {
-              onStepChange: (step) => setWorkflowStep(step),
+              onStepChange: (step) => {
+                setWorkflowStep(step);
+                pushTrace('system', `Pipeline step: ${step}`);
+              },
               onGSTGenerated: (gst) => {
                 console.log('GST generated:', gst.name);
                 setConceptPreview(null);
@@ -350,12 +361,17 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
               onCodeGenerated: (code) => {
                 setStreamingCode(''); // Clear streaming state on completion
                 console.log('Code generated:', code.length, 'chars');
+                pushTrace('system', `Code generated: ${code.length} chars`);
               },
               onCodeChunk: (_chunk, fullText) => {
                 // Update streaming code display in real-time
                 setStreamingCode(fullText);
               },
               onValidationComplete: (result) => {
+                pushTrace(
+                  'system',
+                  `Validation: success=${result.success}, manifold=${result.isManifold}, errors=${result.errors?.length ?? 0}`
+                );
                 // SOTA: P_succ calculation for quality gating
                 // P_succ = M * (0.65 * Sv + 0.35 * Sd)
                 const manifoldFactor = result.isManifold ? 1.0 : 0.0;
@@ -406,6 +422,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
               },
               onSmartFixesGenerated: (fixes) => console.log('Smart fixes generated:', fixes.length),
               onError: (error, step) => {
+                pushTrace('stderr', `Error in ${step}: ${error.message}`);
                 console.error(`Error in ${step}:`, error);
                 setMessages((prev) => [
                   ...prev,
@@ -583,6 +600,8 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
         timestamp: h.timestamp,
         gst: h.gst,
       })),
+      // Black-box debug trace
+      debug_trace: debugTrace,
     });
     if (result.success) {
       console.log('Session exported:', result.filePath);

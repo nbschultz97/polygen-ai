@@ -2,7 +2,7 @@
 
 This document outlines the strategic execution plan for PolyGen AI, shifting from a "Web Wrapper" to a "Sovereign Engineering Platform."
 
-## Current Version: 3.6.5
+## Current Version: 3.6.6
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architecture decisions.
@@ -11,7 +11,7 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 
 ## Strategic Phases
 
-### Phase 2: The Engineering Layer (Current - v3.6.5)
+### Phase 2: The Engineering Layer (Current - v3.6.6)
 
 **Objective:** Fix "Engineering Intuition" failures (e.g., flat parts on round surfaces).
 
@@ -39,6 +39,13 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 ---
 
 ## Completed
+
+### v3.6.6 - Infrastructure Stabilization
+
+- [x] 3D Viewer diagnostics: Library mount verification + stderr surfacing in error overlay
+- [x] Session debug trace: Black-box `debug_trace` field in session exports
+- [x] Real benchmark mode: `POLYGEN_BENCHMARK=true` flag for real pipeline E2E tests (browser-only)
+- [x] Data Harvest strategy: Reinforcement learning feedback loop in TECHNICAL_STRATEGY.md
 
 ### v3.6.5 - Engineering Cognition
 

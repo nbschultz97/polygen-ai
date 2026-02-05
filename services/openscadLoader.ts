@@ -302,6 +302,18 @@ export const createOpenSCADInstance = async (options: {
   await libraryLoadPromise;
   mountLibraries(instance);
 
+  // Verify libraries were actually mounted
+  const mountedLibs: string[] = [];
+  for (const filename of BUILT_IN_LIBRARIES) {
+    try {
+      instance.FS.stat?.(`/libraries/${filename}`);
+      mountedLibs.push(filename);
+    } catch {
+      console.error(`[openscadLoader] CRITICAL: Library /libraries/${filename} NOT mounted`);
+    }
+  }
+  console.log(`[openscadLoader] Libraries mounted: ${mountedLibs.join(', ') || 'NONE'}`);
+
   return instance;
 };
 

@@ -1,4 +1,4 @@
-# PolyGen Technical Strategy v3.6.5 ("The Vanilla Architect")
+# PolyGen Technical Strategy v3.6.6 ("The Vanilla Architect")
 
 > Research-backed architecture decisions for the PolyGen AI text-to-3D CAD generation platform.
 
@@ -27,6 +27,16 @@ We are building a proprietary dataset of "Geometric Repairs."
 - **The Loop:** User Prompt -> Broken Code -> Visual Critic Feedback -> Fixed Code.
 - **End Game:** Fine-tune a small model (Gemini Flash) on this dataset to predict "floating parts" and "intersections" without rendering, drastically lowering inference costs.
 - **Schema:** `supabase/visual_repair_log.sql` — tracks Sv metric and manifold status per repair.
+
+### The Data Harvest (Reinforcement Learning)
+
+We do not automatically add user generations to the public library (risk of data poisoning). Instead, when a user marks a print as "Success":
+
+1. We flag the **(Prompt, GST, SCAD)** triplet in the `visual_repair_log`.
+2. We use this "Golden Data" to fine-tune the Gemini Planner to better understand "implied geometry" (e.g., that a "holder" implies mounting holes, a "case" implies internal clearance).
+3. The fine-tuned model replaces the base Gemini call, drastically lowering per-generation inference costs.
+
+**Privacy Rule:** User data is opt-in only. No raw prompts leave the system without explicit consent.
 
 ## 4. Infrastructure: The MCP Pivot
 
