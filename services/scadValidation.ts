@@ -10,6 +10,8 @@ export interface ValidationOptions {
   useManifoldBackend?: boolean;
   /** Use preview mode for faster iteration (skip full render) */
   previewMode?: boolean;
+  /** STL Remix: Binary STL data to mount as /user_upload.stl in WASM FS */
+  uploadedStlData?: Uint8Array;
 }
 
 // Default to Manifold backend for performance (research-validated)
@@ -463,6 +465,15 @@ export const validateScadCode = async (
         success: false,
         error: 'OpenSCAD WASM failed to initialize. Try refreshing the page.',
       };
+    }
+
+    // STL Remix: Mount uploaded STL in WASM filesystem if available
+    if (options.uploadedStlData) {
+      try {
+        instance.FS.writeFile('/user_upload.stl', options.uploadedStlData);
+      } catch (stlErr) {
+        console.warn('Validation: Failed to mount user STL:', stlErr);
+      }
     }
 
     instance.FS.writeFile('/input.scad', trimmedCode);

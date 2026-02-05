@@ -10,6 +10,8 @@ import type { ValidationResult } from './scadValidation';
 interface ValidationOptions {
   useManifoldBackend?: boolean;
   previewMode?: boolean;
+  /** STL Remix: Binary STL data to mount as /user_upload.stl in WASM FS */
+  uploadedStlData?: Uint8Array;
 }
 
 // Message types for Worker communication

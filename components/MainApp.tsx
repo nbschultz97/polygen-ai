@@ -29,6 +29,7 @@ import {
   Settings,
   Sparkles,
   Undo2,
+  Upload,
   User,
   X,
   Zap,
@@ -47,7 +48,7 @@ import {
 import type { ImageData } from '../services/geminiService';
 import { APP_VERSION, processArchitectRequest } from '../services/geminiService';
 import { copyToClipboard, exportSession, exportToOpenSCAD } from '../services/openscadExport';
-import type { GeneratedAsset, Message, WorkflowStep } from '../types';
+import type { GeneratedAsset, Message, STLFileData, WorkflowStep } from '../types';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
 import DesignTemplates from './DesignTemplates';
@@ -99,8 +100,12 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   // Streaming code state - shows progressive generation
   const [streamingCode, setStreamingCode] = useState('');
 
+  // STL Remix: Uploaded STL file for modification workflow
+  const [attachedSTL, setAttachedSTL] = useState<STLFileData | null>(null);
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stlInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Visual Critic: auto-trigger after render when _pendingVisualCritique is set
@@ -207,6 +212,41 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
     setImagePreview(null);
   }, []);
 
+  // STL Remix: Handle STL file upload
+  const handleSTLUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.stl')) {
+      alert('Please upload an STL file (.stl)');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      alert('STL file must be less than 50MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const arrayBuffer = reader.result as ArrayBuffer;
+      setAttachedSTL({
+        data: new Uint8Array(arrayBuffer),
+        filename: file.name,
+        size: file.size,
+      });
+    };
+    reader.readAsArrayBuffer(file);
+
+    if (stlInputRef.current) {
+      stlInputRef.current.value = '';
+    }
+  }, []);
+
+  const clearAttachedSTL = useCallback(() => {
+    setAttachedSTL(null);
+  }, []);
+
   const handleSend = useCallback(
     async (overrideInput?: string) => {
       const textToSend = overrideInput || input;
@@ -248,12 +288,18 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
 
       const userMsg: Message = {
         role: 'user',
-        text: attachedImage ? `[Image attached] ${sanitizedInput}` : sanitizedInput,
+        text: attachedSTL
+          ? `[STL: ${attachedSTL.filename}] ${sanitizedInput}`
+          : attachedImage
+            ? `[Image attached] ${sanitizedInput}`
+            : sanitizedInput,
       };
       setMessages((prev) => [...prev, userMsg]);
       setInput('');
       const imageToSend = attachedImage;
+      const stlToSend = attachedSTL;
       clearAttachedImage();
+      clearAttachedSTL();
 
       // Clear clarifications synchronously for the asset we'll pass to orchestrator
       // This avoids race condition with async state update
@@ -284,6 +330,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
               existingAsset: assetForOrchestrator,
               isEdit: !!currentAsset?.scadCode,
               imageData: imageToSend || undefined,
+              stlFile: stlToSend || undefined,
               conversationHistory: history,
             },
             {
@@ -910,6 +957,20 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                   </button>
                 </div>
               )}
+              {attachedSTL && (
+                <div className="mb-2 relative inline-flex items-center gap-2 px-3 py-2 bg-violet-500/10 border border-violet-500/20 rounded-lg">
+                  <Box className="w-4 h-4 text-violet-400" />
+                  <span className="text-xs text-violet-300 font-medium">
+                    {attachedSTL.filename} ({(attachedSTL.size / 1024).toFixed(1)} KB)
+                  </span>
+                  <button
+                    onClick={clearAttachedSTL}
+                    className="p-0.5 bg-red-500 hover:bg-red-400 rounded-full text-white transition-colors ml-1"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
               <div className="relative">
                 <textarea
                   value={input}
@@ -931,6 +992,13 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                     onChange={handleImageUpload}
                     className="hidden"
                   />
+                  <input
+                    ref={stlInputRef}
+                    type="file"
+                    accept=".stl"
+                    onChange={handleSTLUpload}
+                    className="hidden"
+                  />
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={workflowStep === 'processing'}
@@ -940,8 +1008,19 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                     <ImagePlus className="w-4 h-4" />
                   </button>
                   <button
+                    onClick={() => stlInputRef.current?.click()}
+                    disabled={workflowStep === 'processing'}
+                    className="p-2 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 text-gray-400 hover:text-white rounded-lg transition-all"
+                    title="Upload STL to remix"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() => handleSend()}
-                    disabled={workflowStep === 'processing' || (!input.trim() && !attachedImage)}
+                    disabled={
+                      workflowStep === 'processing' ||
+                      (!input.trim() && !attachedImage && !attachedSTL)
+                    }
                     className="p-2 bg-violet-600 hover:bg-violet-500 disabled:bg-white/[0.06] disabled:text-gray-600 text-white rounded-lg transition-all"
                   >
                     <Send className="w-4 h-4" />
@@ -1132,7 +1211,12 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                       </div>
                     )
                   ) : (
-                    <ScadRenderer code={currentAsset.scadCode} isProUser={isProUser} onRenderComplete={handleRenderComplete} />
+                    <ScadRenderer
+                      code={currentAsset.scadCode}
+                      isProUser={isProUser}
+                      uploadedStlData={currentAsset.uploadedStlData}
+                      onRenderComplete={handleRenderComplete}
+                    />
                   )}
                 </div>
 

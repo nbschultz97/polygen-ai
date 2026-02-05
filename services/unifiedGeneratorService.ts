@@ -4,7 +4,7 @@
  * Eliminates GST translation overhead for better reliability
  */
 
-import type { GeometricStructureTree, ImageData } from '../types';
+import type { GeometricStructureTree, ImageData, STLFileData } from '../types';
 import { getAuthToken } from './apiClient';
 import { getPreferencesForPrompt, loadPreferences } from './preferencesService';
 import { streamClaudeResponse } from './streamingClient';
@@ -298,6 +298,8 @@ Output ONLY valid OpenSCAD code, no markdown.
 export interface UnifiedInput {
   userPrompt: string;
   imageData?: ImageData;
+  /** STL Remix: Uploaded STL for modification workflow */
+  stlFile?: STLFileData;
   existingCode?: string;
   existingGST?: GeometricStructureTree;
   conversationHistory?: string[];
@@ -521,6 +523,43 @@ Apply the requested changes. Output the complete modified SCAD code.`;
     if (input.imageData) {
       contextParts.push(
         `## REFERENCE IMAGE\nAnalyze the attached image and create a 3D printable version.`
+      );
+    }
+
+    // STL Remix: User uploaded an STL to modify
+    if (input.stlFile) {
+      contextParts.push(
+        `## STL REMIX MODE
+An existing STL file has been uploaded: "${input.stlFile.filename}" (${(input.stlFile.size / 1024).toFixed(1)} KB)
+The file is available at "/user_upload.stl" in the WASM filesystem.
+
+IMPORTANT RULES FOR STL REMIX:
+1. Use import("/user_upload.stl") to reference the existing model
+2. Do NOT try to recreate the imported geometry - it's a "baked" mesh
+3. Build AROUND it using union(), difference(), or intersection()
+4. The user wants to ADD or MODIFY features on this existing model
+5. Always wrap the import and your modifications in a single union() or other CSG op
+
+EXAMPLE:
+\`\`\`openscad
+eps = 0.01;
+$fn = 64;
+
+// Import the user's existing model
+module original_model() {
+    import("/user_upload.stl", convexity=10);
+}
+
+// Add a mounting loop to the top
+union() {
+    original_model();
+    translate([0, 0, 30]) // Adjust position as needed
+        difference() {
+            cylinder(d=12, h=5);
+            cylinder(d=8, h=5 + eps*2);
+        }
+}
+\`\`\``
       );
     }
 

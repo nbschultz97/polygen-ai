@@ -173,6 +173,8 @@ export interface GeneratedAsset {
   // Version history for undo/iteration
   history?: CodeHistoryEntry[];
   currentHistoryIndex?: number;
+  /** STL Remix: Binary STL data from user upload for import() workflow */
+  uploadedStlData?: Uint8Array;
 }
 
 // ============================================
@@ -206,10 +208,26 @@ export interface ImageData {
   mimeType: string;
 }
 
+/**
+ * STL Remix: Uploaded STL file data for the "Modification Copilot" workflow
+ * Instead of converting STL to parametric code (impossible), we wrap it in
+ * import() and let the AI generate modifications around it.
+ */
+export interface STLFileData {
+  /** Binary STL data as Uint8Array */
+  data: Uint8Array;
+  /** Original filename */
+  filename: string;
+  /** File size in bytes */
+  size: number;
+}
+
 export interface PlannerInput {
   userPrompt: string;
   imageData?: ImageData;
   conversationHistory?: string[];
+  /** STL Remix: If provided, planner should plan modifications around existing STL */
+  stlFile?: STLFileData;
 }
 
 export interface PlannerOutput {
