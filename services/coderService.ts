@@ -677,7 +677,7 @@ ${input.validationErrors.map((e) => `- ${e}`).join('\n')}
       throw error;
     }
     console.error('Coder service error:', error);
-    throw new Error(`Coder failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Coder failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -882,9 +882,7 @@ Output the complete modified SCAD code with ALL changes applied.`;
       throw error;
     }
     console.error('Coder edit error:', error);
-    throw new Error(
-      `Coder edit failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+    throw new Error(`Coder edit failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -1030,9 +1028,7 @@ Fix ONLY this module. Output the corrected module definition.`;
       throw error;
     }
     console.error('Diff-based fix error:', error);
-    throw new Error(
-      `Module fix failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+    throw new Error(`Module fix failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

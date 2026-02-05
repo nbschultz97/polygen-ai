@@ -269,8 +269,15 @@ export async function validate(input: {
           validBoundingBox
         );
         validBoundingBox = undefined;
+      } else {
+        console.log('[ValidatorClient] Bounding box passed sanity check:', validBoundingBox);
       }
     }
+
+    // Diagnostic: trace volume/boundingBox from Worker result
+    console.log(
+      `[ValidatorClient] Worker result: volume=${result.volume}, boundingBox=${result.boundingBox ? JSON.stringify(result.boundingBox) : 'undefined'}, triangleCount=${result.triangleCount}`
+    );
 
     // Build validation result
     const validationResult: ValidationResult = {
@@ -306,7 +313,6 @@ export async function validate(input: {
 
       // Sd is the minimum of all axis accuracies
       sd = Math.min(dimCritic.deviations.x, dimCritic.deviations.y, dimCritic.deviations.z);
-      validationResult.sd = sd;
 
       if (!dimCritic.match) {
         gstMatch = false;
@@ -342,7 +348,6 @@ export async function validate(input: {
       if (actualTargetVolume > 0) {
         sv = 1 - Math.abs(actualGenVolume - actualTargetVolume) / actualTargetVolume;
         sv = Math.max(0, Math.min(1, sv));
-        validationResult.sv = sv;
         console.log(
           `Active Critic: Sv=${sv.toFixed(2)} (gen=${actualGenVolume.toFixed(0)}mm³, target=${actualTargetVolume.toFixed(0)}mm³)`
         );
@@ -353,6 +358,10 @@ export async function validate(input: {
     if (result.volume && result.success) {
       console.log(`Active Critic: Mesh volume = ${result.volume.toFixed(0)}mm³`);
     }
+
+    // Always assign sv/sd to result (even when defaulting to 1.0 with no GST bbox)
+    validationResult.sv = sv;
+    validationResult.sd = sd;
 
     // SOTA: Calculate P_succ = M * (0.65 * Sv + 0.35 * Sd)
     const pSucc = calculatePsucc(validationResult.isManifold, sv, sd);

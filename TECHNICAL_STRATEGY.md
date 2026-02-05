@@ -436,7 +436,7 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 ---
 
 _Last Updated: February 2026_
-_Version: 3.6.1_
+_Version: 3.6.2_
 
 ```
 

@@ -472,6 +472,9 @@ async function validateInWorker(
     let boundingBox: { min: [number, number, number]; max: [number, number, number] } | undefined;
     let volume: number | undefined;
     const isManifold = true; // Default optimistic; compute if triangle count allows
+    console.log(
+      `[Worker] SOTA metrics: triangleCount=${triangleCount}, stlData.length=${stlData.length}`
+    );
     if (triangleCount > 0 && triangleCount < 100000) {
       try {
         // Re-copy STL data defensively: create independent ArrayBuffer + set bytes
@@ -480,7 +483,11 @@ async function validateInWorker(
         const safeStl = new Uint8Array(safeCopy);
 
         const triangles = parseSTLBinary(safeStl);
+        console.log(`[Worker] Parsed ${triangles.length} triangles for metrics`);
         boundingBox = calculateBoundingBox(triangles) ?? undefined;
+        console.log(
+          `[Worker] BoundingBox result: ${boundingBox ? JSON.stringify(boundingBox) : 'null (rejected by sanity checks)'}`
+        );
 
         // Only compute volume if bounding box is valid (coordinates are sane)
         // If bounding box is null, coordinates are corrupt WASM heap garbage

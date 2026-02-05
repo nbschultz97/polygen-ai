@@ -5,6 +5,25 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.2] - 2026-02-05
+
+### Fixed
+
+- **sv/sd Always Missing from Session Exports**: `validatorClient.ts` only assigned `sv` and `sd` to the validation result inside conditional blocks gated by `input.gst?.boundingBox`. When the GST had no bounding box (common case), the defaults (1.0) were used for pSucc but never written to the result object. Now assigns unconditionally after computation.
+- **"Coder edit failed: Unknown error"**: All error catch blocks in `coderService.ts` now use `String(error)` instead of the unhelpful `'Unknown error'` when the caught value is not an Error instance, providing actual error details in the message.
+
+### Added
+
+- **Diagnostic Logging for Volume/BoundingBox Pipeline**: Added console logging in both Worker (`scadValidation.worker.ts`) and `validatorClient.ts` to trace volume/boundingBox data flow from WASM through to the validation result, helping diagnose why these fields can be missing from session exports.
+- **ScadRenderer Diagnostic Logging**: Added console logging at WASM init, STL read, and STL parse stages in `ScadRenderer.tsx` to help debug 3D viewer rendering failures.
+
+### Technical
+
+- Removed redundant `validationResult.sv = sv` and `validationResult.sd = sd` assignments inside conditional blocks (now handled by unconditional assignment before pSucc calculation)
+- Improved error messages in `coderService.ts` (4 catch blocks updated from `'Unknown error'` to `String(error)`)
+
+---
+
 ## [3.6.1] - 2026-02-05
 
 ### Fixed

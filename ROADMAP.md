@@ -2,7 +2,7 @@
 
 This document outlines planned features and improvements for PolyGen AI, informed by deep technical research on AI-driven CAD generation.
 
-## Current Version: 3.6.1
+## Current Version: 3.6.2
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architecture decisions.
@@ -10,6 +10,13 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 ---
 
 ## Completed
+
+### v3.6.2 - Metrics Assignment & Diagnostics
+
+- [x] Fixed sv/sd never assigned to validation result when GST has no boundingBox
+- [x] Fixed "Coder edit failed: Unknown error" with actual error details
+- [x] Added diagnostic logging for volume/boundingBox pipeline tracing
+- [x] Added ScadRenderer diagnostic logging for 3D viewer debugging
 
 ### v3.6.1 - STL Metrics Pipeline & Diagnostics
 
