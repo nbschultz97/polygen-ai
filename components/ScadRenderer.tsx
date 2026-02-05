@@ -20,9 +20,11 @@ interface ScadRendererProps {
   isProUser: boolean;
   /** STL Remix: Binary STL data to mount in WASM filesystem as /user_upload.stl */
   uploadedStlData?: Uint8Array;
+  /** Called after a successful render with the canvas screenshot as base64 PNG */
+  onRenderComplete?: (screenshotBase64: string) => void;
 }
 
-const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser, uploadedStlData }) => {
+const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser, uploadedStlData, onRenderComplete }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -565,6 +567,29 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser, uploa
         if (!isPreview) {
           setIsFullRenderValid(true);
         }
+
+        // Visual Critic: capture screenshot and notify parent after render settles
+        if (onRenderComplete && rendererRef.current && sceneRef.current && cameraRef.current) {
+          // Wait one frame for Three.js to finish painting
+          requestAnimationFrame(() => {
+            try {
+              const renderer = rendererRef.current;
+              const scene = sceneRef.current;
+              const camera = cameraRef.current;
+              if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+                const dataUrl = renderer.domElement.toDataURL('image/png');
+                // Strip data:image/png;base64, prefix
+                const base64 = dataUrl.split(',')[1];
+                if (base64) {
+                  onRenderComplete(base64);
+                }
+              }
+            } catch (screenshotErr) {
+              console.warn('Visual Critic: screenshot capture failed:', screenshotErr);
+            }
+          });
+        }
       } catch (err: any) {
         console.error('Renderer Error:', err);
         setError(err?.message || 'Failed to render. Please check your code.');
@@ -576,7 +601,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(({ code, isProUser, uploa
         setLoading(false);
       }
     },
-    [code, loading, analyzeComplexity, isMobile, renderMode]
+    [code, loading, analyzeComplexity, isMobile, renderMode, onRenderComplete]
   );
 
   // Auto-update logic with debounce - always uses fast preview mode

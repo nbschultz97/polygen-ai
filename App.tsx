@@ -97,6 +97,10 @@ const App: React.FC = () => {
               onPreviewImageGenerated: (imageUrl) => {
                 console.log('Preview image generated');
                 setConceptPreview(imageUrl);
+                // Also save to asset for later comparison
+                setCurrentAsset((prev) =>
+                  prev ? { ...prev, previewImageUrl: imageUrl } : { previewImageUrl: imageUrl }
+                );
               },
               onCodeGenerated: (code) => console.log('Code generated:', code.length, 'chars'),
               onValidationComplete: (result) => {
