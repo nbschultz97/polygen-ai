@@ -2,7 +2,7 @@
 
 This document outlines planned features and improvements for PolyGen AI, informed by deep technical research on AI-driven CAD generation.
 
-## Current Version: 3.6.2
+## Current Version: 3.6.4
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architecture decisions.
@@ -10,6 +10,24 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 ---
 
 ## Completed
+
+### v3.6.4 - Operation Vanilla Purge
+
+- [x] Rewrote `coder-system.md` to enforce Vanilla OpenSCAD (purged all BOSL2 references)
+- [x] Rewrote `planner-system.md` to only request Vanilla primitives (`cube`, `cylinder`, `sphere`, `polygon`)
+- [x] Added Vanilla polyfills: `rounded_cube`, `tube`, `spur_gear_simple`, `rack_gear_simple`, `threaded_rod_simple`
+- [x] Added Chain of Draft reasoning protocol to unified generator (max 5 words per step)
+- [x] Added IMMUTABLE MESH rule + anti-polyhedron guard for STL Remix
+- [x] Created `visual_repair_log.sql` - Anti-Slop telemetry table (Sv metric + manifold status)
+
+### v3.6.3 - 3D Viewer Fixes & Prompt Quality
+
+- [x] Fixed 3D viewer output path mismatch (relative vs absolute STL path)
+- [x] Fixed silent error swallowing in 3D viewer stderr handler
+- [x] Fixed case-sensitive error check missing mixed-case errors
+- [x] Planner prompt overhaul: general-purpose design quality rules, shell construction, functional features
+- [x] Coder prompt overhaul: shell/enclosure patterns, design quality rules
+- [x] GST boundingBox now required for meaningful sv/sd/pSucc metrics
 
 ### v3.6.2 - Metrics Assignment & Diagnostics
 

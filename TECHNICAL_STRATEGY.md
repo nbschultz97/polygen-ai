@@ -418,6 +418,13 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 - [x] **Atomic LMP** (Scope isolation enforcement) ✅ v3.5.5
 - [x] **L_sig Protocol** (Signature recovery) ✅ v3.5.4
 
+### Phase 2.5: Vanilla Purge ✅ COMPLETE
+
+- [x] **Prompt-Service Alignment** - Purged BOSL2 from all prompt files (coder-system.md, planner-system.md) ✅ v3.6.4
+- [x] **Chain of Draft** reasoning protocol in unified generator ✅ v3.6.4
+- [x] **STL Remix Hardening** (IMMUTABLE MESH + anti-polyhedron guard) ✅ v3.6.4
+- [x] **Anti-Slop Telemetry** schema (visual_repair_logs table) ✅ v3.6.4
+
 ### Phase 3: Tier 6 Self-Correction (v4.0.0)
 
 - [x] **Golden Set** automated benchmarking ✅ v3.5.5
@@ -436,7 +443,7 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 ---
 
 _Last Updated: February 2026_
-_Version: 3.6.2_
+_Version: 3.6.4_
 
 ```
 
