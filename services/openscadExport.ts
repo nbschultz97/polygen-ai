@@ -128,6 +128,12 @@ export interface SessionExportData {
     gstMatch?: boolean;
     /** Maximum deviation from GST target (percentage) */
     gstDeviationPercent?: number;
+    /** SOTA: Success probability P_succ = M * (0.65*Sv + 0.35*Sd) */
+    pSucc?: number;
+    /** SOTA: Volumetric similarity (0-1) */
+    sv?: number;
+    /** SOTA: Dimensional accuracy (0-1) */
+    sd?: number;
   };
   /** Visual Critic analysis result */
   visualCritique?: {
@@ -135,6 +141,19 @@ export interface SessionExportData {
     confidence: number;
     issues: { type: string; description: string; severity: string }[];
     suggestions: string[];
+  };
+  /** Pipeline metadata for diagnostics */
+  pipeline?: {
+    /** Which pipeline was used: 'unified' or 'multi-agent' */
+    mode?: string;
+    /** Number of validation retry attempts */
+    retryCount?: number;
+    /** Auto-fixes applied before validation (e.g. epsilon injection) */
+    preprocessingFixes?: string[];
+    /** Error categories from failed attempts */
+    errorCategories?: string[];
+    /** Smart quick fixes suggested */
+    smartFixCount?: number;
   };
   /** Refactoring score for Tier 3 code quality (0-1) */
   refactoringScore?: number;

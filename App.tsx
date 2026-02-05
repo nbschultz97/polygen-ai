@@ -246,8 +246,17 @@ const App: React.FC = () => {
             isManifold: currentAsset.validationResult.isManifold,
             volume: currentAsset.validationResult.volume,
             boundingBox: currentAsset.validationResult.boundingBox,
+            gstMatch: currentAsset.validationResult.gstMatch,
+            gstDeviationPercent: currentAsset.validationResult.gstDeviationPercent,
+            pSucc: currentAsset.validationResult.pSucc,
+            sv: currentAsset.validationResult.sv,
+            sd: currentAsset.validationResult.sd,
           }
         : undefined,
+      pipeline: {
+        mode: currentAsset?.gst ? 'multi-agent' : 'unified',
+        smartFixCount: currentAsset?.smartFixes?.length ?? 0,
+      },
       codeHistory: currentAsset?.history,
     });
     if (result.success) {

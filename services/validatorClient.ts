@@ -361,6 +361,9 @@ export async function validate(input: {
       `Active Critic: P_succ=${pSucc.toFixed(2)} (M=${validationResult.isManifold ? 1 : 0}, Sv=${sv.toFixed(2)}, Sd=${sd.toFixed(2)})`
     );
 
+    // Assign gstMatch to result (was only tracked as local variable)
+    validationResult.gstMatch = gstMatch;
+
     // If any critic failed OR P_succ is too low, mark as failed and add feedback
     const isPsuccFail = pSucc < 0.8 && result.success;
 
