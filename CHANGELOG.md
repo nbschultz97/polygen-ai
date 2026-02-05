@@ -5,6 +5,40 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - 2026-02-05
+
+### Added
+
+- **Preview/Render Mode Split (F5/F6 Strategy)**: Fast preview mode with lower `$fn` for rapid iteration; full Manifold render for verification and export. Separate "Preview" and "Verify to Download" buttons in ScadRenderer. Download is gated behind full render verification
+- **STL Remix Workflow ("Modification Copilot")**: Upload existing STL files and generate parametric modifications around them using `import("/user_upload.stl")`. Instead of the impossible task of converting mesh to parametric code, wraps the uploaded STL and generates additions/modifications around it
+- **Visual Critic Auto-Trigger**: Automatically captures canvas screenshot after 3D render and sends to Claude Vision for quality analysis (orientation, scale, disconnected parts)
+- **Parametric GST Template Library**: Pre-built GST templates for tactical parts (Picatinny mounts, MOLLE adapters) to improve generation accuracy for complex assemblies
+- **Visual Diff Comparison View**: Side-by-side comparison view for validation results
+- **Manifold Guard**: Coder prompt rule preventing non-manifold geometry patterns in generated code
+- **Chain of Draft Prompting**: Improved prompting strategy for more reliable code generation
+- **No Floating Parts Rule**: Generation constraint ensuring all components are physically connected
+- **Hull Heuristic**: Planning and coding prompts now leverage hull-based geometry strategies for complex shapes
+
+### Changed
+
+- **Tactical Dimensional Standards**: Enhanced coder prompt with precise MIL-STD dimensional standards for Picatinny/MOLLE parts
+- **$preview Mode Integration**: OpenSCAD `$preview` variable support for conditional detail levels in generated code
+- **GST Formalization**: Stricter GST schema validation for more reliable planner output
+- **CI Build System**: Switched from pnpm to npm for CI compatibility
+
+### Technical
+
+- Added `STLFileData` interface to types.ts with `data`, `filename`, and `size` fields
+- Added `uploadedStlData` to `GeneratedAsset` and full validation pipeline (worker + main thread)
+- Added STL mounting in WASM filesystem (`FS.writeFile('/user_upload.stl', ...)`) with cleanup in finally blocks
+- Added render mode state management (`'preview' | 'full'`) in ScadRenderer with mode-specific compilation
+- Added STL upload UI in MainApp with 50MB limit, `.stl` extension validation, and attachment preview
+- Preview mode: `$fn=32` (16 on mobile), no Manifold backend for speed
+- Full render mode: Manifold backend enabled, generates verified STL for download
+- STL Remix prompt context injected into unified generator with `import()` usage instructions
+
+---
+
 ## [3.5.6] - 2026-01-27
 
 ### Fixed

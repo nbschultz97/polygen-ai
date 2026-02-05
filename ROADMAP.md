@@ -2,7 +2,7 @@
 
 This document outlines planned features and improvements for PolyGen AI, informed by deep technical research on AI-driven CAD generation.
 
-## Current Version: 3.4.0
+## Current Version: 3.6.0
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architecture decisions.
@@ -10,6 +10,31 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 ---
 
 ## Completed
+
+### v3.6.0 - Preview/Render Split & STL Remix
+
+- [x] Preview/Render mode split (F5/F6 strategy) for fast iteration + verified export
+- [x] STL Remix "Modification Copilot" workflow (upload STL, generate modifications around it)
+- [x] Visual Critic auto-trigger after 3D render
+- [x] Parametric GST template library for tactical parts
+- [x] Visual diff comparison view for validation
+- [x] Manifold Guard, Chain of Draft, No Floating Parts rules
+- [x] Hull Heuristic in planner/coder prompts
+- [x] $preview mode and GST formalization
+
+### v3.5.x - SOTA Quality & Reliability
+
+- [x] P_succ scoring (M * 0.65*Sv + 0.35\*Sd) with Vision ROI gating
+- [x] 6x6 Visual Anchor Grid for VLM spatial reasoning
+- [x] Atomic LMP rule and $L_{sig}$ protocol for error recovery
+- [x] WASM heap data leak fix (STL buffer copy)
+- [x] Volume sanity checking for corrupt WASM heap data
+- [x] Golden Set verification protocol + polyfill detection
+- [x] ScopeRefine architecture (read-only libraries, local polyfills)
+- [x] Standalone code export with inlined tactical library
+- [x] SOTA Complexity Router (auto-detect complex → multi-agent)
+- [x] SOTA Active Critic with Dimensional Accuracy (Sd)
+- [x] Memory leak fix (instance.delete() for WASM heap cleanup)
 
 ### v3.4.0 - SOTA Architecture
 
@@ -74,27 +99,27 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 
 ### Manifold Geometry Kernel
 
-- [ ] Switch OpenSCAD WASM from CGAL to Manifold backend
-- [ ] "Orders of magnitude" faster boolean operations
-- [ ] Reduced memory footprint for complex models
+- [x] Switch OpenSCAD WASM from CGAL to Manifold backend ✅ v3.5.0
+- [x] "Orders of magnitude" faster boolean operations ✅ v3.5.0
+- [x] Reduced memory footprint for complex models ✅ v3.3.0 (instance.delete())
 
 ### API Optimization
 
-- [ ] Response streaming for 30-60s generation times
-- [ ] Prompt caching (50%+ cost reduction on Claude calls)
-- [ ] Web Worker offloading for WASM execution
+- [x] Response streaming for 30-60s generation times ✅ v3.5.0
+- [x] Prompt caching (50%+ cost reduction on Claude calls) ✅ v3.5.0
+- [x] Web Worker offloading for WASM execution ✅ v3.5.0
 
 ### Validation Pipeline
 
-- [ ] Two-phase validation: preview() for iteration, render() for export
+- [x] Two-phase validation: preview() for iteration, render() for export ✅ v3.6.0
 - [ ] Parallel variation generation (3 candidates, pick best)
 - [x] Visual feedback loop (render PNG → feed back to VLM) ✅ v3.4.0
 
 ### Enhanced Error Recovery
 
-- [ ] Add "Disconnected Geometry" error category
-- [ ] Add "Scale Mismatch" detection (volume vs GST intent)
-- [ ] Add "Hallucinated Library" detection (unknown functions)
+- [x] Add "Disconnected Geometry" error category ✅ v3.5.0
+- [x] Add "Scale Mismatch" detection (volume vs GST intent) ✅ v3.5.0
+- [x] Add "Hallucinated Library" detection (unknown functions) ✅ v3.5.0
 
 ---
 
@@ -104,7 +129,7 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 
 ### Pipeline Optimization
 
-- [ ] Enable multi-agent (GST) pipeline as default
+- [x] Enable multi-agent (GST) pipeline as default ✅ v3.1.1
 - [ ] A/B testing infrastructure for pipeline comparison
 - [ ] Success rate tracking per pipeline type
 
@@ -133,13 +158,13 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 
 ---
 
-## v3.4.0 - Advanced Editing
+## v3.7.0 - Advanced Editing
 
 - [ ] Direct SCAD code editing with live preview
 - [ ] Parameter sliders for real-time dimension adjustments
-- [ ] Multi-part assembly support (generate multiple STLs)
-- [ ] Import existing SCAD files for modification
-- [ ] Visual diff for code changes
+- [x] Multi-part assembly support (tactical assemblies) ✅ v3.4.0
+- [x] STL file import for modification (STL Remix workflow) ✅ v3.6.0
+- [x] Visual diff for code changes ✅ v3.6.0
 
 ---
 

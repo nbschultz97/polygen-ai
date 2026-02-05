@@ -1,6 +1,6 @@
 # PolyGen AI
 
-**v3.5.6** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md) | [Deployment Guide](DEPLOYMENT.md)
+**v3.6.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md) | [Deployment Guide](DEPLOYMENT.md)
 
 A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natural language descriptions into printable OpenSCAD code using Google Gemini (Planner) and Anthropic Claude (Coder).
 
@@ -16,9 +16,11 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 
 - **Natural Language Input** - Describe what you want to create in plain English
 - **Image-to-3D** - Upload a photo and recreate it as a printable model
+- **STL Remix** - Upload an existing STL and generate parametric modifications around it
 - **OpenSCAD Code Generation** - Outputs parametric, printable-ready pure OpenSCAD code
+- **Preview/Render Split** - Fast preview for iteration, full Manifold render for verified export
 - **In-App 3D Preview** - View your model in the browser with Three.js
-- **STL Export** - Download STL files directly from the preview
+- **STL Export** - Download STL files after verified render
 
 ### v2.2 Reliable Code Generation
 
@@ -156,7 +158,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions includin
 
 ## Tech Stack
 
-- **Frontend**: React 19 + TypeScript + Vite 6 + Tailwind CSS
+- **Frontend**: React 19 + TypeScript + Vite 7 + Tailwind CSS
 - **3D Rendering**: Three.js + OpenSCAD WASM
 - **AI**: Google Gemini API (Planner) + Anthropic Claude API (Coder)
 - **Auth**: Supabase Auth with Google OAuth
