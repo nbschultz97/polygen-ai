@@ -5,6 +5,21 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.4] - 2026-02-05
+
+### Changed
+
+- **Operation Vanilla Purge**: Rewrote `coder-system.md` to enforce Vanilla OpenSCAD (no BOSL2, no `attach()`, no `cuboid()`). Added Manifold Guard, Hull Heuristic, and polyfills for `rounded_cube`, `tube`, `spur_gear_simple`, `rack_gear_simple`, `threaded_rod_simple`.
+- **Planner Vanilla Alignment**: Rewrote `planner-system.md` to only request Vanilla primitives (`cube`, `cylinder`, `sphere`, `polygon`). Removed all BOSL2 type references.
+- **Chain of Draft Protocol**: Added CoD reasoning instructions to unified generator to reduce token costs (~80% fewer reasoning tokens).
+- **STL Remix Hardening**: Added IMMUTABLE MESH rule and anti-polyhedron hallucination guard to prevent reverse-engineering of uploaded STL files.
+
+### Added
+
+- **Visual Repair Log Schema**: `supabase/visual_repair_log.sql` - Anti-Slop telemetry table tracking Sv (volumetric similarity) metric and manifold status for quality certification.
+
+---
+
 ## [3.6.3] - 2026-02-05
 
 ### Fixed

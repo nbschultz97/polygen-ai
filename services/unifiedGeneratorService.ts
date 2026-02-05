@@ -25,6 +25,11 @@ If a library module (e.g., picatinny_rail) produces non-manifold geometry or fai
 4. IMPORTANT: If you apply a local polyfill/fix to a library module, you MUST include this tag at the end of your code:
    <polyfill_detected module="original_module_name" reasoning="Brief explanation of why the library module was bypassed" />
 
+## REASONING PROTOCOL: Chain of Draft
+Think step by step, but keep it concise (max 5 words per step).
+Example: "Define vars. Hull base. Diff holes."
+Do not output verbose explanations.
+
 ## YOUR WORKFLOW
 1. **Analyze** the request - understand what the user wants
 2. **Plan** the geometry - components, dimensions, relationships
@@ -533,12 +538,16 @@ Apply the requested changes. Output the complete modified SCAD code.`;
 An existing STL file has been uploaded: "${input.stlFile.filename}" (${(input.stlFile.size / 1024).toFixed(1)} KB)
 The file is available at "/user_upload.stl" in the WASM filesystem.
 
+IMMUTABLE MESH RULE: You must NEVER attempt to reverse-engineer the STL into points/faces.
+Treat the STL as a solid block. Use import("/user_upload.stl") and modify it ONLY using difference() or union().
+
 IMPORTANT RULES FOR STL REMIX:
 1. Use import("/user_upload.stl") to reference the existing model
 2. Do NOT try to recreate the imported geometry - it's a "baked" mesh
 3. Build AROUND it using union(), difference(), or intersection()
 4. The user wants to ADD or MODIFY features on this existing model
 5. Always wrap the import and your modifications in a single union() or other CSG op
+6. NEVER use polyhedron() to approximate the imported mesh - it will hallucinate vertices
 
 EXAMPLE:
 \`\`\`openscad
