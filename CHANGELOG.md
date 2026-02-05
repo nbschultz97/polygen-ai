@@ -5,6 +5,32 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.1] - 2026-02-05
+
+### Fixed
+
+- **STL Metrics Pipeline**: `parseSTLBinary()` now accepts corrected triangle count instead of reading potentially invalid raw STL header values from WASM output, fixing missing `volume` and `boundingBox` in validation results
+- **gstMatch Never Assigned**: `validatorClient.ts` computed `gstMatch` as a local variable but never assigned it to `validationResult.gstMatch`, causing session exports to always show undefined
+
+### Added
+
+- **Enhanced Session Export Diagnostics**: Session exports now include SOTA metrics (`pSucc`, `sv`, `sd`), `gstMatch`/`gstDeviationPercent`, and a `pipeline` block with mode and smart fix count for better post-session debugging
+- **429 Rate Limit Detection**: `agentOrchestrator.ts` now detects API rate limit (429) responses and surfaces them as actionable error messages
+- **WASM Metric Integrity Tests**: 5 new unit tests verifying STL binary parsing, triangle count correction, volume calculation, and bounding box extraction using a synthetic cube STL builder
+
+### Removed
+
+- **Zombie Code Cleanup**: Deleted 88KB of dead code from `src/services/` (coderService.ts, gstTemplates.ts, plannerService.ts) that was duplicated/superseded by `services/`
+
+### Technical
+
+- Added `overrideTriangleCount` parameter to `parseSTLBinary()` in `scadValidation.ts`
+- Both call sites (manifold check and metrics extraction) now pass the corrected count
+- Added `pSucc`, `sv`, `sd` fields and `pipeline` diagnostics block to `SessionExportData` interface
+- Wired new fields in both `MainApp.tsx` and `App.tsx` export builders
+
+---
+
 ## [3.6.0] - 2026-02-05
 
 ### Added

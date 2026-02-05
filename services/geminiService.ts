@@ -11,7 +11,7 @@ import { validateScadCode } from './scadValidation';
 
 // App Version - SINGLE SOURCE OF TRUTH
 // Update this when making changes - all components import from here
-export const APP_VERSION = '3.6.0';
+export const APP_VERSION = '3.6.1';
 export const APP_BUILD_DATE = '2026-02-05';
 
 // Configuration
