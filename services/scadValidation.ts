@@ -55,13 +55,14 @@ interface Triangle {
   v3: [number, number, number];
 }
 
-function parseSTLBinary(data: Uint8Array): Triangle[] {
+function parseSTLBinary(data: Uint8Array, overrideTriangleCount?: number): Triangle[] {
   const triangles: Triangle[] = [];
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
   if (data.length < 84) return triangles;
 
-  const numTriangles = view.getUint32(80, true);
+  // Use corrected count if provided (raw header can be wrong for WASM-generated STL)
+  const numTriangles = overrideTriangleCount ?? view.getUint32(80, true);
   let offset = 84;
 
   for (let i = 0; i < numTriangles && offset + 50 <= data.length; i++) {
@@ -604,7 +605,8 @@ export const validateScadCode = async (
     if (triangleCount > 0 && triangleCount < 100000) {
       // Only check manifold for reasonably sized meshes (< 100k triangles)
       try {
-        const triangles = parseSTLBinary(stlData);
+        // Pass corrected triangleCount so parseSTLBinary uses actual count, not raw header
+        const triangles = parseSTLBinary(stlData, triangleCount);
         const manifoldResult = checkManifold(triangles);
         isManifold = manifoldResult.isManifold;
         manifoldIssues = manifoldResult.issues;
@@ -615,10 +617,10 @@ export const validateScadCode = async (
         }
 
         // Calculate physical properties for SOTA benchmarking (Sd and Sv metrics)
-        // Re-parse from defensive copy for metrics
+        // Re-parse from defensive copy for metrics using corrected triangle count
         const safeCopyForMetrics = new ArrayBuffer(stlData.byteLength);
         new Uint8Array(safeCopyForMetrics).set(stlData);
-        const safeTriangles = parseSTLBinary(new Uint8Array(safeCopyForMetrics));
+        const safeTriangles = parseSTLBinary(new Uint8Array(safeCopyForMetrics), triangleCount);
 
         boundingBox = calculateBoundingBox(safeTriangles) ?? undefined;
 

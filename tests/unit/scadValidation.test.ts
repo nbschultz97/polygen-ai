@@ -381,4 +381,244 @@ describe('SCAD Validation Service', () => {
       expect(result.success).toBe(true);
     });
   });
+
+  describe('WASM metric integrity (volume + bounding box)', () => {
+    /**
+     * Build a synthetic binary STL for a 10x10x10mm cube at origin.
+     * Binary STL format: 80-byte header + 4-byte triangle count + 50 bytes per triangle.
+     * A cube has 6 faces × 2 triangles = 12 triangles.
+     * Winding order follows right-hand rule (outward normals) for correct signed volume.
+     */
+    function buildCubeSTL(size = 10): Uint8Array {
+      const s = size;
+      // 12 triangles, each with [normal, v1, v2, v3] - CCW winding for outward normals
+      const faces: Array<{
+        normal: [number, number, number];
+        v1: [number, number, number];
+        v2: [number, number, number];
+        v3: [number, number, number];
+      }> = [
+        // Bottom face (z=0, normal pointing -Z)
+        { normal: [0, 0, -1], v1: [0, 0, 0], v2: [s, s, 0], v3: [s, 0, 0] },
+        { normal: [0, 0, -1], v1: [0, 0, 0], v2: [0, s, 0], v3: [s, s, 0] },
+        // Top face (z=s, normal pointing +Z)
+        { normal: [0, 0, 1], v1: [0, 0, s], v2: [s, 0, s], v3: [s, s, s] },
+        { normal: [0, 0, 1], v1: [0, 0, s], v2: [s, s, s], v3: [0, s, s] },
+        // Front face (y=0, normal pointing -Y)
+        { normal: [0, -1, 0], v1: [0, 0, 0], v2: [s, 0, 0], v3: [s, 0, s] },
+        { normal: [0, -1, 0], v1: [0, 0, 0], v2: [s, 0, s], v3: [0, 0, s] },
+        // Back face (y=s, normal pointing +Y)
+        { normal: [0, 1, 0], v1: [0, s, 0], v2: [0, s, s], v3: [s, s, s] },
+        { normal: [0, 1, 0], v1: [0, s, 0], v2: [s, s, s], v3: [s, s, 0] },
+        // Left face (x=0, normal pointing -X)
+        { normal: [-1, 0, 0], v1: [0, 0, 0], v2: [0, 0, s], v3: [0, s, s] },
+        { normal: [-1, 0, 0], v1: [0, 0, 0], v2: [0, s, s], v3: [0, s, 0] },
+        // Right face (x=s, normal pointing +X)
+        { normal: [1, 0, 0], v1: [s, 0, 0], v2: [s, s, 0], v3: [s, s, s] },
+        { normal: [1, 0, 0], v1: [s, 0, 0], v2: [s, s, s], v3: [s, 0, s] },
+      ];
+
+      const numTriangles = faces.length;
+      const bufferSize = 84 + numTriangles * 50;
+      const buffer = new ArrayBuffer(bufferSize);
+      const view = new DataView(buffer);
+
+      // 80-byte header (zeros)
+      // Triangle count at byte 80
+      view.setUint32(80, numTriangles, true);
+
+      let offset = 84;
+      for (const face of faces) {
+        // Normal (3 floats)
+        view.setFloat32(offset, face.normal[0], true);
+        offset += 4;
+        view.setFloat32(offset, face.normal[1], true);
+        offset += 4;
+        view.setFloat32(offset, face.normal[2], true);
+        offset += 4;
+        // Vertex 1
+        view.setFloat32(offset, face.v1[0], true);
+        offset += 4;
+        view.setFloat32(offset, face.v1[1], true);
+        offset += 4;
+        view.setFloat32(offset, face.v1[2], true);
+        offset += 4;
+        // Vertex 2
+        view.setFloat32(offset, face.v2[0], true);
+        offset += 4;
+        view.setFloat32(offset, face.v2[1], true);
+        offset += 4;
+        view.setFloat32(offset, face.v2[2], true);
+        offset += 4;
+        // Vertex 3
+        view.setFloat32(offset, face.v3[0], true);
+        offset += 4;
+        view.setFloat32(offset, face.v3[1], true);
+        offset += 4;
+        view.setFloat32(offset, face.v3[2], true);
+        offset += 4;
+        // Attribute byte count (2 bytes, zeros)
+        view.setUint16(offset, 0, true);
+        offset += 2;
+      }
+
+      return new Uint8Array(buffer);
+    }
+
+    it('should compute correct volume for a 10mm cube (~1000mm³)', async () => {
+      const cubeStl = buildCubeSTL(10);
+      const mockInstance = createMockInstance({ stlData: cubeStl });
+      vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
+        OpenSCAD: mockInstance.factory,
+        baseUrl: mockInstance.baseUrl,
+      });
+
+      const result = await validateScadCode(mockScadCode);
+
+      expect(result.success).toBe(true);
+      expect(result.volume).toBeDefined();
+      // Volume of 10x10x10 cube = 1000mm³ (allow small float error)
+      expect(result.volume).toBeGreaterThan(990);
+      expect(result.volume).toBeLessThan(1010);
+    });
+
+    it('should compute correct bounding box for a 10mm cube', async () => {
+      const cubeStl = buildCubeSTL(10);
+      const mockInstance = createMockInstance({ stlData: cubeStl });
+      vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
+        OpenSCAD: mockInstance.factory,
+        baseUrl: mockInstance.baseUrl,
+      });
+
+      const result = await validateScadCode(mockScadCode);
+
+      expect(result.success).toBe(true);
+      expect(result.boundingBox).toBeDefined();
+      // Bounding box should be [0,0,0] to [10,10,10]
+      expect(result.boundingBox!.min[0]).toBeCloseTo(0, 1);
+      expect(result.boundingBox!.min[1]).toBeCloseTo(0, 1);
+      expect(result.boundingBox!.min[2]).toBeCloseTo(0, 1);
+      expect(result.boundingBox!.max[0]).toBeCloseTo(10, 1);
+      expect(result.boundingBox!.max[1]).toBeCloseTo(10, 1);
+      expect(result.boundingBox!.max[2]).toBeCloseTo(10, 1);
+    });
+
+    it('should return triangleCount = 12 for a cube', async () => {
+      const cubeStl = buildCubeSTL(10);
+      const mockInstance = createMockInstance({ stlData: cubeStl });
+      vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
+        OpenSCAD: mockInstance.factory,
+        baseUrl: mockInstance.baseUrl,
+      });
+
+      const result = await validateScadCode(mockScadCode);
+
+      expect(result.success).toBe(true);
+      expect(result.triangleCount).toBe(12);
+    });
+
+    it('should reject corrupt STL with garbage float values', async () => {
+      // Build an STL where vertex data is garbage (simulates WASM heap corruption)
+      const numTriangles = 12;
+      const bufferSize = 84 + numTriangles * 50;
+      const buffer = new ArrayBuffer(bufferSize);
+      const view = new DataView(buffer);
+      view.setUint32(80, numTriangles, true);
+
+      // Fill vertex data with subnormal/garbage values (like WASM heap corruption)
+      let offset = 84;
+      for (let i = 0; i < numTriangles; i++) {
+        for (let j = 0; j < 12; j++) {
+          // Write subnormal values (1e-33 range) that mimic heap corruption
+          view.setFloat32(offset, 8.48e-33, true);
+          offset += 4;
+        }
+        offset += 2; // attribute bytes
+      }
+
+      const corruptStl = new Uint8Array(buffer);
+      const mockInstance = createMockInstance({ stlData: corruptStl });
+      vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
+        OpenSCAD: mockInstance.factory,
+        baseUrl: mockInstance.baseUrl,
+      });
+
+      const result = await validateScadCode(mockScadCode);
+
+      expect(result.success).toBe(true);
+      // Bounding box should be undefined (corrupt coordinates rejected)
+      expect(result.boundingBox).toBeUndefined();
+      // Volume should be undefined (depends on valid bounding box)
+      expect(result.volume).toBeUndefined();
+    });
+
+    it('should reject impossibly large volume values', async () => {
+      // Build STL with huge coordinates (1e6mm) that pass bbox but produce huge volume
+      const numTriangles = 4;
+      const bufferSize = 84 + numTriangles * 50;
+      const buffer = new ArrayBuffer(bufferSize);
+      const view = new DataView(buffer);
+      view.setUint32(80, numTriangles, true);
+
+      const big = 5000; // 5 meters - within bbox MAX_COORD but volume will be huge
+      let offset = 84;
+      // Build a tetrahedron-like shape with huge dimensions
+      const verts = [
+        [
+          [0, 0, 0],
+          [big, 0, 0],
+          [0, big, 0],
+        ],
+        [
+          [0, 0, 0],
+          [0, big, 0],
+          [0, 0, big],
+        ],
+        [
+          [0, 0, 0],
+          [0, 0, big],
+          [big, 0, 0],
+        ],
+        [
+          [big, 0, 0],
+          [0, big, 0],
+          [0, 0, big],
+        ],
+      ];
+      for (const tri of verts) {
+        // Normal (skip)
+        view.setFloat32(offset, 0, true);
+        offset += 4;
+        view.setFloat32(offset, 0, true);
+        offset += 4;
+        view.setFloat32(offset, 0, true);
+        offset += 4;
+        for (const v of tri) {
+          view.setFloat32(offset, v[0], true);
+          offset += 4;
+          view.setFloat32(offset, v[1], true);
+          offset += 4;
+          view.setFloat32(offset, v[2], true);
+          offset += 4;
+        }
+        view.setUint16(offset, 0, true);
+        offset += 2;
+      }
+
+      const hugeStl = new Uint8Array(buffer);
+      const mockInstance = createMockInstance({ stlData: hugeStl });
+      vi.mocked(loadOpenSCAD).mockResolvedValueOnce({
+        OpenSCAD: mockInstance.factory,
+        baseUrl: mockInstance.baseUrl,
+      });
+
+      const result = await validateScadCode(mockScadCode);
+
+      expect(result.success).toBe(true);
+      // Bounding box should exist (coordinates are within range)
+      expect(result.boundingBox).toBeDefined();
+      // Volume of (5000)³ tetrahedron ≈ 2.08e10 > MAX_VOLUME (1e9) → should be rejected
+      expect(result.volume).toBeUndefined();
+    });
+  });
 });

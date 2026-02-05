@@ -111,40 +111,44 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   // Visual Critic: auto-trigger after render when _pendingVisualCritique is set
   const visualCriticRunningRef = useRef(false);
   const handleSendRef = useRef<(text: string) => void>(() => {});
-  const handleRenderComplete = useCallback(async (screenshotBase64: string) => {
-    const asset = currentAsset;
-    if (!asset || !(asset as any)._pendingVisualCritique || visualCriticRunningRef.current) return;
+  const handleRenderComplete = useCallback(
+    async (screenshotBase64: string) => {
+      const asset = currentAsset;
+      if (!asset || !(asset as any)._pendingVisualCritique || visualCriticRunningRef.current)
+        return;
 
-    // Clear the flag and prevent re-entry
-    (asset as any)._pendingVisualCritique = false;
-    visualCriticRunningRef.current = true;
+      // Clear the flag and prevent re-entry
+      (asset as any)._pendingVisualCritique = false;
+      visualCriticRunningRef.current = true;
 
-    try {
-      console.log('Visual Critic: auto-triggering post-render analysis');
-      const prompt = messages.find(m => m.role === 'user')?.text || '';
-      const result = await runVisualCritique(screenshotBase64, prompt);
+      try {
+        console.log('Visual Critic: auto-triggering post-render analysis');
+        const prompt = messages.find((m) => m.role === 'user')?.text || '';
+        const result = await runVisualCritique(screenshotBase64, prompt);
 
-      if (!result.approved) {
-        console.log(`Visual Critic: disapproved with ${result.feedback.length} issues`);
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'model',
-            text: `Visual Critic detected issues:\n${result.feedback.map(f => `- ${f}`).join('\n')}\n\nAttempting automatic repair...`,
-          },
-        ]);
-        // Feed feedback back as a refinement prompt
-        const feedbackPrompt = `VISUAL CRITIC REPAIR: Fix these issues in the current model:\n${result.feedback.join('\n')}`;
-        handleSendRef.current(feedbackPrompt);
-      } else {
-        console.log('Visual Critic: render approved');
+        if (!result.approved) {
+          console.log(`Visual Critic: disapproved with ${result.feedback.length} issues`);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: 'model',
+              text: `Visual Critic detected issues:\n${result.feedback.map((f) => `- ${f}`).join('\n')}\n\nAttempting automatic repair...`,
+            },
+          ]);
+          // Feed feedback back as a refinement prompt
+          const feedbackPrompt = `VISUAL CRITIC REPAIR: Fix these issues in the current model:\n${result.feedback.join('\n')}`;
+          handleSendRef.current(feedbackPrompt);
+        } else {
+          console.log('Visual Critic: render approved');
+        }
+      } catch (err) {
+        console.warn('Visual Critic: auto-trigger failed (non-blocking):', err);
+      } finally {
+        visualCriticRunningRef.current = false;
       }
-    } catch (err) {
-      console.warn('Visual Critic: auto-trigger failed (non-blocking):', err);
-    } finally {
-      visualCriticRunningRef.current = false;
-    }
-  }, [currentAsset, messages]);
+    },
+    [currentAsset, messages]
+  );
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -553,6 +557,9 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
             },
             gstMatch: vr.gstMatch,
             gstDeviationPercent: vr.gstDeviationPercent,
+            pSucc: vr.pSucc,
+            sv: vr.sv,
+            sd: vr.sd,
           }
         : undefined,
       // SOTA Visual Critic results (if available)
@@ -564,6 +571,11 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
             suggestions: (vr as any).visualCritique.suggestions,
           }
         : undefined,
+      // Pipeline diagnostics
+      pipeline: {
+        mode: currentAsset?.gst ? 'multi-agent' : 'unified',
+        smartFixCount: currentAsset?.smartFixes?.length ?? 0,
+      },
       // Code history with GST for each version
       codeHistory: currentAsset?.history?.map((h) => ({
         code: h.code,

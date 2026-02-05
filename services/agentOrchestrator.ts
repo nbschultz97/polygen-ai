@@ -24,7 +24,18 @@ import { analyzeForQuickFixes } from './quickFixAnalyzer';
 import { unifiedGeneratorService } from './unifiedGeneratorService';
 import { buildValidationFeedback } from './validationFeedbackBuilder';
 import { validatorClient } from './validatorClient';
-import { visualCriticService, needsRegeneration, generateCritiqueFeedback } from './visualCriticService';
+import {
+  visualCriticService,
+  needsRegeneration,
+  generateCritiqueFeedback,
+} from './visualCriticService';
+
+// Detect API rate limit errors (429 / Resource exhausted) for user-friendly messaging
+function isRateLimitError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return msg.includes('resource exhausted') || msg.includes('429') || msg.includes('rate limit');
+}
 
 // Use multi-agent pipeline by default for better success rate (75% vs 44%)
 // Research shows GST intermediate format significantly improves complex designs
@@ -571,6 +582,15 @@ async function orchestrateUnified(
       throw error;
     }
 
+    if (isRateLimitError(error)) {
+      console.warn('Orchestrator: API rate limit hit (unified pipeline)');
+      const rateLimitErr = new Error(
+        'AI service rate limit reached. Please wait a moment and try again.'
+      );
+      callbacks.onError(rateLimitErr, 'coding');
+      throw rateLimitErr;
+    }
+
     callbacks.onError(error instanceof Error ? error : new Error(String(error)), 'coding');
     throw error;
   }
@@ -774,8 +794,14 @@ async function orchestrateMultiAgent(
 
           // Visual Critic: Check rendered output if P_succ is in the ambiguous range
           // Only triggers when SOTA Active Critic scores 0.8 <= P_succ <= 0.95
-          if (validation.pSucc !== undefined && validation.pSucc >= 0.8 && validation.pSucc <= 0.95) {
-            console.log(`Orchestrator: P_succ=${validation.pSucc.toFixed(2)} — triggering Visual Critic`);
+          if (
+            validation.pSucc !== undefined &&
+            validation.pSucc >= 0.8 &&
+            validation.pSucc <= 0.95
+          ) {
+            console.log(
+              `Orchestrator: P_succ=${validation.pSucc.toFixed(2)} — triggering Visual Critic`
+            );
             try {
               // The visual critic needs a canvas screenshot — this is handled by the UI layer
               // Store the flag so the UI knows to run visual critique after rendering
@@ -844,6 +870,16 @@ async function orchestrateMultiAgent(
       throw error;
     }
 
+    if (isRateLimitError(error)) {
+      const step = asset.gst ? 'coding' : 'planning';
+      console.warn(`Orchestrator: API rate limit hit (multi-agent, step: ${step})`);
+      const rateLimitErr = new Error(
+        'AI service rate limit reached. Please wait a moment and try again.'
+      );
+      callbacks.onError(rateLimitErr, step);
+      throw rateLimitErr;
+    }
+
     const step = asset.gst ? 'coding' : 'planning';
     callbacks.onError(error instanceof Error ? error : new Error(String(error)), step);
     throw error;
@@ -866,7 +902,9 @@ export async function runVisualCritique(
       abortSignal
     );
 
-    console.log(`Visual Critic: approved=${critique.approved}, confidence=${critique.confidence}, issues=${critique.issues.length}`);
+    console.log(
+      `Visual Critic: approved=${critique.approved}, confidence=${critique.confidence}, issues=${critique.issues.length}`
+    );
 
     if (!critique.approved && needsRegeneration(critique)) {
       const feedback = generateCritiqueFeedback(critique);
