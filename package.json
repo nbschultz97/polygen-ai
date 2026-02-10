@@ -21,6 +21,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@google/genai": "^1.38.0",
+    "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.93.1",
     "lucide-react": "^0.563.0",
     "openscad-wasm": "^0.0.4",

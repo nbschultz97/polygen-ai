@@ -10,10 +10,8 @@ import {
   Check,
   ChevronRight,
   Code,
-  Copy,
   Cpu,
   Crown,
-  Edit3,
   ExternalLink,
   Eye,
   FileJson,
@@ -24,7 +22,6 @@ import {
   MessageCircle,
   Redo2,
   RotateCcw,
-  Save,
   Send,
   Settings,
   Sparkles,
@@ -36,8 +33,6 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   isMultiAgentAvailable,
   orchestrateGeneration,
@@ -47,15 +42,17 @@ import {
 } from '../services/agentOrchestrator';
 import type { ImageData } from '../services/geminiService';
 import { APP_VERSION, processArchitectRequest } from '../services/geminiService';
-import { copyToClipboard, exportSession, exportToOpenSCAD } from '../services/openscadExport';
+import { exportSession, exportToOpenSCAD } from '../services/openscadExport';
 import type { GeneratedAsset, Message, STLFileData, WorkflowStep } from '../types';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
+import CodeEditor from './CodeEditor';
 import DesignTemplates from './DesignTemplates';
 import ErrorBoundary from './ErrorBoundary';
 import ScadRenderer from './ScadRenderer';
 import SettingsPanel from './SettingsPanel';
 import SmartQuickFixes from './SmartQuickFixes';
+import StlImportModal from './StlImportModal';
 import UsageLimitModal from './UsageLimitModal';
 
 // Check if multi-agent pipeline is enabled
@@ -75,12 +72,12 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   const [input, setInput] = useState('');
   const [currentAsset, setCurrentAsset] = useState<GeneratedAsset | null>(null);
   const [workflowStep, setWorkflowStep] = useState<WorkflowStep>('idle');
-  const [copied, setCopied] = useState(false);
   const [exported, setExported] = useState(false);
-  const [viewMode, setViewMode] = useState<'code' | '3d'>('code');
+  const [_viewMode, setViewMode] = useState<'code' | '3d'>('code');
 
   // Mobile UI States
-  const [mobileTab, setMobileTab] = useState<'chat' | 'preview'>('chat');
+  const [mobileTab, setMobileTab] = useState<'chat' | 'code' | 'preview'>('chat');
+  const [showStlImport, setShowStlImport] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   const [showSettings, setShowSettings] = useState(false);
@@ -92,10 +89,6 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [usageInfo, setUsageInfo] = useState({ remaining: 0, limit: 0 });
-
-  // Code editing state
-  const [isEditingCode, setIsEditingCode] = useState(false);
-  const [editedCode, setEditedCode] = useState('');
 
   // Streaming code state - shows progressive generation
   const [streamingCode, setStreamingCode] = useState('');
@@ -526,16 +519,6 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
     handleSend('APPROVE_SPEC');
   }, [handleSend]);
 
-  const handleCopy = useCallback(async () => {
-    if (currentAsset?.scadCode) {
-      const success = await copyToClipboard(currentAsset.scadCode);
-      if (success) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    }
-  }, [currentAsset]);
-
   const handleExport = useCallback(async () => {
     if (currentAsset?.scadCode) {
       const result = await exportToOpenSCAD(currentAsset.scadCode, currentAsset.spec);
@@ -633,46 +616,65 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
     currentAsset?.history &&
     (currentAsset.currentHistoryIndex ?? 0) < currentAsset.history.length - 1;
 
-  // Code editing handlers
-  const handleStartEdit = useCallback(() => {
-    if (currentAsset?.scadCode) {
-      setEditedCode(currentAsset.scadCode);
-      setIsEditingCode(true);
-    }
-  }, [currentAsset]);
+  // Code editor: bidirectional sync
+  const handleCodeEditorChange = useCallback(
+    (newCode: string) => {
+      if (currentAsset) {
+        setCurrentAsset({
+          ...currentAsset,
+          scadCode: newCode,
+          history: [
+            ...(currentAsset.history || []),
+            {
+              code: newCode,
+              gst: currentAsset.gst,
+              prompt: 'Manual code edit',
+              timestamp: Date.now(),
+            },
+          ],
+          currentHistoryIndex: currentAsset.history?.length ?? 0,
+        });
+      }
+    },
+    [currentAsset]
+  );
 
-  const handleSaveEdit = useCallback(() => {
-    if (editedCode && currentAsset) {
-      setCurrentAsset({
-        ...currentAsset,
-        scadCode: editedCode,
-        // Add to history
+  // Code editor: trigger render
+  const handleCodeEditorRender = useCallback(() => {
+    setViewMode('3d');
+    if (isMobile) setMobileTab('preview');
+  }, [isMobile]);
+
+  // STL Import: insert converted code
+  const handleStlImport = useCallback(
+    (scadCode: string) => {
+      const newAsset: GeneratedAsset = {
+        ...(currentAsset || {}),
+        scadCode,
         history: [
-          ...(currentAsset.history || []),
+          ...(currentAsset?.history || []),
           {
-            code: editedCode,
-            gst: currentAsset.gst,
-            prompt: 'Manual code edit',
+            code: scadCode,
+            gst: currentAsset?.gst,
+            prompt: 'STL import conversion',
             timestamp: Date.now(),
           },
         ],
-        currentHistoryIndex: currentAsset.history?.length ?? 0,
-      });
-      setIsEditingCode(false);
+        currentHistoryIndex: currentAsset?.history?.length ?? 0,
+      };
+      setCurrentAsset(newAsset);
+      setViewMode('code');
+      if (isMobile) setMobileTab('code');
       setMessages((prev) => [
         ...prev,
         {
           role: 'model',
-          text: 'Code updated. Click **Render Model** in 3D view to preview changes.',
+          text: 'STL file converted to OpenSCAD polyhedron code. You can edit it in the code editor or render the 3D preview.',
         },
       ]);
-    }
-  }, [editedCode, currentAsset]);
-
-  const handleCancelEdit = useCallback(() => {
-    setIsEditingCode(false);
-    setEditedCode('');
-  }, []);
+    },
+    [currentAsset, isMobile]
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -786,17 +788,24 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
           <div className="md:hidden absolute top-4 left-1/2 -translate-x-1/2 z-20 flex bg-slate-900/90 backdrop-blur border border-white/10 rounded-full p-1 shadow-xl">
             <button
               onClick={() => setMobileTab('chat')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${mobileTab === 'chat' ? 'bg-violet-600 text-white' : 'text-gray-400'}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold transition-all ${mobileTab === 'chat' ? 'bg-violet-600 text-white' : 'text-gray-400'}`}
             >
               <MessageCircle className="w-3.5 h-3.5" />
               Chat
             </button>
             <button
+              onClick={() => setMobileTab('code')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold transition-all ${mobileTab === 'code' ? 'bg-violet-600 text-white' : 'text-gray-400'}`}
+            >
+              <Code className="w-3.5 h-3.5" />
+              Code
+            </button>
+            <button
               onClick={() => setMobileTab('preview')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${mobileTab === 'preview' ? 'bg-indigo-600 text-white' : 'text-gray-400'}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold transition-all ${mobileTab === 'preview' ? 'bg-indigo-600 text-white' : 'text-gray-400'}`}
             >
               <Eye className="w-3.5 h-3.5" />
-              Preview
+              3D
             </button>
           </div>
 
@@ -804,9 +813,9 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
           <div
             className={`
              flex flex-col border-r border-white/[0.06] bg-[#09090b] transition-all duration-300
-             md:w-[400px] md:min-w-[360px] md:relative
+             md:w-[30%] md:min-w-[320px] md:relative
              ${isMobile ? 'absolute inset-0 z-10' : ''}
-             ${isMobile && mobileTab === 'preview' ? 'translate-x-[-100%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}
+             ${isMobile && mobileTab !== 'chat' ? 'translate-x-[-100%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}
           `}
           >
             {/* Messages - add top padding on mobile for floating tab switcher */}
@@ -1047,6 +1056,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                     <Upload className="w-4 h-4" />
                   </button>
                   <button
+                    onClick={() => setShowStlImport(true)}
+                    disabled={workflowStep === 'processing'}
+                    className="p-2 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 text-gray-400 hover:text-violet-300 rounded-lg transition-all"
+                    title="Import STL as Code"
+                  >
+                    <Code className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() => handleSend()}
                     disabled={
                       workflowStep === 'processing' ||
@@ -1061,57 +1078,63 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
             </div>
           </div>
 
-          {/* Right Panel - Output */}
+          {/* Center Panel - Code Editor */}
+          <div
+            className={`
+             flex flex-col border-r border-white/[0.06] bg-[#0f172a] transition-all duration-300
+             md:w-[35%] md:relative
+             ${isMobile ? 'absolute inset-0 z-10' : ''}
+             ${isMobile && mobileTab !== 'code' ? 'hidden' : ''}
+          `}
+          >
+            {currentAsset?.scadCode || streamingCode ? (
+              <CodeEditor
+                code={currentAsset?.scadCode || ''}
+                streamingCode={streamingCode}
+                isGenerating={['processing', 'planning', 'coding', 'validating'].includes(
+                  workflowStep
+                )}
+                onCodeChange={handleCodeEditorChange}
+                onRender={handleCodeEditorRender}
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center pt-14 md:pt-8">
+                <div className="p-3 bg-white/[0.03] rounded-xl mb-4">
+                  <Code className="w-10 h-10 text-gray-700" />
+                </div>
+                <h2 className="text-sm font-medium text-gray-500 mb-1">Code Editor</h2>
+                <p className="text-xs text-gray-600 max-w-[200px]">
+                  Generated OpenSCAD code will appear here.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel - 3D Preview */}
           <div
             className={`
              flex-1 flex flex-col bg-[#0c0c0f] transition-all duration-300
              ${isMobile ? 'absolute inset-0 z-10' : ''}
-             ${isMobile && mobileTab === 'chat' ? 'translate-x-[100%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}
+             ${isMobile && mobileTab !== 'preview' ? 'translate-x-[100%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}
           `}
           >
             {currentAsset?.scadCode ? (
               <>
-                {/* Toolbar - stacked on mobile for floating tab switcher clearance */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between px-3 md:px-5 py-2 md:py-3 pt-14 md:pt-3 gap-2 md:gap-0 border-b border-white/[0.06]">
-                  {/* Row 1: View mode toggle */}
-                  <div className="flex items-center justify-center md:justify-start gap-2.5">
-                    <div className="flex items-center bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.08]">
-                      <button
-                        onClick={() => setViewMode('code')}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all ${
-                          viewMode === 'code'
-                            ? 'bg-violet-600 text-white'
-                            : 'text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        <Code className="w-3.5 h-3.5" />
-                        Code
-                      </button>
-                      <button
-                        onClick={() => setViewMode('3d')}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all ${
-                          viewMode === '3d'
-                            ? 'bg-violet-600 text-white'
-                            : 'text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">3D Preview</span>
-                        <span className="sm:hidden">3D</span>
-                      </button>
-                    </div>
+                {/* Toolbar */}
+                <div className="flex items-center justify-between px-3 md:px-5 py-2 md:py-3 pt-14 md:pt-3 border-b border-white/[0.06]">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-violet-400" />
+                    <span className="text-xs text-gray-400 font-medium">3D Preview</span>
                   </div>
-
-                  {/* Row 2: Action buttons */}
-                  <div className="flex items-center justify-center md:justify-end gap-1.5 md:gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
                     {/* History Navigation */}
                     {currentAsset?.history && currentAsset.history.length > 1 && (
-                      <div className="flex items-center gap-1 mr-1 md:mr-2 border-r border-white/[0.08] pr-2 md:pr-3">
+                      <div className="flex items-center gap-1 mr-1 border-r border-white/[0.08] pr-2">
                         <button
                           onClick={handleUndo}
                           disabled={!canUndo}
                           className="p-1.5 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-white rounded-lg transition-colors border border-white/[0.08]"
-                          title="Undo (previous version)"
+                          title="Undo"
                         >
                           <Undo2 className="w-3.5 h-3.5" />
                         </button>
@@ -1119,7 +1142,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                           onClick={handleRedo}
                           disabled={!canRedo}
                           className="p-1.5 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-white rounded-lg transition-colors border border-white/[0.08]"
-                          title="Redo (next version)"
+                          title="Redo"
                         >
                           <Redo2 className="w-3.5 h-3.5" />
                         </button>
@@ -1129,62 +1152,16 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                         </span>
                       </div>
                     )}
-
-                    {/* Edit Mode Toggle */}
-                    {viewMode === 'code' && !isEditingCode && (
-                      <button
-                        onClick={handleStartEdit}
-                        className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
-                        title="Edit code directly"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Edit</span>
-                      </button>
-                    )}
-
-                    {/* Save/Cancel when editing */}
-                    {isEditingCode && (
-                      <>
-                        <button
-                          onClick={handleSaveEdit}
-                          className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg transition-colors"
-                        >
-                          <Save className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Save</span>
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Cancel</span>
-                        </button>
-                      </>
-                    )}
-
-                    <button
-                      onClick={handleCopy}
-                      className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
-                      title="Copy code"
-                    >
-                      {copied ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                      <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
-                    </button>
                     <button
                       onClick={handleExportSession}
-                      className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
-                      title="Export session for debugging"
+                      className="flex items-center gap-1.5 px-2 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white text-xs rounded-lg transition-colors border border-white/[0.08]"
+                      title="Export session"
                     >
                       <FileJson className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Session</span>
                     </button>
                     <button
                       onClick={handleExport}
-                      className="flex items-center gap-1 md:gap-1.5 px-2 md:px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-all"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-all"
                       title="Download for OpenSCAD"
                     >
                       {exported ? (
@@ -1199,56 +1176,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                   </div>
                 </div>
 
-                {/* Content Area */}
+                {/* 3D Content */}
                 <div className="flex-1 overflow-hidden">
-                  {viewMode === 'code' ? (
-                    isEditingCode ? (
-                      <div className="h-full flex flex-col">
-                        <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
-                          <Edit3 className="w-4 h-4 text-amber-400" />
-                          <span className="text-xs text-amber-300">
-                            Editing mode - make changes and click Save
-                          </span>
-                        </div>
-                        <textarea
-                          value={editedCode}
-                          onChange={(e) => setEditedCode(e.target.value)}
-                          className="flex-1 w-full bg-transparent text-gray-100 font-mono text-xs p-4 resize-none focus:outline-none"
-                          style={{ lineHeight: '1.7' }}
-                          spellCheck={false}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-full overflow-auto">
-                        <SyntaxHighlighter
-                          language="openscad"
-                          style={oneDark}
-                          customStyle={{
-                            margin: 0,
-                            padding: '1rem 1.25rem',
-                            background: 'transparent',
-                            fontSize: '12px',
-                            lineHeight: '1.7',
-                          }}
-                          showLineNumbers
-                          lineNumberStyle={{
-                            color: '#3f3f46',
-                            paddingRight: '1.25rem',
-                            minWidth: '2.5rem',
-                          }}
-                        >
-                          {streamingCode || currentAsset.scadCode}
-                        </SyntaxHighlighter>
-                      </div>
-                    )
-                  ) : (
-                    <ScadRenderer
-                      code={currentAsset.scadCode}
-                      isProUser={isProUser}
-                      uploadedStlData={currentAsset.uploadedStlData}
-                      onRenderComplete={handleRenderComplete}
-                    />
-                  )}
+                  <ScadRenderer
+                    code={currentAsset.scadCode}
+                    isProUser={isProUser}
+                    uploadedStlData={currentAsset.uploadedStlData}
+                    onRenderComplete={handleRenderComplete}
+                  />
                 </div>
 
                 {/* Smart Quick Fixes */}
@@ -1310,6 +1245,13 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
           </div>
         </main>
       </div>
+
+      {/* STL Import Modal */}
+      <StlImportModal
+        isOpen={showStlImport}
+        onClose={() => setShowStlImport(false)}
+        onImport={handleStlImport}
+      />
 
       {/* Auth Modal */}
       <AuthModal
