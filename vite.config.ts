@@ -75,12 +75,32 @@ export default defineConfig(({ mode }) => {
       sourcemap: mode !== 'production', // Disable sourcemaps in production to avoid leaking code
       rollupOptions: {
         output: {
-          manualChunks: {
+          manualChunks(id) {
             // Split large vendor libraries into separate chunks
-            'vendor-three': ['three'],
-            'vendor-syntax-highlighter': ['react-syntax-highlighter'],
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-markdown': ['react-markdown'],
+            if (id.includes('node_modules/three/') || id.includes('node_modules/three-stdlib/')) {
+              return 'vendor-three';
+            }
+            if (id.includes('node_modules/@monaco-editor/') || id.includes('node_modules/monaco-editor/')) {
+              return 'vendor-monaco';
+            }
+            if (id.includes('node_modules/react-syntax-highlighter/')) {
+              return 'vendor-syntax-highlighter';
+            }
+            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+              return 'vendor-react';
+            }
+            if (id.includes('node_modules/react-markdown/')) {
+              return 'vendor-markdown';
+            }
+            if (id.includes('node_modules/@supabase/')) {
+              return 'vendor-supabase';
+            }
+            if (id.includes('node_modules/@anthropic-ai/') || id.includes('node_modules/@google/')) {
+              return 'vendor-ai';
+            }
+            if (id.includes('node_modules/lucide-react/')) {
+              return 'vendor-icons';
+            }
           },
         },
       },

@@ -46,14 +46,16 @@ import { exportSession, exportToOpenSCAD } from '../services/openscadExport';
 import type { GeneratedAsset, Message, STLFileData, WorkflowStep } from '../types';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
-import CodeEditor from './CodeEditor';
 import DesignTemplates from './DesignTemplates';
 import ErrorBoundary from './ErrorBoundary';
-import ScadRenderer from './ScadRenderer';
 import SettingsPanel from './SettingsPanel';
 import SmartQuickFixes from './SmartQuickFixes';
 import StlImportModal from './StlImportModal';
 import UsageLimitModal from './UsageLimitModal';
+
+// Lazy-load heavy components (Monaco editor ~800KB, Three.js viewer ~500KB)
+const CodeEditor = React.lazy(() => import('./CodeEditor'));
+const ScadRenderer = React.lazy(() => import('./ScadRenderer'));
 
 // Check if multi-agent pipeline is enabled
 const USE_MULTI_AGENT =
@@ -1088,6 +1090,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
           `}
           >
             {currentAsset?.scadCode || streamingCode ? (
+              <React.Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-violet-500" /></div>}>
               <CodeEditor
                 code={currentAsset?.scadCode || ''}
                 streamingCode={streamingCode}
@@ -1097,6 +1100,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                 onCodeChange={handleCodeEditorChange}
                 onRender={handleCodeEditorRender}
               />
+              </React.Suspense>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center pt-14 md:pt-8">
                 <div className="p-3 bg-white/[0.03] rounded-xl mb-4">
@@ -1178,12 +1182,14 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
 
                 {/* 3D Content */}
                 <div className="flex-1 overflow-hidden">
+                  <React.Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-violet-500" /></div>}>
                   <ScadRenderer
                     code={currentAsset.scadCode}
                     isProUser={isProUser}
                     uploadedStlData={currentAsset.uploadedStlData}
                     onRenderComplete={handleRenderComplete}
                   />
+                  </React.Suspense>
                 </div>
 
                 {/* Smart Quick Fixes */}

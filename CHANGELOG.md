@@ -5,6 +5,32 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2026-02-09
+
+### Added
+
+- **Aggressive Code Splitting** - Lazy-load Monaco editor (~800KB) and Three.js viewer (~500KB) via `React.lazy()` with Suspense fallbacks
+- **Granular Vendor Chunks** - Split bundle into 8 vendor chunks (three, monaco, react, markdown, supabase, ai-sdks, icons, syntax-highlighter) via `manualChunks` function
+- **Edit Mode Retry Logic** - Multi-agent edit mode now retries up to 2 times on validation failure (previously no retries)
+
+### Changed
+
+- **Main chunk reduced from 1.6MB → 66KB** (96% reduction) through code splitting and lazy loading
+- **Vitest upgraded to v4** for latest testing features and security fixes
+- **@vercel/node upgraded to v4** resolving path-to-regexp vulnerability
+
+### Fixed
+
+- **7 npm vulnerabilities resolved** (12 → 5 remaining, all in deep transitive deps of @vercel/node)
+- **Edit mode reliability** - Edits that fail validation now get retried with error feedback instead of silently returning broken code
+
+### Technical
+
+- Bundle analysis: vendor-three 480KB, vendor-react 192KB, vendor-markdown 117KB, MainApp 66KB, all other chunks <25KB
+- Remaining 5 vulnerabilities are in @vercel/node transitive deps (esbuild, undici, tar) — no fix available without breaking changes
+
+---
+
 ## [3.7.0] - 2026-02-09
 
 ### Added

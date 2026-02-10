@@ -1,4 +1,4 @@
-# PolyGen Technical Strategy v3.6.6 ("The Vanilla Architect")
+# PolyGen Technical Strategy v3.8.0 ("The Vanilla Architect")
 
 > Research-backed architecture decisions for the PolyGen AI text-to-3D CAD generation platform.
 
@@ -476,7 +476,7 @@ To bridge the **"Valley of Death"** where users churn due to unprintable code, w
 ---
 
 _Last Updated: February 2026_
-_Version: 3.6.5_
+_Version: 3.8.0_
 
 ```
 

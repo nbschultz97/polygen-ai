@@ -2,7 +2,7 @@
 
 This document outlines the strategic execution plan for PolyGen AI, shifting from a "Web Wrapper" to a "Sovereign Engineering Platform."
 
-## Current Version: 3.6.6
+## Current Version: 3.8.0
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architecture decisions.
@@ -11,7 +11,7 @@ See [TECHNICAL_STRATEGY.md](TECHNICAL_STRATEGY.md) for research-backed architect
 
 ## Strategic Phases
 
-### Phase 2: The Engineering Layer (Current - v3.6.6)
+### Phase 2: The Engineering Layer (Current - v3.8.0)
 
 **Objective:** Fix "Engineering Intuition" failures (e.g., flat parts on round surfaces).
 

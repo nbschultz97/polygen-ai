@@ -627,48 +627,66 @@ async function orchestrateMultiAgent(
       console.log('Orchestrator: Edit mode - using symbolic correction');
       callbacks.onStepChange('coding');
 
-      // Pass previous validation errors if available to help the coder fix issues
-      const validationErrors =
-        asset.validationResult && !asset.validationResult.success
-          ? asset.validationResult.errors
-          : undefined;
+      let editAttempts = 0;
+      const MAX_EDIT_RETRIES = 2;
 
-      const coderOutput = await coderService.editCode(
-        {
-          existingGST: asset.gst,
-          existingCode: asset.scadCode,
-          editRequest: input.userPrompt,
-          validationErrors,
-        },
-        abortSignal
-      );
+      while (editAttempts < MAX_EDIT_RETRIES) {
+        // Pass previous validation errors if available to help the coder fix issues
+        const validationErrors =
+          editAttempts > 0 && asset.validationResult && !asset.validationResult.success
+            ? asset.validationResult.errors
+            : asset.validationResult && !asset.validationResult.success
+              ? asset.validationResult.errors
+              : undefined;
 
-      if (abortSignal?.aborted) {
-        throw new DOMException('Aborted', 'AbortError');
+        const coderOutput = await coderService.editCode(
+          {
+            existingGST: asset.gst,
+            existingCode: asset.scadCode,
+            editRequest: input.userPrompt,
+            validationErrors,
+          },
+          abortSignal
+        );
+
+        if (abortSignal?.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
+
+        asset.scadCode = coderOutput.scadCode;
+        callbacks.onCodeGenerated(coderOutput.scadCode);
+
+        // Validate the edited code
+        callbacks.onStepChange('validating');
+        const validation = await validatorClient.validate({
+          scadCode: coderOutput.scadCode,
+          gst: asset.gst,
+          uploadedStlData: asset.uploadedStlData,
+        });
+
+        asset.validationResult = validation;
+        callbacks.onValidationComplete(validation);
+
+        if (validation.success) {
+          console.log(`Orchestrator: Edit validation passed on attempt ${editAttempts + 1}`);
+          break;
+        }
+
+        editAttempts++;
+        console.log(`Orchestrator: Edit validation failed (attempt ${editAttempts}/${MAX_EDIT_RETRIES})`);
+        if (editAttempts < MAX_EDIT_RETRIES) {
+          callbacks.onStepChange('coding');
+        }
       }
 
-      asset.scadCode = coderOutput.scadCode;
-      callbacks.onCodeGenerated(coderOutput.scadCode);
-
-      // Validate the edited code
-      callbacks.onStepChange('validating');
-      const validation = await validatorClient.validate({
-        scadCode: coderOutput.scadCode,
-        gst: asset.gst,
-        uploadedStlData: asset.uploadedStlData,
-      });
-
-      asset.validationResult = validation;
-      callbacks.onValidationComplete(validation);
-
       // Generate smart fixes based on new state
-      const smartFixes = analyzeForQuickFixes(asset.gst, validation, coderOutput.scadCode);
+      const smartFixes = analyzeForQuickFixes(asset.gst, asset.validationResult!, asset.scadCode!);
       asset.smartFixes = smartFixes;
       callbacks.onSmartFixesGenerated(smartFixes);
 
       // Apply teaching mode if enabled
       if (input.enableTeachingMode) {
-        const explanation = explainCode(coderOutput.scadCode, true);
+        const explanation = explainCode(asset.scadCode!, true);
         asset.conceptsUsed = explanation.conceptsUsed;
         asset.learningTips = explanation.tips;
         asset.annotatedCode = explanation.enhancedCode;
