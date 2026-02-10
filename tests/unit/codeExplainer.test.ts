@@ -46,29 +46,31 @@ describe('Code Explainer Service', () => {
     it('generates transform order tip', () => {
       const code = 'translate([5, 0, 0]) rotate([0, 0, 45]) cube([10, 10, 10]);';
       const result = explainCode(code);
-      expect(result.tips.some(t => t.includes('Transform order'))).toBe(true);
+      expect(result.tips.some((t) => t.includes('Transform order'))).toBe(true);
     });
 
     it('generates epsilon tip for boolean ops without eps', () => {
       const code = 'difference() { cube([10,10,10]); cylinder(h=12, d=3); }';
       const result = explainCode(code);
-      expect(result.tips.some(t => t.includes('eps'))).toBe(true);
+      expect(result.tips.some((t) => t.includes('eps'))).toBe(true);
     });
 
     it('does not generate epsilon tip when eps is present', () => {
-      const code = 'eps = 0.01;\ndifference() { cube([10,10,10]); translate([0,0,-eps]) cylinder(h=12+eps*2, d=3); }';
+      const code =
+        'eps = 0.01;\ndifference() { cube([10,10,10]); translate([0,0,-eps]) cylinder(h=12+eps*2, d=3); }';
       const result = explainCode(code);
-      expect(result.tips.some(t => t.includes('eps = 0.01'))).toBe(false);
+      expect(result.tips.some((t) => t.includes('eps = 0.01'))).toBe(false);
     });
 
     it('generates $fn tip for cylinders without $fn', () => {
       const code = 'cylinder(h=20, d=10);';
       const result = explainCode(code);
-      expect(result.tips.some(t => t.includes('$fn'))).toBe(true);
+      expect(result.tips.some((t) => t.includes('$fn'))).toBe(true);
     });
 
     it('limits tips to 4', () => {
-      const code = 'translate([0,0,0]) rotate([0,0,0]) cube([10,10,10]); cylinder(h=5, d=3); difference() { sphere(10); cube(5); }';
+      const code =
+        'translate([0,0,0]) rotate([0,0,0]) cube([10,10,10]); cylinder(h=5, d=3); difference() { sphere(10); cube(5); }';
       const result = explainCode(code);
       expect(result.tips.length).toBeLessThanOrEqual(4);
     });

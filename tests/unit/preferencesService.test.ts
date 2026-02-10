@@ -15,9 +15,15 @@ import {
 const store: Record<string, string> = {};
 const localStorageMock = {
   getItem: vi.fn((key: string) => store[key] ?? null),
-  setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
-  removeItem: vi.fn((key: string) => { delete store[key]; }),
-  clear: vi.fn(() => { for (const k of Object.keys(store)) delete store[k]; }),
+  setItem: vi.fn((key: string, value: string) => {
+    store[key] = value;
+  }),
+  removeItem: vi.fn((key: string) => {
+    delete store[key];
+  }),
+  clear: vi.fn(() => {
+    for (const k of Object.keys(store)) delete store[k];
+  }),
 };
 
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
@@ -37,9 +43,12 @@ describe('Preferences Service', () => {
     });
 
     it('loads stored preferences', () => {
-      localStorageMock.setItem('polygen_preferences', JSON.stringify({
-        defaultMaterial: 'PETG',
-      }));
+      localStorageMock.setItem(
+        'polygen_preferences',
+        JSON.stringify({
+          defaultMaterial: 'PETG',
+        })
+      );
       const prefs = loadPreferences();
       expect(prefs.defaultMaterial).toBe('PETG');
       // Should merge with defaults
@@ -89,7 +98,7 @@ describe('Preferences Service', () => {
       addRecentDesign('gear box');
       addRecentDesign('phone stand');
       const prefs = loadPreferences();
-      expect(prefs.recentDesigns.filter(d => d === 'phone stand')).toHaveLength(1);
+      expect(prefs.recentDesigns.filter((d) => d === 'phone stand')).toHaveLength(1);
       expect(prefs.recentDesigns[0]).toBe('phone stand');
     });
 

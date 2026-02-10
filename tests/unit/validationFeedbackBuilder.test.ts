@@ -78,14 +78,7 @@ describe('Validation Feedback Builder', () => {
     });
 
     it('always includes critical OpenSCAD rules', () => {
-      const feedback = buildValidationFeedback(
-        ['syntax error'],
-        1,
-        'bad',
-        mockGST as any,
-        1,
-        3
-      );
+      const feedback = buildValidationFeedback(['syntax error'], 1, 'bad', mockGST as any, 1, 3);
       expect(feedback.promptGuidance).toContain('CRITICAL OPENSCAD RULES');
       expect(feedback.promptGuidance).toContain('IMMUTABLE');
     });
