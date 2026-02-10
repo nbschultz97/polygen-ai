@@ -36,6 +36,35 @@ let isLoading = false;
 let _cachedModule: OpenSCADModule | null = null;
 
 // ============================================================================
+// WASM Loading State (observable by UI)
+// ============================================================================
+
+export type WasmLoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+let _wasmLoadState: WasmLoadState = 'idle';
+let _wasmLoadError: string | null = null;
+const _stateListeners: Set<() => void> = new Set();
+
+export function getWasmLoadState(): WasmLoadState {
+  return _wasmLoadState;
+}
+
+export function getWasmLoadError(): string | null {
+  return _wasmLoadError;
+}
+
+export function subscribeWasmLoadState(listener: () => void): () => void {
+  _stateListeners.add(listener);
+  return () => _stateListeners.delete(listener);
+}
+
+function setWasmLoadState(state: WasmLoadState, error?: string) {
+  _wasmLoadState = state;
+  _wasmLoadError = error ?? null;
+  _stateListeners.forEach((fn) => fn());
+}
+
+// ============================================================================
 // SOTA 3-Tier Library System
 // ============================================================================
 
@@ -168,6 +197,7 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
   }
 
   isLoading = true;
+  setWasmLoadState('loading');
 
   openScadPromise = (async () => {
     try {
@@ -182,6 +212,7 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
       };
 
       isLoading = false;
+      setWasmLoadState('ready');
       console.log('OpenSCAD loaded via ES module import');
 
       return {
@@ -207,6 +238,7 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
           };
 
           isLoading = false;
+          setWasmLoadState('ready');
           console.log(`OpenSCAD loaded from CDN: ${url}`);
 
           return {
@@ -221,6 +253,8 @@ export const loadOpenSCAD = (): Promise<OpenSCADLoader> => {
       // Reset state on failure so it can be retried
       openScadPromise = null;
       isLoading = false;
+      const errMsg = `OpenSCAD engine could not be loaded. ${importError instanceof Error ? importError.message : 'Unknown error'}`;
+      setWasmLoadState('error', errMsg);
 
       throw new Error(`OpenSCAD engine could not be loaded.
 
@@ -234,6 +268,16 @@ Original error: ${importError instanceof Error ? importError.message : 'Unknown 
   })();
 
   return openScadPromise;
+};
+
+/**
+ * Pre-warm the WASM engine. Call early (e.g., on component mount) so the
+ * 13 MB download happens in the background. Safe to call multiple times.
+ */
+export const preloadOpenSCAD = (): void => {
+  loadOpenSCAD().catch(() => {
+    // Error is captured in wasmLoadState — UI will show retry
+  });
 };
 
 /**
@@ -364,4 +408,5 @@ export const resetLoader = (): void => {
   openScadPromise = null;
   isLoading = false;
   _cachedModule = null;
+  setWasmLoadState('idle');
 };

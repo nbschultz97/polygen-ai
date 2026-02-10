@@ -1,19 +1,32 @@
 import {
   AlertTriangle,
+  ChevronDown,
+  ChevronRight,
   Download,
   Grid3X3,
   Info,
   Loader2,
   Lock,
   Play,
+  RefreshCw,
   RotateCcw,
+  Terminal,
   Zap,
   ZapOff,
 } from 'lucide-react';
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 import { OrbitControls, STLLoader } from 'three-stdlib';
-import { cleanupInstance, createOpenSCADInstance } from '../services/openscadLoader';
+import {
+  cleanupInstance,
+  createOpenSCADInstance,
+  getWasmLoadError,
+  getWasmLoadState,
+  preloadOpenSCAD,
+  resetLoader,
+  subscribeWasmLoadState,
+  type WasmLoadState,
+} from '../services/openscadLoader';
 
 interface ScadRendererProps {
   code: string;
@@ -22,6 +35,16 @@ interface ScadRendererProps {
   uploadedStlData?: Uint8Array;
   /** Called after a successful render with the canvas screenshot as base64 PNG */
   onRenderComplete?: (screenshotBase64: string) => void;
+}
+
+// ============================================================================
+// Hook: subscribe to WASM load state from openscadLoader
+// ============================================================================
+
+function useWasmLoadState(): { state: WasmLoadState; error: string | null } {
+  const state = useSyncExternalStore(subscribeWasmLoadState, getWasmLoadState);
+  const error = useSyncExternalStore(subscribeWasmLoadState, getWasmLoadError);
+  return { state, error };
 }
 
 const ScadRenderer: React.FC<ScadRendererProps> = memo(
@@ -44,6 +67,8 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
     const [isFullRenderValid, setIsFullRenderValid] = useState(false);
     // Build log: surfaces stderr messages for debug visibility
     const [stderrLog, setStderrLog] = useState<string[]>([]);
+    // Collapsible build log panel
+    const [showBuildLog, setShowBuildLog] = useState(false);
 
     const [renderStats, setRenderStats] = useState<{
       time: number;
@@ -58,6 +83,14 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
     // SOTA: 6x6 Visual Anchor Grid for VLM spatial analysis
     const [showAnchorGrid, setShowAnchorGrid] = useState(false);
     const anchorGridRef = useRef<THREE.Group | null>(null);
+
+    // WASM loading state (observable from openscadLoader singleton)
+    const { state: wasmState, error: wasmError } = useWasmLoadState();
+
+    // Pre-warm WASM on mount so the 13 MB download starts immediately
+    useEffect(() => {
+      preloadOpenSCAD();
+    }, []);
 
     const downloadSTL = useCallback(() => {
       if (!stlData) return;
@@ -351,6 +384,7 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
         setLoading(true);
         setError(null);
         setStderrLog([]);
+        setShowBuildLog(false);
         setRenderMode(mode);
         setComplexityWarning(activeWarning);
 
@@ -385,14 +419,16 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
             onPrintErr: (text: string) => {
               // Log ALL stderr for debugging - the 3D viewer has been failing silently
               console.warn('[ScadRenderer] stderr:', text);
-              // Capture errors and warnings (not just "error" keyword)
+              // Capture all stderr for the build log panel
               if (text) {
                 const lower = text.toLowerCase();
                 // Skip benign GL errors from Emscripten
                 if (text.includes('GL_INVALID_OPERATION') || text.includes('GL_INVALID_ENUM')) {
                   return;
                 }
-                // Capture anything that looks like an error or warning
+                // Always capture to build log
+                setStderrLog((prev) => [...prev, text]);
+                // Track errors for throw
                 if (
                   lower.includes('error') ||
                   lower.includes('warning') ||
@@ -401,8 +437,6 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
                   lower.includes('failed')
                 ) {
                   errorLog += text + '\n';
-                  // Surface to UI state for debug visibility
-                  setStderrLog((prev) => [...prev, text]);
                 }
               }
             },
@@ -669,24 +703,126 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
       const prevCode = prevCodeRef.current;
       prevCodeRef.current = code;
 
-      // Only auto-render once when we first receive code - use preview for speed
-      if (code && code.trim() && !prevCode && !hasAutoRenderedRef.current && !loading) {
-        hasAutoRenderedRef.current = true;
-        // Small delay to ensure scene is ready
-        const timer = setTimeout(() => {
-          compileAndRender('preview');
-        }, 800);
-        return () => clearTimeout(timer);
+      // Auto-render when we first receive code OR when code changes after generation
+      // (prevCode was empty or significantly different = new generation)
+      if (code && code.trim() && !loading) {
+        if (!prevCode) {
+          // First time receiving code — auto-render once
+          if (!hasAutoRenderedRef.current) {
+            hasAutoRenderedRef.current = true;
+            const timer = setTimeout(() => {
+              compileAndRender('preview');
+            }, 800);
+            return () => clearTimeout(timer);
+          }
+        } else if (prevCode !== code && Math.abs(code.length - prevCode.length) > 50) {
+          // Significant code change (likely a new generation) — auto-render again
+          const timer = setTimeout(() => {
+            compileAndRender('preview');
+          }, 800);
+          return () => clearTimeout(timer);
+        }
       }
     }, [code, loading, compileAndRender]);
+
+    // Handler for WASM retry
+    const handleRetryWasm = useCallback(() => {
+      resetLoader();
+      // Small delay then re-trigger preload
+      setTimeout(() => preloadOpenSCAD(), 100);
+    }, []);
 
     return (
       <div className="relative w-full h-full bg-[#0f172a] overflow-hidden group font-sans">
         <div ref={containerRef} className="w-full h-full" />
 
+        {/* ================================================================ */}
+        {/* WASM Loading Banner — visible during initial 13 MB download      */}
+        {/* ================================================================ */}
+        {(wasmState === 'loading' || wasmState === 'idle') && !loading && !error && (
+          <div className="absolute top-0 left-0 right-0 z-30 bg-indigo-950/90 backdrop-blur border-b border-indigo-500/30 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-4 h-4 text-indigo-400 animate-spin flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-indigo-200">Loading 3D Engine…</p>
+                <p className="text-[10px] text-indigo-400/70 mt-0.5">
+                  Downloading OpenSCAD WASM (~13 MB) — first load only
+                </p>
+                {/* Indeterminate progress bar */}
+                <div className="mt-1.5 h-1 w-full bg-indigo-900/50 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite] w-1/3" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================ */}
+        {/* WASM Init Failed — retry banner                                  */}
+        {/* ================================================================ */}
+        {wasmState === 'error' && !loading && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/95 backdrop-blur">
+            <div className="bg-red-500/10 border border-red-500/20 p-8 rounded-3xl max-w-md text-center">
+              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-white mb-2">3D Engine Failed to Load</h3>
+              <p className="text-sm text-slate-400 mb-2">
+                The OpenSCAD WASM engine couldn't be downloaded.
+              </p>
+              {wasmError && (
+                <pre className="text-[10px] text-red-300/70 bg-black/30 rounded-lg p-2 mb-4 max-h-20 overflow-auto text-left whitespace-pre-wrap">
+                  {wasmError}
+                </pre>
+              )}
+              <div className="flex flex-col gap-2 items-center">
+                <button
+                  onClick={handleRetryWasm}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry Download
+                </button>
+                <p className="text-[10px] text-slate-500">
+                  Try a different network if this persists
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Top Control Bar */}
-        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start pointer-events-none">
+        <div
+          className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start pointer-events-none"
+          style={{
+            top:
+              (wasmState === 'loading' || wasmState === 'idle') && !loading && !error
+                ? '4.5rem'
+                : '1rem',
+          }}
+        >
           <div className="flex flex-col gap-2 pointer-events-auto">
+            {/* ============================================================ */}
+            {/* PROMINENT RENDER BUTTON — always visible, big and obvious    */}
+            {/* ============================================================ */}
+            <button
+              onClick={() => compileAndRender('preview')}
+              disabled={loading || !code?.trim() || wasmState === 'error'}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-2xl transition-all ${
+                code?.trim() && (isDirty || error) && !loading
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-500 hover:shadow-indigo-500/25 ring-2 ring-indigo-400/30'
+                  : loading
+                    ? 'bg-indigo-800 text-indigo-300 cursor-wait'
+                    : 'bg-slate-800/80 text-slate-500 cursor-default'
+              }`}
+              title="Compile OpenSCAD code and render 3D preview"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 fill-current" />
+              )}
+              {loading ? 'Rendering…' : 'Render'}
+            </button>
+
             <div className="flex items-center gap-1 bg-slate-900/80 backdrop-blur border border-white/10 rounded-xl p-1 shadow-2xl">
               <button
                 onClick={() => setAutoUpdate(!autoUpdate)}
@@ -703,24 +839,6 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
                   <ZapOff className="w-3 h-3" />
                 )}
                 {autoUpdate ? 'LIVE' : 'MANUAL'}
-              </button>
-
-              <button
-                onClick={() => compileAndRender('preview')}
-                disabled={loading || (!isDirty && !error)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  isDirty || error
-                    ? 'bg-white text-slate-950 hover:bg-slate-200'
-                    : 'bg-slate-800 text-slate-500 cursor-default'
-                }`}
-                title="Fast preview (F5) - lower resolution, instant feedback"
-              >
-                {loading && renderMode === 'preview' ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Play className="w-3 h-3 fill-current" />
-                )}
-                PREVIEW
               </button>
 
               <button
@@ -839,6 +957,31 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
           )}
         </div>
 
+        {/* ================================================================ */}
+        {/* Build Log Panel — collapsible, shows stderr even on success      */}
+        {/* ================================================================ */}
+        {stderrLog.length > 0 && !loading && !error && (
+          <div className="absolute bottom-12 left-4 z-10 pointer-events-auto max-w-md">
+            <button
+              onClick={() => setShowBuildLog(!showBuildLog)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/90 backdrop-blur border border-white/10 rounded-lg text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <Terminal className="w-3 h-3" />
+              Build Log ({stderrLog.length})
+              {showBuildLog ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+            </button>
+            {showBuildLog && (
+              <pre className="mt-1 text-[10px] text-amber-300/80 bg-slate-950/95 backdrop-blur border border-white/10 rounded-lg p-3 max-h-40 overflow-auto whitespace-pre-wrap font-mono">
+                {stderrLog.join('\n')}
+              </pre>
+            )}
+          </div>
+        )}
+
         {/* Loading Overlay */}
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/60 backdrop-blur-sm z-20 transition-all">
@@ -863,7 +1006,9 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-30 p-8 text-center">
             <div className="bg-red-500/10 border border-red-500/20 p-8 rounded-3xl max-w-xl">
               <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              {error.includes('Network error') || error.includes('could not be retrieved') ? (
+              {error.includes('Network error') ||
+              error.includes('could not be retrieved') ||
+              error.includes('could not be loaded') ? (
                 <>
                   <h3 className="text-xl font-bold text-white mb-2">3D Preview Unavailable</h3>
                   <p className="text-sm text-slate-400 mb-4">
@@ -878,6 +1023,13 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
                       <li>• The code generation still works - just preview is unavailable</li>
                     </ul>
                   </div>
+                  <button
+                    onClick={handleRetryWasm}
+                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-colors flex items-center gap-2 mx-auto"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Retry Download
+                  </button>
                 </>
               ) : (
                 <>
@@ -886,15 +1038,16 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
                     The code produced an invalid or empty mesh. This often happens if a{' '}
                     <code>difference()</code> operation removes the entire base object.
                   </p>
-                  <pre className="text-xs text-left bg-black/40 p-4 rounded-xl text-red-300 overflow-auto max-h-[150px] whitespace-pre-wrap font-mono border border-red-900/30 mb-6">
+                  <pre className="text-xs text-left bg-black/40 p-4 rounded-xl text-red-300 overflow-auto max-h-[150px] whitespace-pre-wrap font-mono border border-red-900/30 mb-4">
                     {error}
                   </pre>
                   {stderrLog.length > 0 && (
-                    <details className="mt-3 mb-6 text-left">
-                      <summary className="text-xs text-slate-400 cursor-pointer">
+                    <details className="mb-4 text-left" open>
+                      <summary className="text-xs text-slate-400 cursor-pointer flex items-center gap-1">
+                        <Terminal className="w-3 h-3" />
                         Build Log ({stderrLog.length} messages)
                       </summary>
-                      <pre className="text-[10px] text-slate-500 mt-1 max-h-[100px] overflow-auto bg-black/30 p-2 rounded-lg">
+                      <pre className="text-[10px] text-amber-300/70 mt-1 max-h-[120px] overflow-auto bg-black/30 p-2 rounded-lg whitespace-pre-wrap font-mono">
                         {stderrLog.join('\n')}
                       </pre>
                     </details>
@@ -915,14 +1068,16 @@ const ScadRenderer: React.FC<ScadRendererProps> = memo(
         )}
 
         {/* Initial Empty State */}
-        {!renderStats && !loading && !error && (
+        {!renderStats && !loading && !error && wasmState !== 'error' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/40 z-0 text-center pointer-events-none">
             <div className="p-6 rounded-full bg-slate-800/50 mb-4">
               <Play className="w-10 h-10 text-indigo-400 opacity-40 fill-current translate-x-1" />
             </div>
             <h3 className="text-lg font-medium text-slate-400">3D Preview Ready</h3>
             <p className="text-xs text-slate-500 mt-2 max-w-xs">
-              Click "Render Model" to compile the current code into 3D geometry.
+              {code?.trim()
+                ? 'Click "Render" to compile the current code into 3D geometry.'
+                : 'Generate code first, then it will render automatically.'}
             </p>
           </div>
         )}
