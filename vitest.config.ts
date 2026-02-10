@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  // @ts-expect-error - Vite plugin type mismatch between vite and vitest versions
   plugins: [react()],
   test: {
     globals: true,
@@ -23,10 +22,10 @@ export default defineConfig({
         '**/types.ts',
       ],
       thresholds: {
-        statements: 40,
-        branches: 40,
-        functions: 40,
-        lines: 40,
+        statements: 50,
+        branches: 50,
+        functions: 50,
+        lines: 50,
       },
     },
   },
