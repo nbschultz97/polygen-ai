@@ -73,6 +73,17 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       sourcemap: mode !== 'production', // Disable sourcemaps in production to avoid leaking code
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split large vendor libraries into separate chunks
+            'vendor-three': ['three'],
+            'vendor-syntax-highlighter': ['react-syntax-highlighter'],
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-markdown': ['react-markdown'],
+          },
+        },
+      },
     },
     // Web Worker configuration for WASM validation offloading
     worker: {

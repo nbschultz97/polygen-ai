@@ -1,16 +1,27 @@
 /**
  * App Router Component
  * Handles routing between landing page, app, pricing, and legal pages
+ * Uses React.lazy for code splitting - each route loads on demand
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import LandingPage from './LandingPage';
-import PricingPage from './PricingPage';
-import MainApp from './MainApp';
-import PrivacyPolicy from './PrivacyPolicy';
-import TermsOfService from './TermsOfService';
-import AnalyticsDashboard from './AnalyticsDashboard';
+
+// Lazy-load route components for code splitting
+const LandingPage = React.lazy(() => import('./LandingPage'));
+const PricingPage = React.lazy(() => import('./PricingPage'));
+const MainApp = React.lazy(() => import('./MainApp'));
+const PrivacyPolicy = React.lazy(() => import('./PrivacyPolicy'));
+const TermsOfService = React.lazy(() => import('./TermsOfService'));
+const AnalyticsDashboard = React.lazy(() => import('./AnalyticsDashboard'));
+
+function RouteLoader() {
+  return (
+    <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+}
 
 type View = 'landing' | 'app' | 'pricing' | 'privacy' | 'terms' | 'dashboard';
 
@@ -104,47 +115,51 @@ export default function AppRouter() {
     window.history.pushState({}, '', '/');
   };
 
-  // Render based on view
-  switch (view) {
-    case 'pricing':
-      return <PricingPage onClose={handleClosePricing} />;
+  // Render based on view (lazy-loaded with Suspense)
+  const renderView = () => {
+    switch (view) {
+      case 'pricing':
+        return <PricingPage onClose={handleClosePricing} />;
 
-    case 'privacy':
-      return <PrivacyPolicy onBack={handleBackFromLegal} />;
+      case 'privacy':
+        return <PrivacyPolicy onBack={handleBackFromLegal} />;
 
-    case 'terms':
-      return <TermsOfService onBack={handleBackFromLegal} />;
+      case 'terms':
+        return <TermsOfService onBack={handleBackFromLegal} />;
 
-    case 'dashboard':
-      return user ? (
-        <AnalyticsDashboard />
-      ) : (
-        <LandingPage
-          onStartApp={handleStartApp}
-          onShowPricing={handleShowPricing}
-          onShowPrivacy={handleShowPrivacy}
-          onShowTerms={handleShowTerms}
-        />
-      );
+      case 'dashboard':
+        return user ? (
+          <AnalyticsDashboard />
+        ) : (
+          <LandingPage
+            onStartApp={handleStartApp}
+            onShowPricing={handleShowPricing}
+            onShowPrivacy={handleShowPrivacy}
+            onShowTerms={handleShowTerms}
+          />
+        );
 
-    case 'app':
-      return (
-        <MainApp
-          onShowPricing={handleShowPricing}
-          onShowLanding={handleShowLanding}
-          onShowDashboard={handleShowDashboard}
-        />
-      );
+      case 'app':
+        return (
+          <MainApp
+            onShowPricing={handleShowPricing}
+            onShowLanding={handleShowLanding}
+            onShowDashboard={handleShowDashboard}
+          />
+        );
 
-    case 'landing':
-    default:
-      return (
-        <LandingPage
-          onStartApp={handleStartApp}
-          onShowPricing={handleShowPricing}
-          onShowPrivacy={handleShowPrivacy}
-          onShowTerms={handleShowTerms}
-        />
-      );
-  }
+      case 'landing':
+      default:
+        return (
+          <LandingPage
+            onStartApp={handleStartApp}
+            onShowPricing={handleShowPricing}
+            onShowPrivacy={handleShowPrivacy}
+            onShowTerms={handleShowTerms}
+          />
+        );
+    }
+  };
+
+  return <Suspense fallback={<RouteLoader />}>{renderView()}</Suspense>;
 }

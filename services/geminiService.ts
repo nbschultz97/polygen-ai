@@ -7,7 +7,8 @@
 import type { ClarificationQuestion, GeneratedAsset } from '../types';
 import { getAuthToken } from './apiClient';
 import { addRecentDesign, getPreferencesForPrompt, loadPreferences } from './preferencesService';
-import { validateScadCode } from './scadValidation';
+// Dynamic import to allow code splitting (scadValidation is also used by web worker)
+const loadValidator = () => import('./scadValidation').then((m) => m.validateScadCode);
 
 // App Version - SINGLE SOURCE OF TRUTH
 // Update this when making changes - all components import from here
@@ -692,6 +693,7 @@ ${userPrompt}
 
         // Only validate if it's not empty
         if (result.scadCode.trim().length > 0) {
+          const validateScadCode = await loadValidator();
           const validation = await validateScadCode(fullCode);
 
           if (!validation.success) {
