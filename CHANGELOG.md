@@ -5,6 +5,21 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-02-09
+
+### Added
+
+- **Few-Shot Prompt Examples**: Added 3 complete few-shot examples to planner prompt (planner-system.md) covering simple (box with lid), medium (phone stand), and complex (desk organizer) objects with full GST JSON
+- **Few-Shot Coder Examples**: Added 3 matching few-shot examples to coder prompt (coder-system.md) showing GST→OpenSCAD conversion with all mandatory patterns (eps guards, $fn/$preview, center=true, atomic modules, main())
+- **Unified Pipeline Examples**: Added 2 complete user prompt→OpenSCAD examples to unified generator system prompt for direct generation reliability
+
+### Changed
+
+- **Prompt Engineering**: All examples enforce vanilla OpenSCAD constraints — no external libraries, eps overlap on every difference(), parameters at top, modules in middle, main() at bottom
+- **Target**: 90%+ generation reliability (up from ~75% multi-agent, ~44% unified) through concrete working demonstrations
+
+---
+
 ## [3.6.6] - 2026-02-05
 
 ### Fixed
