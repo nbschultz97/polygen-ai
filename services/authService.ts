@@ -3,18 +3,22 @@
  * Uses Supabase Auth for user management
  */
 
-import { createClient, User, Session, AuthError } from '@supabase/supabase-js';
+import type { User, Session, AuthError } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client
 // Support both Vite (VITE_) and Vercel integration (NEXT_PUBLIC_) variable names
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ||
-                    import.meta.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ||
-                        import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Check if Supabase is configured
-const isSupabaseConfigured = supabaseUrl && supabaseAnonKey &&
-  supabaseUrl !== '' && supabaseAnonKey !== '' &&
+const isSupabaseConfigured =
+  supabaseUrl &&
+  supabaseAnonKey &&
+  supabaseUrl !== '' &&
+  supabaseAnonKey !== '' &&
   supabaseUrl.includes('supabase');
 
 // Create a mock client that returns null/empty for all operations when not configured
@@ -22,29 +26,35 @@ const mockSupabase = {
   auth: {
     getSession: async () => ({ data: { session: null }, error: null }),
     getUser: async () => ({ data: { user: null }, error: null }),
-    signUp: async () => ({ data: { user: null, session: null }, error: { message: 'Auth not configured' } }),
-    signInWithPassword: async () => ({ data: { user: null, session: null }, error: { message: 'Auth not configured' } }),
+    signUp: async () => ({
+      data: { user: null, session: null },
+      error: { message: 'Auth not configured' },
+    }),
+    signInWithPassword: async () => ({
+      data: { user: null, session: null },
+      error: { message: 'Auth not configured' },
+    }),
     signInWithOAuth: async () => ({ error: { message: 'Auth not configured' } }),
     signOut: async () => ({ error: null }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
   },
   from: () => ({
     insert: async () => ({ error: { message: 'Database not configured' } }),
     select: () => ({
       eq: () => ({
-        single: async () => ({ data: null, error: { message: 'Database not configured' } })
-      })
+        single: async () => ({ data: null, error: { message: 'Database not configured' } }),
+      }),
     }),
     update: () => ({
-      eq: async () => ({ error: { message: 'Database not configured' } })
-    })
+      eq: async () => ({ error: { message: 'Database not configured' } }),
+    }),
   }),
-  rpc: async () => ({ error: { message: 'Database not configured' } })
+  rpc: async () => ({ error: { message: 'Database not configured' } }),
 };
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : mockSupabase as any;
+  : (mockSupabase as any);
 
 export interface UserProfile {
   id: string;
@@ -62,30 +72,41 @@ export const TIER_LIMITS = {
   free: {
     generationsPerMonth: 5,
     maxFileSize: 5 * 1024 * 1024, // 5MB
-    features: ['basic-templates', 'code-export']
+    features: ['basic-templates', 'code-export'],
   },
   pro: {
     generationsPerMonth: 100,
     maxFileSize: 20 * 1024 * 1024, // 20MB
-    features: ['all-templates', 'code-export', '3d-preview', 'stl-export', 'priority-support']
+    features: ['all-templates', 'code-export', '3d-preview', 'stl-export', 'priority-support'],
   },
   enterprise: {
     generationsPerMonth: -1, // unlimited
     maxFileSize: 50 * 1024 * 1024, // 50MB
-    features: ['all-templates', 'code-export', '3d-preview', 'stl-export', 'priority-support', 'api-access', 'team-management']
-  }
+    features: [
+      'all-templates',
+      'code-export',
+      '3d-preview',
+      'stl-export',
+      'priority-support',
+      'api-access',
+      'team-management',
+    ],
+  },
 };
 
 /**
  * Sign up with email and password
  */
-export async function signUp(email: string, password: string): Promise<{ user: User | null; error: AuthError | null }> {
+export async function signUp(
+  email: string,
+  password: string
+): Promise<{ user: User | null; error: AuthError | null }> {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`
-    }
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
+    },
   });
 
   if (data.user && !error) {
@@ -99,10 +120,13 @@ export async function signUp(email: string, password: string): Promise<{ user: U
 /**
  * Sign in with email and password
  */
-export async function signIn(email: string, password: string): Promise<{ user: User | null; error: AuthError | null }> {
+export async function signIn(
+  email: string,
+  password: string
+): Promise<{ user: User | null; error: AuthError | null }> {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
-    password
+    password,
   });
 
   return { user: data.user, error };
@@ -115,8 +139,8 @@ export async function signInWithGoogle(): Promise<{ error: AuthError | null }> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`
-    }
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
   });
 
   return { error };
@@ -155,7 +179,7 @@ async function createUserProfile(userId: string, email: string): Promise<void> {
     tier: 'free',
     generations_used: 0,
     generations_limit: TIER_LIMITS.free.generationsPerMonth,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
   });
 
   if (error) {
@@ -185,18 +209,31 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     generationsLimit: data.generations_limit,
     stripeCustomerId: data.stripe_customer_id,
     stripeSubscriptionId: data.stripe_subscription_id,
-    createdAt: data.created_at
+    createdAt: data.created_at,
   };
 }
 
 /**
  * Check if user can generate (has remaining generations)
  */
-export async function canGenerate(userId: string): Promise<{ allowed: boolean; remaining: number; limit: number }> {
-  const profile = await getUserProfile(userId);
+export async function canGenerate(
+  userId: string
+): Promise<{ allowed: boolean; remaining: number; limit: number }> {
+  let profile = await getUserProfile(userId);
+
+  // If no profile exists, try to create one (handles race conditions and failed sign-up inserts)
+  if (!profile) {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      await createUserProfile(data.user.id, data.user.email || '');
+      profile = await getUserProfile(userId);
+    }
+  }
 
   if (!profile) {
-    return { allowed: false, remaining: 0, limit: 0 };
+    // Still no profile — grant free tier defaults instead of blocking
+    const freeLimit = TIER_LIMITS.free.generationsPerMonth;
+    return { allowed: true, remaining: freeLimit, limit: freeLimit };
   }
 
   // Unlimited for enterprise
@@ -208,7 +245,7 @@ export async function canGenerate(userId: string): Promise<{ allowed: boolean; r
   return {
     allowed: remaining > 0,
     remaining,
-    limit: profile.generationsLimit
+    limit: profile.generationsLimit,
   };
 }
 
@@ -238,7 +275,7 @@ export async function updateUserTier(
       tier,
       generations_limit: TIER_LIMITS[tier].generationsPerMonth,
       stripe_customer_id: stripeCustomerId,
-      stripe_subscription_id: stripeSubscriptionId
+      stripe_subscription_id: stripeSubscriptionId,
     })
     .eq('id', userId);
 
@@ -251,7 +288,9 @@ export async function updateUserTier(
  * Listen to auth state changes
  */
 export function onAuthStateChange(callback: (user: User | null) => void): () => void {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
     callback(session?.user ?? null);
   });
 
@@ -271,7 +310,7 @@ export const authService = {
   incrementGenerationCount,
   updateUserTier,
   onAuthStateChange,
-  TIER_LIMITS
+  TIER_LIMITS,
 };
 
 export default authService;

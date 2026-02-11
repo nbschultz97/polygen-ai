@@ -60,10 +60,11 @@ describe('Auth Service', () => {
       expect(profile).toBeNull();
     });
 
-    it('canGenerate returns not allowed when no profile', async () => {
+    it('canGenerate returns free tier defaults when no profile', async () => {
       const result = await canGenerate('any-id');
-      expect(result.allowed).toBe(false);
-      expect(result.remaining).toBe(0);
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(5);
+      expect(result.limit).toBe(5);
     });
 
     it('incrementGenerationCount handles error gracefully', async () => {
