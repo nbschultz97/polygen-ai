@@ -153,7 +153,7 @@ export default function LandingPage({
                   onClick={handleTryDemo}
                   className="px-4 py-2 text-gray-400 hover:text-white text-sm font-medium transition-colors"
                 >
-                  Try Demo
+                  Get Started
                 </button>
                 <button
                   onClick={handleTryDemo}
@@ -218,7 +218,7 @@ export default function LandingPage({
                   }}
                   className="w-full px-4 py-3 border border-white/[0.1] text-white font-medium rounded-lg hover:bg-white/[0.04] transition-colors"
                 >
-                  Try Demo
+                  Get Started
                 </button>
                 <button
                   onClick={() => {
@@ -262,7 +262,7 @@ export default function LandingPage({
               onClick={handleTryDemo}
               className="group flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all"
             >
-              Try Demo Free
+              Get Started Free
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
@@ -477,7 +477,7 @@ export default function LandingPage({
             onClick={handleTryDemo}
             className="group inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all text-base md:text-lg"
           >
-            Try Demo Free
+            Get Started Free
             <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
           </button>
           <p className="mt-3 md:mt-4 text-gray-500 text-xs md:text-sm">
