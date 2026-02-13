@@ -9,7 +9,7 @@
  * - Validates input size to prevent abuse
  */
 
-import { verifyAuth, incrementUsage, authError } from './lib/auth';
+import { verifyAuth, authError } from './lib/auth';
 
 export const config = {
   runtime: 'edge',
@@ -27,10 +27,10 @@ interface ImageGenRequest {
 export default async function handler(req: Request): Promise<Response> {
   // Only allow POST requests
   if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // ============================================
@@ -44,10 +44,10 @@ export default async function handler(req: Request): Promise<Response> {
   // Check for API key
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: 'Gemini API not configured' }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Gemini API not configured' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -57,10 +57,10 @@ export default async function handler(req: Request): Promise<Response> {
     // SECURITY: Input validation
     // ============================================
     if (!body.prompt || typeof body.prompt !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Missing or invalid prompt' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Missing or invalid prompt' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     if (body.prompt.length > MAX_PROMPT_LENGTH) {
@@ -92,8 +92,8 @@ export default async function handler(req: Request): Promise<Response> {
         config: {
           numberOfImages,
           aspectRatio,
-          outputMimeType: 'image/png'
-        }
+          outputMimeType: 'image/png',
+        },
       }),
     });
 
@@ -107,41 +107,33 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // ============================================
-    // SECURITY: Increment usage counter
-    // ============================================
-    if (auth.user?.id) {
-      await incrementUsage(auth.user.id);
-    }
+    // NOTE: Usage is NOT incremented here. Only incremented after successful
+    // code generation (claude.ts / claude-stream.ts) to avoid double-counting.
 
     // Extract image data
     if (data.generatedImages && data.generatedImages.length > 0) {
       const image = data.generatedImages[0];
       if (image.image?.imageBytes) {
-        return new Response(
-          JSON.stringify({ imageBase64: image.image.imageBytes }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-store'
-            }
-          }
-        );
+        return new Response(JSON.stringify({ imageBase64: image.image.imageBytes }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+          },
+        });
       }
     }
 
-    return new Response(
-      JSON.stringify({ error: 'No image generated' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-
+    return new Response(JSON.stringify({ error: 'No image generated' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error: any) {
     console.error('Gemini image proxy error:', error);
 
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

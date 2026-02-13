@@ -9,7 +9,7 @@
  * - Validates input size to prevent abuse
  */
 
-import { verifyAuth, incrementUsage, authError } from './lib/auth';
+import { verifyAuth, authError } from './lib/auth';
 
 export const config = {
   runtime: 'edge',
@@ -35,10 +35,10 @@ interface GeminiRequest {
 export default async function handler(req: Request): Promise<Response> {
   // Only allow POST requests
   if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // ============================================
@@ -52,10 +52,10 @@ export default async function handler(req: Request): Promise<Response> {
   // Check for API key
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: 'Gemini API not configured' }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Gemini API not configured' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -65,10 +65,10 @@ export default async function handler(req: Request): Promise<Response> {
     // SECURITY: Input validation
     // ============================================
     if (!body.prompt || typeof body.prompt !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Missing or invalid prompt' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Missing or invalid prompt' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     if (body.prompt.length > MAX_PROMPT_LENGTH) {
@@ -81,10 +81,10 @@ export default async function handler(req: Request): Promise<Response> {
     // Validate image if provided
     if (body.imageData) {
       if (!body.imageData.base64 || !body.imageData.mimeType) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid image data' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: 'Invalid image data' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       if (body.imageData.base64.length > MAX_IMAGE_SIZE) {
@@ -96,7 +96,9 @@ export default async function handler(req: Request): Promise<Response> {
 
       if (!VALID_MIME_TYPES.includes(body.imageData.mimeType)) {
         return new Response(
-          JSON.stringify({ error: `Invalid image format. Allowed: ${VALID_MIME_TYPES.join(', ')}` }),
+          JSON.stringify({
+            error: `Invalid image format. Allowed: ${VALID_MIME_TYPES.join(', ')}`,
+          }),
           { status: 400, headers: { 'Content-Type': 'application/json' } }
         );
       }
@@ -112,8 +114,8 @@ export default async function handler(req: Request): Promise<Response> {
       parts.push({
         inlineData: {
           mimeType: body.imageData.mimeType,
-          data: body.imageData.base64
-        }
+          data: body.imageData.base64,
+        },
       });
     }
 
@@ -125,13 +127,13 @@ export default async function handler(req: Request): Promise<Response> {
       contents: [{ role: 'user', parts }],
       generationConfig: {
         temperature: body.temperature ?? 0.7,
-      }
+      },
     };
 
     // Add system instruction if provided
     if (body.systemInstruction) {
       geminiRequestBody.systemInstruction = {
-        parts: [{ text: body.systemInstruction }]
+        parts: [{ text: body.systemInstruction }],
       };
     }
 
@@ -155,39 +157,32 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (!response.ok) {
       console.error('Gemini API error:', data);
-      return new Response(
-        JSON.stringify({ error: data.error?.message || 'Gemini API error' }),
-        { status: response.status, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: data.error?.message || 'Gemini API error' }), {
+        status: response.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    // ============================================
-    // SECURITY: Increment usage counter
-    // ============================================
-    if (auth.user?.id) {
-      await incrementUsage(auth.user.id);
-    }
+    // NOTE: Usage is NOT incremented here (planner step).
+    // Usage is only incremented after successful code generation (claude.ts / claude-stream.ts)
+    // to avoid charging users when only planning succeeds but coding fails.
 
     // Extract text from response
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    return new Response(
-      JSON.stringify({ text, raw: data }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
-      }
-    );
-
+    return new Response(JSON.stringify({ text, raw: data }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
+    });
   } catch (error: any) {
     console.error('Gemini proxy error:', error);
 
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

@@ -439,9 +439,8 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
             }
           }
 
-          // Record generation usage (only if logged in)
+          // Refresh usage display (server already incremented the counter)
           if (asset.scadCode && user) {
-            await recordGeneration();
             const newUsage = await canGenerate();
             setUsageInfo({ remaining: newUsage.remaining, limit: newUsage.limit });
           }
@@ -468,9 +467,8 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
               },
             ]);
 
-            // Record generation usage (only if logged in)
+            // Refresh usage display (server already incremented the counter)
             if (user) {
-              await recordGeneration();
               const newUsage = await canGenerate();
               setUsageInfo({ remaining: newUsage.remaining, limit: newUsage.limit });
             }
@@ -1090,16 +1088,22 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
           `}
           >
             {currentAsset?.scadCode || streamingCode ? (
-              <React.Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-violet-500" /></div>}>
-              <CodeEditor
-                code={currentAsset?.scadCode || ''}
-                streamingCode={streamingCode}
-                isGenerating={['processing', 'planning', 'coding', 'validating'].includes(
-                  workflowStep
-                )}
-                onCodeChange={handleCodeEditorChange}
-                onRender={handleCodeEditorRender}
-              />
+              <React.Suspense
+                fallback={
+                  <div className="flex-1 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
+                  </div>
+                }
+              >
+                <CodeEditor
+                  code={currentAsset?.scadCode || ''}
+                  streamingCode={streamingCode}
+                  isGenerating={['processing', 'planning', 'coding', 'validating'].includes(
+                    workflowStep
+                  )}
+                  onCodeChange={handleCodeEditorChange}
+                  onRender={handleCodeEditorRender}
+                />
               </React.Suspense>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center pt-14 md:pt-8">
@@ -1182,13 +1186,19 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
 
                 {/* 3D Content */}
                 <div className="flex-1 overflow-hidden">
-                  <React.Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-violet-500" /></div>}>
-                  <ScadRenderer
-                    code={currentAsset.scadCode}
-                    isProUser={isProUser}
-                    uploadedStlData={currentAsset.uploadedStlData}
-                    onRenderComplete={handleRenderComplete}
-                  />
+                  <React.Suspense
+                    fallback={
+                      <div className="flex-1 flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
+                      </div>
+                    }
+                  >
+                    <ScadRenderer
+                      code={currentAsset.scadCode}
+                      isProUser={isProUser}
+                      uploadedStlData={currentAsset.uploadedStlData}
+                      onRenderComplete={handleRenderComplete}
+                    />
                   </React.Suspense>
                 </div>
 
