@@ -25,6 +25,7 @@ import { APP_VERSION } from '../services/geminiService';
 
 interface LandingPageProps {
   onStartApp: () => void;
+  onStartDemo?: () => void;
   onShowPricing: () => void;
   onShowPrivacy?: () => void;
   onShowTerms?: () => void;
@@ -88,6 +89,7 @@ const TESTIMONIALS = [
 
 export default function LandingPage({
   onStartApp,
+  onStartDemo,
   onShowPricing,
   onShowPrivacy,
   onShowTerms,
@@ -98,8 +100,18 @@ export default function LandingPage({
   const { user } = useAuth();
 
   const handleTryDemo = () => {
-    // SECURITY: Require signup to use the app
-    // This prevents anonymous API abuse
+    if (user) {
+      onStartApp();
+    } else if (onStartDemo) {
+      // Launch anonymous demo mode
+      onStartDemo();
+    } else {
+      setAuthMode('signup');
+      setShowAuth(true);
+    }
+  };
+
+  const handleSignUp = () => {
     setAuthMode('signup');
     setShowAuth(true);
   };
@@ -150,16 +162,16 @@ export default function LandingPage({
             ) : (
               <>
                 <button
-                  onClick={handleTryDemo}
+                  onClick={handleSignUp}
                   className="px-4 py-2 text-gray-400 hover:text-white text-sm font-medium transition-colors"
                 >
-                  Get Started
+                  Sign In
                 </button>
                 <button
                   onClick={handleTryDemo}
                   className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
                 >
-                  Get Started
+                  Try Demo
                 </button>
               </>
             )}
@@ -216,19 +228,18 @@ export default function LandingPage({
                     handleTryDemo();
                     setIsMenuOpen(false);
                   }}
-                  className="w-full px-4 py-3 border border-white/[0.1] text-white font-medium rounded-lg hover:bg-white/[0.04] transition-colors"
+                  className="w-full px-4 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-lg transition-colors"
                 >
-                  Get Started
+                  Try Demo
                 </button>
                 <button
                   onClick={() => {
-                    setAuthMode('signup');
-                    setShowAuth(true);
+                    handleSignUp();
                     setIsMenuOpen(false);
                   }}
-                  className="w-full px-4 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-lg transition-colors"
+                  className="w-full px-4 py-3 border border-white/[0.1] text-white font-medium rounded-lg hover:bg-white/[0.04] transition-colors"
                 >
-                  Get Started
+                  Sign In
                 </button>
               </div>
             )}
@@ -245,16 +256,16 @@ export default function LandingPage({
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 leading-tight">
-            Turn words into
+            Describe it. Print it.
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
               {' '}
-              3D models
+              AI does the CAD.
             </span>
           </h1>
 
           <p className="text-base md:text-xl text-gray-400 max-w-2xl mx-auto mb-8 md:mb-10 px-2">
-            Describe what you want to create in plain English. PolyGen AI generates printable
-            OpenSCAD code using advanced AI agents.
+            Turn plain English into 3D-printable OpenSCAD models. No CAD skills needed — our
+            multi-agent AI handles geometry, validation, and export.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -262,7 +273,7 @@ export default function LandingPage({
               onClick={handleTryDemo}
               className="group flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all"
             >
-              Get Started Free
+              Try It Free — No Signup
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
@@ -272,6 +283,9 @@ export default function LandingPage({
               View Pricing
             </button>
           </div>
+          <p className="mt-3 text-gray-500 text-xs">
+            2 free generations, no account needed. Sign up for more.
+          </p>
 
           {/* Demo Preview - Hero Image */}
           <div className="mt-16 relative">
@@ -473,15 +487,23 @@ export default function LandingPage({
           <p className="text-gray-400 mb-6 md:mb-8 text-sm md:text-base">
             Join thousands of makers using PolyGen AI to bring their ideas to life.
           </p>
-          <button
-            onClick={handleTryDemo}
-            className="group inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all text-base md:text-lg"
-          >
-            Get Started Free
-            <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={handleTryDemo}
+              className="group inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all text-base md:text-lg"
+            >
+              Try Demo Free
+              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button
+              onClick={handleSignUp}
+              className="inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 bg-white/[0.06] hover:bg-white/[0.1] text-white font-medium rounded-xl border border-white/[0.1] transition-colors text-base md:text-lg"
+            >
+              Create Account
+            </button>
+          </div>
           <p className="mt-3 md:mt-4 text-gray-500 text-xs md:text-sm">
-            No account required. Try it now.
+            2 free generations without an account. Sign up for 5/month free tier.
           </p>
         </div>
       </section>

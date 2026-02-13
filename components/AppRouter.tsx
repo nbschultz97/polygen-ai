@@ -23,7 +23,10 @@ function RouteLoader() {
   );
 }
 
-type View = 'landing' | 'app' | 'pricing' | 'privacy' | 'terms' | 'dashboard';
+type View = 'landing' | 'app' | 'demo' | 'pricing' | 'privacy' | 'terms' | 'dashboard';
+
+// Lazy-load demo app
+const DemoApp = React.lazy(() => import('./DemoApp'));
 
 export default function AppRouter() {
   const { user, loading } = useAuth();
@@ -44,6 +47,8 @@ export default function AppRouter() {
       setView('app');
     } else if (params.get('pricing') === 'true' || path === '/pricing') {
       setView('pricing');
+    } else if (path === '/demo') {
+      setView('demo');
     } else if (path === '/app') {
       setView('app');
     }
@@ -73,6 +78,11 @@ export default function AppRouter() {
   const handleStartApp = () => {
     setView('app');
     window.history.pushState({}, '', '/app');
+  };
+
+  const handleStartDemo = () => {
+    setView('demo');
+    window.history.pushState({}, '', '/demo');
   };
 
   const handleShowPricing = () => {
@@ -133,9 +143,23 @@ export default function AppRouter() {
         ) : (
           <LandingPage
             onStartApp={handleStartApp}
+            onStartDemo={handleStartDemo}
             onShowPricing={handleShowPricing}
             onShowPrivacy={handleShowPrivacy}
             onShowTerms={handleShowTerms}
+          />
+        );
+
+      case 'demo':
+        return (
+          <DemoApp
+            onShowPricing={handleShowPricing}
+            onShowLanding={handleShowLanding}
+            onSignUp={() => {
+              setView('landing');
+              window.history.pushState({}, '', '/');
+              // The landing page will open the auth modal
+            }}
           />
         );
 
@@ -153,6 +177,7 @@ export default function AppRouter() {
         return (
           <LandingPage
             onStartApp={handleStartApp}
+            onStartDemo={handleStartDemo}
             onShowPricing={handleShowPricing}
             onShowPrivacy={handleShowPrivacy}
             onShowTerms={handleShowTerms}

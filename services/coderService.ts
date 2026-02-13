@@ -587,6 +587,105 @@ molle_clip(width=28, height=40);   // MOLLE attachment
 3. PROPER CLEARANCE: Mating parts need 0.2mm clearance for normal fit, 0.4mm for loose fit. Lids need tongue+groove joints, not just sitting on top.
 4. REALISTIC PROPORTIONS: A phone case should look like a phone case, not a solid brick. Wall thickness should be 2-3mm, not 10mm.
 
+## ADDITIONAL FEW-SHOT EXAMPLES
+
+### Example: Simple Desk Shelf / Riser
+// "A monitor riser 400mm wide, 200mm deep, 80mm tall"
+$fn = 64;
+eps = 0.01;
+width = 400;
+depth = 200;
+height = 80;
+wall = 4;
+corner_r = 5;
+
+module rcube(size, r) {
+    hull() {
+        for (x = [-1, 1], y = [-1, 1], z = [-1, 1])
+            translate([x*(size[0]/2-r), y*(size[1]/2-r), z*(size[2]/2-r)])
+                sphere(r=r);
+    }
+}
+
+difference() {
+    rcube([width, depth, height], corner_r);
+    // Hollow inside (open front and back for ventilation)
+    translate([0, 0, wall])
+        cube([width - wall*2, depth + eps*2, height], center=true);
+    // Cable routing slot in back
+    translate([0, depth/2, height/2])
+        cube([60, wall + eps*2, 30], center=true);
+}
+
+### Example: Electronics Enclosure with Lid
+// "A box for a Raspberry Pi with ventilation slots and lid"
+$fn = 64;
+eps = 0.01;
+// Raspberry Pi 4 dimensions + clearance
+inner_w = 88;   // 85mm + 3mm clearance
+inner_d = 58;   // 56mm + 2mm clearance
+inner_h = 25;
+wall = 2.5;
+outer_w = inner_w + wall*2;
+outer_d = inner_d + wall*2;
+outer_h = inner_h + wall;
+
+module rcube(size, r) {
+    hull() {
+        for (x = [-1, 1], y = [-1, 1], z = [-1, 1])
+            translate([x*(size[0]/2-r), y*(size[1]/2-r), z*(size[2]/2-r)])
+                sphere(r=r);
+    }
+}
+
+// Bottom case
+difference() {
+    rcube([outer_w, outer_d, outer_h], 3);
+    translate([0, 0, wall])
+        rcube([inner_w, inner_d, inner_h + eps], 1.5);
+    // Ventilation slots on side
+    for (i = [0:4])
+        translate([outer_w/2, -15 + i*8, wall + inner_h/2])
+            cube([wall + eps*2, 3, 12], center=true);
+    // USB port cutouts
+    translate([-outer_w/2, -10, wall + 3])
+        cube([wall + eps*2, 16, 8], center=true);
+}
+
+### Example: Mechanical Bracket with Mounting Holes
+// "An L-bracket with 4 mounting holes, 3mm thick"
+$fn = 64;
+eps = 0.01;
+thickness = 3;
+arm_length = 40;
+arm_width = 30;
+hole_d = 4.5;  // M4 clearance
+fillet_r = 5;
+
+difference() {
+    union() {
+        // Horizontal arm
+        cube([arm_length, arm_width, thickness]);
+        // Vertical arm
+        cube([thickness, arm_width, arm_length]);
+        // Fillet for strength
+        translate([thickness, 0, thickness])
+            rotate([-90, 0, 0])
+                linear_extrude(height=arm_width)
+                    polygon([[0, 0], [fillet_r, 0], [0, fillet_r]]);
+    }
+    // Horizontal mounting holes
+    for (x = [10, arm_length - 10])
+        for (y = [arm_width/3, arm_width*2/3])
+            translate([x, y, -eps])
+                cylinder(h=thickness + eps*2, d=hole_d);
+    // Vertical mounting holes
+    for (y = [arm_width/3, arm_width*2/3])
+        translate([-eps, y, arm_length - 10])
+            rotate([0, 90, 0])
+                cylinder(h=thickness + eps*2, d=hole_d);
+}
+
 NOW: Convert the provided GST to clean, printable OpenSCAD code.
 `;
 

@@ -1,6 +1,6 @@
 # PolyGen AI
 
-**v3.8.1** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md) | [Deployment Guide](DEPLOYMENT.md)
+**v3.9.0** | [Changelog](CHANGELOG.md) | [Roadmap](ROADMAP.md) | [Deployment Guide](DEPLOYMENT.md)
 
 A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natural language descriptions into printable OpenSCAD code using Google Gemini (Planner) and Anthropic Claude (Coder).
 
@@ -8,7 +8,27 @@ A text-to-3D model generator powered by a multi-agent AI pipeline. Converts natu
 
 ## Live Demo
 
-🚀 Live at [polygen.ceradonsystems.com](https://polygen.ceradonsystems.com/)
+🚀 Live at [polygen.ceradonsystems.com](https://polygen.ceradonsystems.com/) — try 2 free generations without signing up!
+
+## Quick Start (Local Dev)
+
+```bash
+# 1. Clone and install
+git clone https://github.com/nbschultz97/polygen-ai.git
+cd polygen-ai && pnpm install
+
+# 2. Configure API keys (minimum: Gemini + Anthropic)
+cp .env.example .env.local
+# Edit .env.local — set GEMINI_API_KEY and ANTHROPIC_API_KEY
+
+# 3. Start dev server
+pnpm dev
+
+# 4. Open http://localhost:5173 — use "Try Demo" for anonymous mode
+# (Supabase/Stripe are optional — auth features gracefully degrade)
+```
+
+> **No API keys?** The app loads but generation requires at least Gemini + Anthropic keys. See `.env.example` for details.
 
 ## Features
 

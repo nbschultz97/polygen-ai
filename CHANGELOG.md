@@ -5,6 +5,36 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0] - 2026-02-13
+
+### Added
+
+- **Anonymous Demo Mode** - Try 2 free generations without signing up. Uses localStorage to track demo usage with a limit modal prompting signup after exhaustion.
+- **DemoApp Component** - Simplified app experience for anonymous users with template prompts, 3-panel layout, and demo API endpoint.
+- **Demo API Endpoint** (`api/demo-generate.ts`) - Rate-limited proxy for anonymous Gemini/Claude requests (no auth required, stricter limits).
+- **Demo Service** (`services/demoService.ts`) - localStorage-based demo usage tracking with canDemoGenerate/recordDemoGeneration API.
+- **Landing Page Improvements** - New compelling hero copy ("Describe it. Print it. AI does the CAD."), fixed misleading "No account required" CTA, clear "Try Demo" vs "Sign In" buttons.
+- **Quick Start in README** - 4-step local dev setup guide.
+- **3 New Few-Shot Examples** - Added desk shelf/riser, electronics enclosure, and L-bracket examples to Coder prompt for better generation of furniture, enclosures, and mechanical parts.
+
+### Changed
+
+- Landing page header buttons now differentiate "Sign In" vs "Try Demo" (previously two identical "Get Started" buttons)
+- Bottom CTA now shows "Try Demo Free" + "Create Account" with accurate copy about demo limits
+- `.env.example` rewritten with clearer comments, quick start instructions, and notes about optional services
+
+### Fixed
+
+- Misleading "No account required. Try it now." CTA copy — now accurately states "2 free generations without an account"
+- Duplicate "Get Started" buttons in header and mobile menu
+
+### Technical
+
+- AppRouter supports `/demo` route with lazy-loaded DemoApp
+- Version bumped to 3.9.0 in package.json, README.md, geminiService.ts
+
+---
+
 ## [3.8.1] - 2026-02-13
 
 ### Added
