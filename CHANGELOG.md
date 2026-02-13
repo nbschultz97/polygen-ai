@@ -5,6 +5,21 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.1] - 2026-02-13
+
+### Added
+
+- **openscadPitfalls test suite** - 19 tests covering database integrity, findRelevantPitfalls, getPitfallsByCategory, getPitfallById, formatPitfallGuidance (100% coverage)
+- **refactoringAgent test suite** - 27 tests covering extractModules, extractFunctions, checkCompatibility, stripTopLevelGeometry, parseModuleSignature, validateAsLibrary
+
+### Technical
+
+- Test count: 256 → 302 (+46 tests)
+- openscadPitfalls.ts now at 100% statement/branch/function/line coverage
+- refactoringAgent.ts coverage improved from 0% → 77%
+
+---
+
 ## [3.8.0] - 2026-02-09
 
 ### Added

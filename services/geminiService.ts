@@ -12,7 +12,7 @@ const loadValidator = () => import('./scadValidation').then((m) => m.validateSca
 
 // App Version - SINGLE SOURCE OF TRUTH
 // Update this when making changes - all components import from here
-export const APP_VERSION = '3.8.0';
+export const APP_VERSION = '3.8.1';
 export const APP_BUILD_DATE = '2026-02-09';
 
 // Configuration

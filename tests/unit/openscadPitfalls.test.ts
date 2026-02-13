@@ -41,14 +41,18 @@ describe('OpenSCAD Pitfalls Database', () => {
 
   describe('findRelevantPitfalls', () => {
     it('should find pitfalls by error category', () => {
-      const errors = [{ category: 'empty_geometry' as ErrorCategory, rawMessage: 'SCENE IS EMPTY' }];
+      const errors = [
+        { category: 'empty_geometry' as ErrorCategory, rawMessage: 'SCENE IS EMPTY' },
+      ];
       const results = findRelevantPitfalls(errors);
       expect(results.length).toBeGreaterThan(0);
       expect(results.some((p) => p.id === 'difference-penetration')).toBe(true);
     });
 
     it('should find pitfalls by keyword match', () => {
-      const errors = [{ category: 'unknown' as ErrorCategory, rawMessage: 'missing semicolon in code' }];
+      const errors = [
+        { category: 'unknown' as ErrorCategory, rawMessage: 'missing semicolon in code' },
+      ];
       const results = findRelevantPitfalls(errors);
       expect(results.some((p) => p.id === 'syntax-semicolon')).toBe(true);
     });
@@ -58,17 +62,28 @@ describe('OpenSCAD Pitfalls Database', () => {
       const errors = [
         { category: 'syntax' as ErrorCategory, rawMessage: 'parser error semicolon brace' },
         { category: 'undefined_var' as ErrorCategory, rawMessage: 'unknown variable scope module' },
-        { category: 'manifold' as ErrorCategory, rawMessage: 'non-manifold hull overlap thin wall' },
-        { category: 'empty_geometry' as ErrorCategory, rawMessage: 'scene is empty difference hole' },
+        {
+          category: 'manifold' as ErrorCategory,
+          rawMessage: 'non-manifold hull overlap thin wall',
+        },
+        {
+          category: 'empty_geometry' as ErrorCategory,
+          rawMessage: 'scene is empty difference hole',
+        },
         { category: 'recursion' as ErrorCategory, rawMessage: 'recursion stack overflow' },
-        { category: 'csg_operation' as ErrorCategory, rawMessage: 'rotate_extrude transform order' },
+        {
+          category: 'csg_operation' as ErrorCategory,
+          rawMessage: 'rotate_extrude transform order',
+        },
       ];
       const results = findRelevantPitfalls(errors);
       expect(results.length).toBeLessThanOrEqual(5);
     });
 
     it('should return empty for unmatched errors', () => {
-      const errors = [{ category: 'file_io' as ErrorCategory, rawMessage: 'completely unrelated xyz123' }];
+      const errors = [
+        { category: 'file_io' as ErrorCategory, rawMessage: 'completely unrelated xyz123' },
+      ];
       const results = findRelevantPitfalls(errors);
       // file_io has no pitfalls in the DB, but keyword matching might pick something up
       // Just verify it doesn't crash
@@ -77,7 +92,10 @@ describe('OpenSCAD Pitfalls Database', () => {
 
     it('should deduplicate pitfalls matched by both category and keyword', () => {
       const errors = [
-        { category: 'empty_geometry' as ErrorCategory, rawMessage: 'scene is empty difference geometry' },
+        {
+          category: 'empty_geometry' as ErrorCategory,
+          rawMessage: 'scene is empty difference geometry',
+        },
       ];
       const results = findRelevantPitfalls(errors);
       const ids = results.map((p) => p.id);

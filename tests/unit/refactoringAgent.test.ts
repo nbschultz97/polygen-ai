@@ -194,7 +194,9 @@ cube([wall_thickness, wall_thickness, height]);
     });
 
     it('detects boolean parameter type', () => {
-      const result = parseModuleSignature('module box(centered=true) { cube(10, center=centered); }');
+      const result = parseModuleSignature(
+        'module box(centered=true) { cube(10, center=centered); }'
+      );
       expect(result!.parameters[0].type).toBe('boolean');
       expect(result!.parameters[0].defaultValue).toBe('true');
     });
