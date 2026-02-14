@@ -17,6 +17,7 @@ import {
   FileJson,
   HelpCircle,
   ImagePlus,
+  Keyboard,
   Loader2,
   LogOut,
   MessageCircle,
@@ -47,7 +48,9 @@ import type { GeneratedAsset, Message, STLFileData, WorkflowStep } from '../type
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
 import DesignTemplates from './DesignTemplates';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import ErrorBoundary from './ErrorBoundary';
+import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
 import SettingsPanel from './SettingsPanel';
 import SmartQuickFixes from './SmartQuickFixes';
 import StlImportModal from './StlImportModal';
@@ -616,6 +619,36 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
     currentAsset?.history &&
     (currentAsset.currentHistoryIndex ?? 0) < currentAsset.history.length - 1;
 
+  // Keyboard shortcuts help overlay
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+
+  // Cancel generation
+  const handleCancelGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setWorkflowStep('idle');
+      setMessages((prev) => [...prev, { role: 'model', text: 'Generation cancelled.' }]);
+    }
+    // Also close any open modals
+    setShowSettings(false);
+    setShowStlImport(false);
+    setShowShortcutsHelp(false);
+  }, []);
+
+  // Global keyboard shortcuts
+  useKeyboardShortcuts({
+    onSend: handleSend,
+    onExport: handleExport,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    onCancel: handleCancelGeneration,
+    onToggleHelp: () => setShowShortcutsHelp((prev) => !prev),
+    isGenerating: workflowStep !== 'idle',
+    canExport: !!currentAsset?.scadCode,
+    canUndo: !!canUndo,
+    canRedo: !!canRedo,
+  });
+
   // Code editor: bidirectional sync
   const handleCodeEditorChange = useCallback(
     (newCode: string) => {
@@ -761,6 +794,15 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
             )}
 
             <button
+              onClick={() => setShowShortcutsHelp(true)}
+              className="p-2 hover:bg-white/[0.06] rounded-lg transition-colors"
+              title="Keyboard shortcuts (Ctrl+/)"
+              aria-label="Keyboard shortcuts"
+            >
+              <Keyboard className="w-4 h-4 text-gray-400 hover:text-white" />
+            </button>
+
+            <button
               onClick={() => setShowSettings(true)}
               className="p-2 hover:bg-white/[0.06] rounded-lg transition-colors"
               title="Settings"
@@ -783,7 +825,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
         {/* Settings Panel */}
         <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
-        <main className="flex-1 flex overflow-hidden relative">
+        <main className="flex-1 flex overflow-hidden relative" aria-label="Design workspace">
           {/* Mobile Tab Switcher (Floating) */}
           <div className="md:hidden absolute top-4 left-1/2 -translate-x-1/2 z-20 flex bg-slate-900/90 backdrop-blur border border-white/10 rounded-full p-1 shadow-xl">
             <button
@@ -1021,6 +1063,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                       ? 'Describe what to change...'
                       : 'Describe what you want to create...'
                   }
+                  aria-label="Design prompt"
                   className="w-full bg-white/[0.03] text-white text-sm rounded-xl border border-white/[0.08] focus:border-violet-500/50 p-3 pr-20 min-h-[72px] max-h-[140px] resize-none placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-500/30"
                   rows={2}
                 />
@@ -1283,6 +1326,10 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
         onUpgrade={onShowPricing}
         remaining={usageInfo.remaining}
         limit={usageInfo.limit}
+      />
+      <KeyboardShortcutsHelp
+        isOpen={showShortcutsHelp}
+        onClose={() => setShowShortcutsHelp(false)}
       />
     </ErrorBoundary>
   );

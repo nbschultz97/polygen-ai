@@ -5,6 +5,17 @@ All notable changes to PolyGen AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.1] - 2026-02-14
+
+### Added
+
+- **Keyboard Shortcuts** — Global keyboard shortcuts for common actions: Ctrl+Enter (generate), Ctrl+E (export), Ctrl+Z/Y (undo/redo), Escape (cancel), Ctrl+/ (help overlay). New `useKeyboardShortcuts` hook and `KeyboardShortcutsHelp` overlay component.
+- **Keyboard Shortcuts Help** — Press Ctrl+/ or click the keyboard icon in the header to see all available shortcuts. Adapts to Mac (⌘) vs Windows (Ctrl).
+- **Cancel Generation** — Escape key now cancels in-progress generation and closes open modals.
+- **SECURITY.md** — Security policy with vulnerability reporting guidelines, supported versions, and security architecture overview.
+- **Accessibility** — Added `aria-label` attributes to design prompt textarea, main workspace region, keyboard shortcuts button, and help overlay dialog.
+- **Unit Tests** — Added keyboard shortcut key mapping and text input detection tests.
+
 ## [3.9.0] - 2026-02-13
 
 ### Added
