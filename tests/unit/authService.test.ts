@@ -5,13 +5,16 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import {
+  signUp,
   signIn,
+  signInWithGoogle,
   signOut,
   getSession,
   getCurrentUser,
   getUserProfile,
   canGenerate,
   incrementGenerationCount,
+  updateUserTier,
   onAuthStateChange,
   TIER_LIMITS,
 } from '../../services/authService';
@@ -69,6 +72,21 @@ describe('Auth Service', () => {
 
     it('incrementGenerationCount handles error gracefully', async () => {
       await expect(incrementGenerationCount('any-id')).resolves.not.toThrow();
+    });
+
+    it('signUp returns error when not configured', async () => {
+      const { user, error } = await signUp('test@test.com', 'password123');
+      expect(user).toBeNull();
+      expect(error?.message).toBe('Auth not configured');
+    });
+
+    it('signInWithGoogle returns error when not configured', async () => {
+      const { error } = await signInWithGoogle();
+      expect(error?.message).toBe('Auth not configured');
+    });
+
+    it('updateUserTier does not throw', async () => {
+      await expect(updateUserTier('any-id', 'pro', 'cus_123', 'sub_456')).resolves.not.toThrow();
     });
 
     it('onAuthStateChange returns unsubscribe function', () => {

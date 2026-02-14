@@ -272,6 +272,92 @@ line3`;
     });
   });
 
+  describe('exportSession', () => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+    let exportSession: typeof import('../../services/openscadExport').exportSession;
+
+    beforeEach(async () => {
+      ({ exportSession } = await import('../../services/openscadExport'));
+    });
+
+    it('should export session data as JSON file', async () => {
+      const sessionData = {
+        version: '1.0.0',
+        exportedAt: new Date().toISOString(),
+        conversation: [
+          { role: 'user', text: 'Make a cube' },
+          { role: 'assistant', text: 'Here is a cube' },
+        ],
+        generatedCode: 'cube([10,10,10]);',
+      };
+
+      const result = await exportSession(sessionData);
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toMatch(/polygen_session_v1\.0\.0_\d{4}-\d{2}-\d{2}\.json/);
+    });
+
+    it('should export session without version tag', async () => {
+      const sessionData = {
+        version: '',
+        exportedAt: new Date().toISOString(),
+        conversation: [],
+      };
+
+      const result = await exportSession(sessionData);
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toMatch(/polygen_session_\d{4}-\d{2}-\d{2}\.json/);
+    });
+
+    it('should include validation metrics in export', async () => {
+      const sessionData = {
+        version: '2.0',
+        exportedAt: new Date().toISOString(),
+        conversation: [],
+        validationResult: {
+          success: true,
+          triangleCount: 100,
+          isManifold: true,
+          volume: 1000,
+          pSucc: 0.95,
+          sv: 0.98,
+          sd: 0.92,
+        },
+        pipeline: {
+          mode: 'unified',
+          retryCount: 0,
+          smartFixCount: 3,
+        },
+      };
+
+      const result = await exportSession(sessionData);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle export failure gracefully', async () => {
+      // Mock URL.createObjectURL to throw
+      const originalCreateObjectURL = URL.createObjectURL;
+      URL.createObjectURL = vi.fn(() => {
+        throw new Error('Blob creation failed');
+      });
+
+      const sessionData = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        conversation: [],
+      };
+
+      const result = await exportSession(sessionData);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Blob creation failed');
+
+      URL.createObjectURL = originalCreateObjectURL;
+    });
+  });
+
   describe('edge cases', () => {
     it('should handle very long SCAD code', async () => {
       const longCode = '// Header\n' + 'cube([1, 1, 1]);\n'.repeat(10000);

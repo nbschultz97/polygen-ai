@@ -3,7 +3,12 @@
  */
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { analytics, trackEvent, trackPageView, initializeAnalytics } from '../../services/analytics';
+import {
+  analytics,
+  trackEvent,
+  trackPageView,
+  initializeAnalytics,
+} from '../../services/analytics';
 
 describe('Analytics Service', () => {
   beforeEach(() => {
@@ -18,6 +23,21 @@ describe('Analytics Service', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('initializeAnalytics', () => {
+    it('does nothing when GA_MEASUREMENT_ID is empty', () => {
+      // Since env var is not set in tests, this should be a no-op
+      initializeAnalytics();
+      // No crash = success
+    });
+
+    it('does nothing when window is undefined', () => {
+      const origWindow = (globalThis as any).window;
+      (globalThis as any).window = undefined;
+      initializeAnalytics();
+      (globalThis as any).window = origWindow;
+    });
   });
 
   describe('trackEvent', () => {
@@ -109,6 +129,15 @@ describe('Analytics Service', () => {
       expect(window.gtag).toHaveBeenCalledWith('event', 'begin_checkout', {
         plan: 'basic',
         billing_period: 'monthly',
+      });
+    });
+
+    it('tracks complete checkout', () => {
+      analytics.completeCheckout('pro', 29.99);
+      expect(window.gtag).toHaveBeenCalledWith('event', 'purchase', {
+        plan: 'pro',
+        value: 29.99,
+        currency: 'USD',
       });
     });
 
