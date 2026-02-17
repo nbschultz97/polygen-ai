@@ -258,6 +258,16 @@ export async function incrementGenerationCount(userId: string): Promise<void> {
   if (error) {
     console.error('Failed to increment generation count:', error);
   }
+
+  // Best-effort insert into generation_history for analytics dashboard
+  try {
+    await supabase.from('generation_history').insert({
+      user_id: userId,
+      created_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('Failed to record generation history:', e);
+  }
 }
 
 /**

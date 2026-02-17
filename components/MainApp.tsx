@@ -304,7 +304,9 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
             ? `[Image attached] ${sanitizedInput}`
             : sanitizedInput,
       };
-      setMessages((prev) => [...prev, userMsg]);
+      if (sanitizedInput !== 'APPROVE_SPEC') {
+        setMessages((prev) => [...prev, userMsg]);
+      }
       setInput('');
       const imageToSend = attachedImage;
       const stlToSend = attachedSTL;
@@ -975,11 +977,11 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
                               <button
                                 key={j}
                                 onClick={() =>
-                                  setInput((prev) =>
-                                    prev
-                                      ? `${prev}\n${i + 1}. ${suggestion}`
-                                      : `${i + 1}. ${suggestion}`
-                                  )
+                                  setInput((prev) => {
+                                    const entry = `${i + 1}. ${suggestion}`;
+                                    if (prev.includes(entry)) return prev;
+                                    return prev ? `${prev}\n${entry}` : entry;
+                                  })
                                 }
                                 className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[10px] rounded-md transition-colors border border-amber-500/30"
                               >

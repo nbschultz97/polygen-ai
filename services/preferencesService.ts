@@ -45,7 +45,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   },
   defaultMaterial: 'PLA',
   enableWebSearch: true,
-  autoRender3D: false,
+  autoRender3D: true,
   enableTeachingMode: true,  // On by default to help users learn
   recentDesigns: [],
 };
