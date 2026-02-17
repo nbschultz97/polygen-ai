@@ -40,10 +40,10 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || '';
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
-  if (!geminiKey || !anthropicKey) {
+  if (!anthropicKey) {
     return new Response(JSON.stringify({ error: 'API not configured' }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' },
@@ -63,8 +63,14 @@ export default async function handler(req: Request): Promise<Response> {
 
     // For demo, we proxy to the appropriate AI endpoint based on pipeline step
     if (pipeline === 'planner') {
-      // Proxy to Gemini for planning
-      return await proxyGemini(geminiKey, prompt, body.systemInstruction);
+      // Use Claude for planning (Gemini free tier is unreliable)
+      // Fall back to Gemini only if DEMO_USE_GEMINI_PLANNER is set
+      if (process.env.DEMO_USE_GEMINI_PLANNER === 'true' && geminiKey) {
+        return await proxyGemini(geminiKey, prompt, body.systemInstruction);
+      }
+      return await proxyClaude(anthropicKey, body.systemInstruction || '', [
+        { role: 'user', content: prompt },
+      ], true);
     } else if (pipeline === 'coder') {
       // Proxy to Claude for code generation
       return await proxyClaude(anthropicKey, body.system, body.messages);
@@ -126,8 +132,10 @@ async function proxyGemini(
   });
 }
 
-async function proxyClaude(apiKey: string, system: string, messages: any[]): Promise<Response> {
-  const model = process.env.CODER_MODEL || 'claude-sonnet-4-20250514';
+async function proxyClaude(apiKey: string, system: string, messages: any[], useLight?: boolean): Promise<Response> {
+  const model = useLight
+    ? (process.env.PLANNER_MODEL || 'claude-haiku-4-20250514')
+    : (process.env.CODER_MODEL || 'claude-sonnet-4-20250514');
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
