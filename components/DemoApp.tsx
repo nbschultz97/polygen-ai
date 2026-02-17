@@ -96,8 +96,11 @@ const DemoApp: React.FC<DemoAppProps> = ({ onShowPricing, onShowLanding, onSignU
         }
 
         const planData = await planResponse.json();
+        // Handle both Claude format (content[0].text) and Gemini format (candidates[0].content.parts[0].text)
         const planText =
-          planData?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(planData);
+          planData?.content?.[0]?.text ||
+          planData?.candidates?.[0]?.content?.parts?.[0]?.text ||
+          JSON.stringify(planData);
 
         // Step 2: Generate code with Claude
         setMessages((prev) => {
