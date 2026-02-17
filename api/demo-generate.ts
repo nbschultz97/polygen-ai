@@ -88,7 +88,7 @@ async function proxyGemini(
   prompt: string,
   systemInstruction?: string
 ): Promise<Response> {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview';
+  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const requestBody: any = {
