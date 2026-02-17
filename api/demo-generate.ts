@@ -110,6 +110,16 @@ async function proxyGemini(
   });
 
   const data = await response.json();
+
+  // Normalize error responses so frontend always gets { error: "string" }
+  if (!response.ok) {
+    const errorMsg = data?.error?.message || (typeof data?.error === 'string' ? data.error : 'Gemini API error');
+    return new Response(JSON.stringify({ error: errorMsg }), {
+      status: response.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   return new Response(JSON.stringify(data), {
     status: response.status,
     headers: { 'Content-Type': 'application/json' },
@@ -135,6 +145,16 @@ async function proxyClaude(apiKey: string, system: string, messages: any[]): Pro
   });
 
   const data = await response.json();
+
+  // Normalize error responses so frontend always gets { error: "string" }
+  if (!response.ok) {
+    const errorMsg = data?.error?.message || (typeof data?.error === 'string' ? data.error : 'Claude API error');
+    return new Response(JSON.stringify({ error: errorMsg }), {
+      status: response.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   return new Response(JSON.stringify(data), {
     status: response.status,
     headers: { 'Content-Type': 'application/json' },

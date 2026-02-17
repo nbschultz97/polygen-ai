@@ -498,7 +498,7 @@ const MainApp: React.FC<MainAppProps> = ({ onShowPricing, onShowLanding, onShowD
         setWorkflowStep('idle');
         setMessages((prev) => [
           ...prev,
-          { role: 'model', text: `Error: ${e.message || 'Something went wrong'}`, isError: true },
+          { role: 'model', text: `Error: ${typeof e?.message === 'string' ? e.message : (typeof e === 'string' ? e : 'Something went wrong')}`, isError: true },
         ]);
       }
     },

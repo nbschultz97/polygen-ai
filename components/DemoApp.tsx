@@ -91,7 +91,8 @@ const DemoApp: React.FC<DemoAppProps> = ({ onShowPricing, onShowLanding, onSignU
 
         if (!planResponse.ok) {
           const err = await planResponse.json().catch(() => ({ error: 'Planning failed' }));
-          throw new Error(err.error || 'Planning failed');
+          const errMsg = typeof err.error === 'string' ? err.error : err.error?.message || 'Planning failed';
+          throw new Error(errMsg);
         }
 
         const planData = await planResponse.json();
@@ -131,7 +132,8 @@ Rules:
 
         if (!codeResponse.ok) {
           const err = await codeResponse.json().catch(() => ({ error: 'Code generation failed' }));
-          throw new Error(err.error || 'Code generation failed');
+          const codeErrMsg = typeof err.error === 'string' ? err.error : err.error?.message || 'Code generation failed';
+          throw new Error(codeErrMsg);
         }
 
         const codeData = await codeResponse.json();
@@ -167,7 +169,7 @@ Rules:
           if (updated.length > 0 && updated[updated.length - 1].role === 'model') {
             updated[updated.length - 1] = {
               role: 'model',
-              text: `❌ ${e.message || 'Generation failed'}`,
+              text: `❌ ${typeof e?.message === 'string' ? e.message : (typeof e === 'string' ? e : 'Generation failed')}`,
               isError: true,
             };
           }

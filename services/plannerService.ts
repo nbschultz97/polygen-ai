@@ -634,7 +634,8 @@ ${input.userPrompt}`;
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || `API error: ${response.status}`);
+      const errMsg = typeof errorData.error === 'string' ? errorData.error : errorData.error?.message || `API error: ${response.status}`;
+      throw new Error(errMsg);
     }
 
     const data = await response.json();
