@@ -5,7 +5,7 @@
  * SECURITY: All requests require authentication
  */
 
-import { GeometricStructureTree } from '../types';
+import type { GeometricStructureTree } from '../types';
 import { getAuthToken } from './apiClient';
 
 /**
@@ -23,9 +23,9 @@ function gstToImagePrompt(gst: GeometricStructureTree): string {
   // Extract key parameters for context
   if (gst.globalParameters && gst.globalParameters.length > 0) {
     const dims = gst.globalParameters
-      .filter(p => p.unit === 'mm')
+      .filter((p) => p.unit === 'mm')
       .slice(0, 3)
-      .map(p => `${p.name}: ${p.value}mm`)
+      .map((p) => `${p.name}: ${p.value}mm`)
       .join(', ');
     if (dims) {
       parts.push(`Approximate dimensions: ${dims}`);
@@ -39,7 +39,9 @@ function gstToImagePrompt(gst: GeometricStructureTree): string {
   }
 
   // Style guidance for 3D print visualization
-  parts.push('Style: Clean CAD render, white/gray plastic material, soft studio lighting, product photography style, showing the object from a 3/4 angle');
+  parts.push(
+    'Style: Clean CAD render, white/gray plastic material, soft studio lighting, product photography style, showing the object from a 3/4 angle'
+  );
 
   return parts.join('. ');
 }
@@ -95,14 +97,14 @@ export async function generatePreviewImage(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         prompt: prompt,
         numberOfImages: 1,
-        aspectRatio: '1:1'
+        aspectRatio: '1:1',
       }),
-      signal: abortSignal
+      signal: abortSignal,
     });
 
     if (abortSignal?.aborted) {
@@ -122,7 +124,6 @@ export async function generatePreviewImage(
 
     console.log('No image generated');
     return null;
-
   } catch (error) {
     console.error('Image generation error:', error);
     // Don't throw - image preview is optional
@@ -141,7 +142,7 @@ export function isImageGenAvailable(): boolean {
 export const previewImageService = {
   generatePreviewImage,
   isImageGenAvailable,
-  gstToImagePrompt
+  gstToImagePrompt,
 };
 
 export default previewImageService;

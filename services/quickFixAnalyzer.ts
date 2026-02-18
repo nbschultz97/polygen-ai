@@ -3,21 +3,19 @@
  * Analyzes GST and validation results to generate context-aware fix suggestions
  */
 
-import {
+import type {
   GeometricStructureTree,
   GSTComponent,
   ValidationResult,
   SmartQuickFix,
-  QuickFixCategory
 } from '../types';
-
 /**
  * Analyze GST and validation to generate relevant quick fixes
  */
 export function analyzeForQuickFixes(
   gst: GeometricStructureTree,
   validation: ValidationResult,
-  scadCode: string
+  _scadCode: string
 ): SmartQuickFix[] {
   const fixes: SmartQuickFix[] = [];
 
@@ -64,7 +62,7 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Reduce hole clearance for press fit',
       prompt: 'Make all holes and pockets have a tighter fit by reducing clearance by 0.1mm',
       category: 'tolerance',
-      relevance: 0.9
+      relevance: 0.9,
     });
     fixes.push({
       id: 'looser-fit',
@@ -72,7 +70,7 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Increase hole clearance for easier assembly',
       prompt: 'Make all holes and pockets have a looser fit by increasing clearance by 0.2mm',
       category: 'tolerance',
-      relevance: 0.85
+      relevance: 0.85,
     });
   }
 
@@ -83,7 +81,7 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Increase tooth count for finer resolution',
       prompt: 'Increase the number of gear teeth by 25% while keeping the overall diameter similar',
       category: 'dimension',
-      relevance: 0.7
+      relevance: 0.7,
     });
     fixes.push({
       id: 'thicker-gear',
@@ -91,7 +89,7 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Increase gear thickness for more strength',
       prompt: 'Make the gear 50% thicker for increased strength',
       category: 'structure',
-      relevance: 0.65
+      relevance: 0.65,
     });
   }
 
@@ -102,7 +100,7 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Use finer thread pitch for better hold',
       prompt: 'Use a finer thread pitch (reduce pitch value by 25%)',
       category: 'dimension',
-      relevance: 0.7
+      relevance: 0.7,
     });
     fixes.push({
       id: 'coarser-pitch',
@@ -110,7 +108,7 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Use coarser pitch for easier printing',
       prompt: 'Use a coarser thread pitch (increase pitch value by 50%) for better printability',
       category: 'print',
-      relevance: 0.65
+      relevance: 0.65,
     });
   }
 
@@ -121,7 +119,7 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Increase corner rounding for smoother feel',
       prompt: 'Increase the corner rounding radius by 50%',
       category: 'dimension',
-      relevance: 0.5
+      relevance: 0.5,
     });
   }
 
@@ -131,24 +129,30 @@ function analyzeComponents(gst: GeometricStructureTree): SmartQuickFix[] {
 /**
  * Analyze validation results for fix suggestions
  */
-function analyzeValidation(validation: ValidationResult, gst: GeometricStructureTree): SmartQuickFix[] {
+function analyzeValidation(
+  validation: ValidationResult,
+  _gst: GeometricStructureTree
+): SmartQuickFix[] {
   const fixes: SmartQuickFix[] = [];
 
   // Non-manifold geometry - enhanced with specific issues
   if (!validation.isManifold) {
     // Check for specific manifold issues from the extended validation
-    const hasBoundaryEdges = validation.warnings?.some(w => w.includes('boundary edge'));
-    const hasNonManifoldEdges = validation.warnings?.some(w => w.includes('non-manifold edge'));
-    const hasDegenerateTriangles = validation.warnings?.some(w => w.includes('degenerate triangle'));
+    const hasBoundaryEdges = validation.warnings?.some((w) => w.includes('boundary edge'));
+    const hasNonManifoldEdges = validation.warnings?.some((w) => w.includes('non-manifold edge'));
+    const hasDegenerateTriangles = validation.warnings?.some((w) =>
+      w.includes('degenerate triangle')
+    );
 
     if (hasBoundaryEdges) {
       fixes.push({
         id: 'fix-boundary-edges',
         label: 'Close holes',
         description: 'Mesh has open edges (not watertight)',
-        prompt: 'Fix the open edges by ensuring all boolean operations (difference, union) use epsilon overlap. Add eps = 0.01 and extend all cutting geometry by eps*2 past the surfaces being cut.',
+        prompt:
+          'Fix the open edges by ensuring all boolean operations (difference, union) use epsilon overlap. Add eps = 0.01 and extend all cutting geometry by eps*2 past the surfaces being cut.',
         category: 'geometry',
-        relevance: 1.0
+        relevance: 1.0,
       });
     }
 
@@ -157,9 +161,10 @@ function analyzeValidation(validation: ValidationResult, gst: GeometricStructure
         id: 'fix-nonmanifold-edges',
         label: 'Fix overlapping faces',
         description: 'Multiple faces share the same edge',
-        prompt: 'Fix the non-manifold geometry by separating overlapping faces. Check for coincident surfaces and add small offsets (eps = 0.01) between touching geometry.',
+        prompt:
+          'Fix the non-manifold geometry by separating overlapping faces. Check for coincident surfaces and add small offsets (eps = 0.01) between touching geometry.',
         category: 'geometry',
-        relevance: 1.0
+        relevance: 1.0,
       });
     }
 
@@ -168,9 +173,10 @@ function analyzeValidation(validation: ValidationResult, gst: GeometricStructure
         id: 'fix-degenerate-triangles',
         label: 'Fix thin geometry',
         description: 'Model has zero-area triangles',
-        prompt: 'Fix degenerate triangles by ensuring all geometry has minimum thickness of 0.5mm. Remove any infinitely thin walls or zero-volume elements.',
+        prompt:
+          'Fix degenerate triangles by ensuring all geometry has minimum thickness of 0.5mm. Remove any infinitely thin walls or zero-volume elements.',
         category: 'geometry',
-        relevance: 0.95
+        relevance: 0.95,
       });
     }
 
@@ -180,9 +186,10 @@ function analyzeValidation(validation: ValidationResult, gst: GeometricStructure
         id: 'fix-manifold',
         label: 'Fix geometry',
         description: 'Repair non-manifold (non-watertight) geometry',
-        prompt: 'Fix the non-manifold geometry by ensuring all boolean operations fully penetrate and there are no floating or disconnected pieces',
+        prompt:
+          'Fix the non-manifold geometry by ensuring all boolean operations fully penetrate and there are no floating or disconnected pieces',
         category: 'geometry',
-        relevance: 1.0
+        relevance: 1.0,
       });
     }
   }
@@ -195,13 +202,13 @@ function analyzeValidation(validation: ValidationResult, gst: GeometricStructure
       description: `Output deviated ${validation.gstDeviationPercent?.toFixed(0)}% from intended size`,
       prompt: 'Scale the model to match the originally intended dimensions from the specification',
       category: 'dimension',
-      relevance: 0.95
+      relevance: 0.95,
     });
   }
 
   // Check for thin wall warnings
-  const thinWallWarning = validation.warnings.find(w =>
-    w.toLowerCase().includes('thin') || w.toLowerCase().includes('wall')
+  const thinWallWarning = validation.warnings.find(
+    (w) => w.toLowerCase().includes('thin') || w.toLowerCase().includes('wall')
   );
   if (thinWallWarning) {
     fixes.push({
@@ -210,7 +217,7 @@ function analyzeValidation(validation: ValidationResult, gst: GeometricStructure
       description: 'Increase wall thickness for printability',
       prompt: 'Increase all wall thicknesses to at least 1.5mm for better print quality',
       category: 'print',
-      relevance: 0.9
+      relevance: 0.9,
     });
   }
 
@@ -219,7 +226,7 @@ function analyzeValidation(validation: ValidationResult, gst: GeometricStructure
     const size = [
       validation.boundingBox.max[0] - validation.boundingBox.min[0],
       validation.boundingBox.max[1] - validation.boundingBox.min[1],
-      validation.boundingBox.max[2] - validation.boundingBox.min[2]
+      validation.boundingBox.max[2] - validation.boundingBox.min[2],
     ];
     const maxDim = Math.max(...size);
 
@@ -230,7 +237,7 @@ function analyzeValidation(validation: ValidationResult, gst: GeometricStructure
         description: `Model is ${maxDim.toFixed(0)}mm - may not fit on print bed`,
         prompt: 'Scale the model down to fit within a 200mm x 200mm x 200mm build volume',
         category: 'print',
-        relevance: 0.85
+        relevance: 0.85,
       });
     }
 
@@ -241,7 +248,7 @@ function analyzeValidation(validation: ValidationResult, gst: GeometricStructure
         description: 'Model may be too small for practical use',
         prompt: 'Scale the model up by 2x to make it more practical',
         category: 'dimension',
-        relevance: 0.6
+        relevance: 0.6,
       });
     }
   }
@@ -257,14 +264,14 @@ function analyzeParameters(gst: GeometricStructureTree): SmartQuickFix[] {
   const params = gst.globalParameters || [];
 
   // Look for common parameters
-  const hasWallThickness = params.some(p =>
-    p.name.includes('wall') && p.name.includes('thickness')
+  const hasWallThickness = params.some(
+    (p) => p.name.includes('wall') && p.name.includes('thickness')
   );
-  const hasHoleDiameter = params.some(p =>
-    p.name.includes('hole') && p.name.includes('diameter')
+  const hasHoleDiameter = params.some(
+    (p) => p.name.includes('hole') && p.name.includes('diameter')
   );
-  const hasClearance = params.some(p =>
-    p.name.includes('clearance') || p.name.includes('tolerance')
+  const hasClearance = params.some(
+    (p) => p.name.includes('clearance') || p.name.includes('tolerance')
   );
 
   if (hasWallThickness) {
@@ -274,7 +281,7 @@ function analyzeParameters(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Make walls twice as thick for strength',
       prompt: 'Double all wall thickness values for increased structural strength',
       category: 'structure',
-      relevance: 0.6
+      relevance: 0.6,
     });
   }
 
@@ -285,7 +292,7 @@ function analyzeParameters(gst: GeometricStructureTree): SmartQuickFix[] {
       description: 'Add 0.2mm clearance to holes',
       prompt: 'Add 0.2mm clearance to all hole diameters for easier part insertion',
       category: 'tolerance',
-      relevance: 0.7
+      relevance: 0.7,
     });
   }
 
@@ -295,7 +302,10 @@ function analyzeParameters(gst: GeometricStructureTree): SmartQuickFix[] {
 /**
  * Analyze printability considerations
  */
-function analyzePrintability(gst: GeometricStructureTree, validation: ValidationResult): SmartQuickFix[] {
+function analyzePrintability(
+  gst: GeometricStructureTree,
+  _validation: ValidationResult
+): SmartQuickFix[] {
   const fixes: SmartQuickFix[] = [];
 
   // Print orientation suggestions
@@ -306,7 +316,7 @@ function analyzePrintability(gst: GeometricStructureTree, validation: Validation
       description: 'Reorient for flat printing (less supports)',
       prompt: 'Redesign the model to print flat on its largest face to minimize supports',
       category: 'print',
-      relevance: 0.55
+      relevance: 0.55,
     });
   }
 
@@ -317,7 +327,7 @@ function analyzePrintability(gst: GeometricStructureTree, validation: Validation
     description: 'Add chamfer to bottom edges for better bed adhesion',
     prompt: 'Add a 1mm chamfer to all edges that touch the print bed',
     category: 'print',
-    relevance: 0.4
+    relevance: 0.4,
   });
 
   return fixes;
@@ -328,7 +338,7 @@ function analyzePrintability(gst: GeometricStructureTree, validation: Validation
  */
 function deduplicateFixes(fixes: SmartQuickFix[]): SmartQuickFix[] {
   const seen = new Set<string>();
-  return fixes.filter(fix => {
+  return fixes.filter((fix) => {
     if (seen.has(fix.id)) {
       return false;
     }
@@ -348,7 +358,7 @@ export function getDefaultQuickFixes(): SmartQuickFix[] {
       description: 'Scale up by 25%',
       prompt: 'Scale the entire model up by 25%',
       category: 'dimension',
-      relevance: 0.5
+      relevance: 0.5,
     },
     {
       id: 'scale-down',
@@ -356,7 +366,7 @@ export function getDefaultQuickFixes(): SmartQuickFix[] {
       description: 'Scale down by 25%',
       prompt: 'Scale the entire model down by 25%',
       category: 'dimension',
-      relevance: 0.5
+      relevance: 0.5,
     },
     {
       id: 'thicker-walls',
@@ -364,7 +374,7 @@ export function getDefaultQuickFixes(): SmartQuickFix[] {
       description: 'Increase wall thickness',
       prompt: 'Increase all wall thicknesses by 50%',
       category: 'structure',
-      relevance: 0.5
+      relevance: 0.5,
     },
     {
       id: 'looser-fit',
@@ -372,7 +382,7 @@ export function getDefaultQuickFixes(): SmartQuickFix[] {
       description: 'Add clearance for easier assembly',
       prompt: 'Add 0.2mm clearance to all mating surfaces and holes',
       category: 'tolerance',
-      relevance: 0.5
+      relevance: 0.5,
     },
     {
       id: 'tighter-fit',
@@ -380,12 +390,12 @@ export function getDefaultQuickFixes(): SmartQuickFix[] {
       description: 'Reduce clearance for snug fit',
       prompt: 'Reduce clearance on mating surfaces by 0.1mm for a tighter fit',
       category: 'tolerance',
-      relevance: 0.5
-    }
+      relevance: 0.5,
+    },
   ];
 }
 
 export default {
   analyzeForQuickFixes,
-  getDefaultQuickFixes
+  getDefaultQuickFixes,
 };

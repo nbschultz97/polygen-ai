@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sparkles, ChevronRight, Loader2 } from 'lucide-react';
-import { SpecData } from '../types';
+import type { SpecData } from '../types';
 
 interface SpecReviewPanelProps {
   spec: SpecData;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
-import { ClarificationQuestion } from '../types';
+import type { ClarificationQuestion } from '../types';
 
 interface ClarificationsPanelProps {
   clarifications: ClarificationQuestion[];
@@ -13,7 +13,7 @@ const ClarificationsPanel: React.FC<ClarificationsPanelProps> = ({
   clarifications,
   input,
   setInput,
-  onSend
+  onSend,
 }) => {
   return (
     <div className="mx-3 mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
@@ -22,7 +22,9 @@ const ClarificationsPanel: React.FC<ClarificationsPanelProps> = ({
           <HelpCircle className="w-4 h-4" />
           <span className="text-xs font-medium">Clarification needed</span>
         </div>
-        <span className="text-[10px] text-amber-400/60">Click answers to add to input, then send</span>
+        <span className="text-[10px] text-amber-400/60">
+          Click answers to add to input, then send
+        </span>
       </div>
       <div className="space-y-3">
         {clarifications.map((clarification, i) => (
@@ -36,18 +38,20 @@ const ClarificationsPanel: React.FC<ClarificationsPanelProps> = ({
                 {clarification.suggestions.map((suggestion, j) => (
                   <button
                     key={j}
-                    onClick={() => setInput(prev => {
-                      const entry = `${i + 1}. ${suggestion}`;
-                      if (prev.includes(entry)) return prev;
-                      return prev ? `${prev}\n${entry}` : entry;
-                    })}
+                    onClick={() =>
+                      setInput((prev) => {
+                        const entry = `${i + 1}. ${suggestion}`;
+                        if (prev.includes(entry)) return prev;
+                        return prev ? `${prev}\n${entry}` : entry;
+                      })
+                    }
                     className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[10px] rounded-md transition-colors border border-amber-500/30 hover:border-amber-400/50"
                   >
                     {suggestion}
                   </button>
                 ))}
                 <button
-                  onClick={() => setInput(prev => prev ? `${prev}\n${i + 1}. ` : `${i + 1}. `)}
+                  onClick={() => setInput((prev) => (prev ? `${prev}\n${i + 1}. ` : `${i + 1}. `))}
                   className="px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 text-[10px] rounded-md transition-colors border border-white/[0.08]"
                 >
                   Custom...

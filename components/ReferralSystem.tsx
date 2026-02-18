@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Share2, Copy, Check, Gift, Users, ArrowRight, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Copy, Check, Gift, Users, Twitter, Linkedin, Mail } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { supabase } from '../services/authService';
 
@@ -21,15 +21,13 @@ interface ReferralSystemProps {
 }
 
 export default function ReferralSystem({ variant = 'card' }: ReferralSystemProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [copied, setCopied] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
-  const referralUrl = referralCode
-    ? `${window.location.origin}/?ref=${referralCode}`
-    : '';
+  const referralUrl = referralCode ? `${window.location.origin}/?ref=${referralCode}` : '';
 
   useEffect(() => {
     const loadReferralData = async () => {
@@ -106,7 +104,7 @@ export default function ReferralSystem({ variant = 'card' }: ReferralSystemProps
   };
 
   const totalBonus = referrals.reduce((sum, r) => sum + (r.bonus_generations || 0), 0);
-  const successfulReferrals = referrals.filter(r => r.status === 'rewarded').length;
+  const successfulReferrals = referrals.filter((r) => r.status === 'rewarded').length;
 
   if (!user) {
     return null;
@@ -117,7 +115,9 @@ export default function ReferralSystem({ variant = 'card' }: ReferralSystemProps
       <div className="flex items-center gap-3 p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl">
         <Gift className="w-5 h-5 text-violet-400 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white font-medium">Refer friends, get 5 free generations each!</p>
+          <p className="text-sm text-white font-medium">
+            Refer friends, get 5 free generations each!
+          </p>
         </div>
         <button
           onClick={copyReferralLink}
@@ -161,9 +161,7 @@ export default function ReferralSystem({ variant = 'card' }: ReferralSystemProps
 
       {/* Referral Link */}
       <div className="p-6">
-        <label className="block text-sm font-medium text-gray-400 mb-2">
-          Your referral link
-        </label>
+        <label className="block text-sm font-medium text-gray-400 mb-2">Your referral link</label>
         <div className="flex gap-2">
           <div className="flex-1 px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-gray-300 truncate">
             {referralUrl || 'Loading...'}
@@ -216,16 +214,16 @@ export default function ReferralSystem({ variant = 'card' }: ReferralSystemProps
                 key={referral.id}
                 className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg"
               >
-                <div className="text-sm text-gray-300 truncate">
-                  {referral.referred_email}
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  referral.status === 'rewarded'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : referral.status === 'signed_up'
-                      ? 'bg-amber-500/20 text-amber-400'
-                      : 'bg-gray-500/20 text-gray-400'
-                }`}>
+                <div className="text-sm text-gray-300 truncate">{referral.referred_email}</div>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${
+                    referral.status === 'rewarded'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : referral.status === 'signed_up'
+                        ? 'bg-amber-500/20 text-amber-400'
+                        : 'bg-gray-500/20 text-gray-400'
+                  }`}
+                >
                   {referral.status === 'rewarded' && `+${referral.bonus_generations}`}
                   {referral.status === 'signed_up' && 'Signed up'}
                   {referral.status === 'pending' && 'Pending'}

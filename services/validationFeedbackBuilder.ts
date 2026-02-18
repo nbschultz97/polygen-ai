@@ -3,9 +3,10 @@
  * Builds structured feedback packages for retry attempts with escalating guidance
  */
 
-import { GeometricStructureTree } from '../types';
-import { CategorizedError, categorizeErrors, getErrorSummary } from './errorCategorizer';
-import { OpenSCADPitfall, findRelevantPitfalls, formatPitfallGuidance } from './openscadPitfalls';
+import type { GeometricStructureTree } from '../types';
+import type { CategorizedError } from './errorCategorizer';
+import { categorizeErrors, getErrorSummary } from './errorCategorizer';
+import { findRelevantPitfalls, formatPitfallGuidance } from './openscadPitfalls';
 
 export interface ValidationFeedback {
   attempt: number;
@@ -40,7 +41,7 @@ function annotateCodeWithErrors(code: string, errors: CategorizedError[]): strin
     const lineErrors = errorLines.get(lineNum);
 
     if (lineErrors) {
-      const errorMsg = lineErrors.map(e => `[${e.category.toUpperCase()}]`).join(' ');
+      const errorMsg = lineErrors.map((e) => `[${e.category.toUpperCase()}]`).join(' ');
       return `${lineNum.toString().padStart(3)}: ${line}  // <<< ERROR: ${errorMsg}`;
     }
     return `${lineNum.toString().padStart(3)}: ${line}`;
@@ -52,7 +53,7 @@ function annotateCodeWithErrors(code: string, errors: CategorizedError[]): strin
 /**
  * Get retry instructions based on attempt number
  */
-function getRetryInstructions(attempt: number, maxAttempts: number): string {
+function getRetryInstructions(attempt: number, _maxAttempts: number): string {
   switch (attempt) {
     case 1:
       return `
@@ -142,7 +143,7 @@ export function buildValidationFeedback(
   }
 
   // Section 4: Manifold Guard — targeted manifold feedback
-  const hasManifoldErrors = categorizedErrors.some(e => e.category === 'manifold');
+  const hasManifoldErrors = categorizedErrors.some((e) => e.category === 'manifold');
   if (hasManifoldErrors) {
     promptGuidance += `### MANIFOLD GUARD — CRITICAL FIX PROTOCOL\n\n`;
     promptGuidance += `Non-manifold geometry was detected. This makes the model unprintable. Apply ALL of these fixes:\n\n`;
@@ -179,8 +180,8 @@ export function buildValidationFeedback(
     failedCode,
     gst,
     promptGuidance,
-    pitfallsIncluded: relevantPitfalls.map(p => p.id),
-    errorSummary: getErrorSummary(categorizedErrors)
+    pitfallsIncluded: relevantPitfalls.map((p) => p.id),
+    errorSummary: getErrorSummary(categorizedErrors),
   };
 }
 
@@ -203,7 +204,7 @@ export function buildRetryPrompt(feedback: ValidationFeedback): string {
 export const validationFeedbackBuilder = {
   buildValidationFeedback,
   buildRetryPrompt,
-  annotateCodeWithErrors
+  annotateCodeWithErrors,
 };
 
 export default validationFeedbackBuilder;

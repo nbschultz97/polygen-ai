@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Message, WorkflowStep, GeneratedAsset, ImageData } from '../types';
+import type { Message, WorkflowStep, GeneratedAsset, ImageData } from '../types';
 import MessageBubble from './MessageBubble';
 import LoadingIndicator from './LoadingIndicator';
 import EmptyChat from './EmptyChat';
@@ -30,7 +30,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   attachedImage,
   imagePreview,
   onImageUpload,
-  onClearImage
+  onClearImage,
 }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -43,9 +43,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   }, [messages]);
 
   const isProcessing = ['processing', 'planning', 'coding', 'validating'].includes(workflowStep);
-  const showClarifications = currentAsset?.clarifications &&
-    currentAsset.clarifications.length > 0 &&
-    !isProcessing;
+  const showClarifications =
+    currentAsset?.clarifications && currentAsset.clarifications.length > 0 && !isProcessing;
   const showRefinements = currentAsset?.scadCode && !isProcessing;
 
   return (
@@ -81,9 +80,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       )}
 
       {/* Refinement Helpers */}
-      {showRefinements && (
-        <RefinementHelpers onSelectSuggestion={setInput} />
-      )}
+      {showRefinements && <RefinementHelpers onSelectSuggestion={setInput} />}
 
       {/* Input Area */}
       <ChatInput

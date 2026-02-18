@@ -3,7 +3,7 @@
  * Tests the full code generation and validation workflow
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { validateScadCode } from '../../services/scadValidation';
 import { categorizeErrors, getErrorSummary } from '../../services/errorCategorizer';
 import { findRelevantPitfalls, formatPitfallGuidance } from '../../services/openscadPitfalls';
@@ -15,9 +15,7 @@ const sampleGST = {
   version: '1.0' as const,
   name: 'test_box_with_hole',
   description: 'A simple box with a screw hole',
-  globalParameters: [
-    { name: 'box_size', value: 30, unit: 'mm' as const }
-  ],
+  globalParameters: [{ name: 'box_size', value: 30, unit: 'mm' as const }],
   root: {
     id: 'main',
     name: 'assembly',
@@ -30,8 +28,8 @@ const sampleGST = {
         parameters: [
           { name: 'width', value: 30, unit: 'mm' as const },
           { name: 'depth', value: 30, unit: 'mm' as const },
-          { name: 'height', value: 10, unit: 'mm' as const }
-        ]
+          { name: 'height', value: 10, unit: 'mm' as const },
+        ],
       },
       {
         id: 'hole1',
@@ -40,11 +38,11 @@ const sampleGST = {
         booleanOp: 'subtract' as const,
         parameters: [
           { name: 'diameter', value: 3.4, unit: 'mm' as const },
-          { name: 'depth', value: 10, unit: 'mm' as const }
-        ]
-      }
-    ]
-  }
+          { name: 'depth', value: 10, unit: 'mm' as const },
+        ],
+      },
+    ],
+  },
 };
 
 // Sample valid OpenSCAD code
@@ -127,14 +125,14 @@ describe('OpenSCAD Pitfalls', () => {
     const pitfalls = findRelevantPitfalls(errors);
 
     expect(pitfalls.length).toBeGreaterThan(0);
-    expect(pitfalls.some(p => p.id === 'undefined-variable')).toBe(true);
+    expect(pitfalls.some((p) => p.id === 'undefined-variable')).toBe(true);
   });
 
   it('should find pitfalls for empty geometry errors', () => {
     const errors = [{ category: 'empty_geometry' as const, rawMessage: 'SCENE IS EMPTY' }];
     const pitfalls = findRelevantPitfalls(errors);
 
-    expect(pitfalls.some(p => p.id === 'difference-penetration')).toBe(true);
+    expect(pitfalls.some((p) => p.id === 'difference-penetration')).toBe(true);
   });
 
   it('should format pitfall guidance', () => {
@@ -151,14 +149,7 @@ describe('OpenSCAD Pitfalls', () => {
 describe('Validation Feedback Builder', () => {
   it('should build comprehensive feedback for retry attempts', () => {
     const errors = ['Unknown variable "width"'];
-    const feedback = buildValidationFeedback(
-      errors,
-      1,
-      invalidOpenSCAD,
-      sampleGST,
-      1,
-      3
-    );
+    const feedback = buildValidationFeedback(errors, 1, invalidOpenSCAD, sampleGST, 1, 3);
 
     expect(feedback.attempt).toBe(1);
     expect(feedback.maxAttempts).toBe(3);
@@ -169,14 +160,7 @@ describe('Validation Feedback Builder', () => {
 
   it('should include code annotations on second attempt', () => {
     const errors = ['Unknown variable "width"'];
-    const feedback = buildValidationFeedback(
-      errors,
-      1,
-      invalidOpenSCAD,
-      sampleGST,
-      2,
-      3
-    );
+    const feedback = buildValidationFeedback(errors, 1, invalidOpenSCAD, sampleGST, 2, 3);
 
     expect(feedback.promptGuidance).toContain('FAILED CODE');
     expect(feedback.promptGuidance).toContain('error locations');
@@ -184,14 +168,7 @@ describe('Validation Feedback Builder', () => {
 
   it('should use emergency mode on third attempt', () => {
     const errors = ['Unknown variable "width"'];
-    const feedback = buildValidationFeedback(
-      errors,
-      1,
-      invalidOpenSCAD,
-      sampleGST,
-      3,
-      3
-    );
+    const feedback = buildValidationFeedback(errors, 1, invalidOpenSCAD, sampleGST, 3, 3);
 
     expect(feedback.promptGuidance).toContain('EMERGENCY MODE');
     expect(feedback.promptGuidance).toContain('SIMPLEST possible');
@@ -257,6 +234,6 @@ difference() {
     const result = await validateScadCode(codeWithoutEps);
 
     // Should warn about missing epsilon
-    expect(result.warnings?.some(w => w.includes('epsilon'))).toBe(true);
+    expect(result.warnings?.some((w) => w.includes('epsilon'))).toBe(true);
   });
 });

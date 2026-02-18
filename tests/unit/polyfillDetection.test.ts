@@ -5,7 +5,7 @@
  * 2. Telemetry service is called with correct data
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Regex from coderService.ts
 const POLYFILL_REGEX = /<polyfill_detected\s+module="([^"]+)"\s+reasoning="([^"]+)"\s*\/>/g;
@@ -38,7 +38,9 @@ describe('Polyfill Detection System', () => {
 
       expect(matches).toHaveLength(1);
       expect(matches[0].module).toBe('molle_clip');
-      expect(matches[0].reasoning).toBe('Standard module produces thin walls at widths below 20mm.');
+      expect(matches[0].reasoning).toBe(
+        'Standard module produces thin walls at widths below 20mm.'
+      );
     });
 
     it('should match multiple polyfill tags', () => {
@@ -173,7 +175,14 @@ describe('Telemetry Payload Structure', () => {
 
     // Verify structure matches schema
     expect(Object.keys(expectedPayload)).toEqual(
-      expect.arrayContaining(['module_name', 'reasoning', 'scad_code', 'p_succ', 'user_id', 'created_at'])
+      expect.arrayContaining([
+        'module_name',
+        'reasoning',
+        'scad_code',
+        'p_succ',
+        'user_id',
+        'created_at',
+      ])
     );
   });
 });

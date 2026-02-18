@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ImageData } from '../types';
+import type { ImageData } from '../types';
 
 export function useImageUpload() {
   const [attachedImage, setAttachedImage] = useState<ImageData | null>(null);
@@ -28,7 +28,7 @@ export function useImageUpload() {
       const base64Data = base64String.split(',')[1];
       setAttachedImage({
         base64: base64Data,
-        mimeType: file.type
+        mimeType: file.type,
       });
       setImagePreview(base64String);
     };
@@ -44,6 +44,6 @@ export function useImageUpload() {
     attachedImage,
     imagePreview,
     handleImageUpload,
-    clearAttachedImage
+    clearAttachedImage,
   };
 }

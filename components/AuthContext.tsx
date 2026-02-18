@@ -4,10 +4,10 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
+import type { UserProfile } from '../services/authService';
 import {
   authService,
-  UserProfile,
   signIn,
   signUp,
   signOut,
@@ -15,7 +15,7 @@ import {
   onAuthStateChange,
   getUserProfile,
   canGenerate,
-  incrementGenerationCount
+  incrementGenerationCount,
 } from '../services/authService';
 
 interface AuthContextType {
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     canGenerate: handleCanGenerate,
     recordGeneration: handleRecordGeneration,
     refreshProfile,
-    isProUser
+    isProUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

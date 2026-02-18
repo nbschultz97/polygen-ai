@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bot, Loader2 } from 'lucide-react';
-import { WorkflowStep } from '../types';
+import type { WorkflowStep } from '../types';
 
 interface LoadingIndicatorProps {
   workflowStep: WorkflowStep;

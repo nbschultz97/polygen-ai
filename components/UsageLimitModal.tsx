@@ -5,8 +5,6 @@
 
 import React from 'react';
 import { AlertTriangle, ArrowRight, X, Zap } from 'lucide-react';
-import { useAuth } from './AuthContext';
-
 interface UsageLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -20,10 +18,8 @@ export default function UsageLimitModal({
   onClose,
   onUpgrade,
   remaining,
-  limit
+  limit,
 }: UsageLimitModalProps) {
-  const { profile } = useAuth();
-
   if (!isOpen) return null;
 
   const isAtLimit = remaining <= 0;
@@ -32,10 +28,7 @@ export default function UsageLimitModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative w-full max-w-md mx-4 bg-[#0c0c0f] border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden">
@@ -48,9 +41,11 @@ export default function UsageLimitModal({
             <X className="w-5 h-5 text-gray-400" />
           </button>
 
-          <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 ${
-            isAtLimit ? 'bg-red-500/20' : 'bg-amber-500/20'
-          }`}>
+          <div
+            className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 ${
+              isAtLimit ? 'bg-red-500/20' : 'bg-amber-500/20'
+            }`}
+          >
             <AlertTriangle className={`w-7 h-7 ${isAtLimit ? 'text-red-400' : 'text-amber-400'}`} />
           </div>
 
@@ -61,8 +56,7 @@ export default function UsageLimitModal({
           <p className="text-gray-400 text-sm">
             {isAtLimit
               ? `You've used all ${limit} of your free generations this month.`
-              : `You have ${remaining} generation${remaining !== 1 ? 's' : ''} remaining this month.`
-            }
+              : `You have ${remaining} generation${remaining !== 1 ? 's' : ''} remaining this month.`}
           </p>
         </div>
 

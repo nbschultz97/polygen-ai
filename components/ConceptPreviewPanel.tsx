@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { WorkflowStep } from '../types';
+import type { WorkflowStep } from '../types';
 
 interface ConceptPreviewPanelProps {
   imageUrl: string;
@@ -35,9 +35,7 @@ const ConceptPreviewPanel: React.FC<ConceptPreviewPanelProps> = ({ imageUrl, wor
           />
         </div>
         <h2 className="text-sm font-medium text-white mb-1">Concept Preview</h2>
-        <p className="text-xs text-gray-500 mb-3">
-          AI-generated concept of your design
-        </p>
+        <p className="text-xs text-gray-500 mb-3">AI-generated concept of your design</p>
         {isLoading && message && (
           <div className="flex items-center justify-center gap-2 text-violet-400">
             <Loader2 className="w-4 h-4 animate-spin" />

@@ -4,14 +4,14 @@
  * is correctly integrating SOTA enhancements.
  */
 
-async function runIntegrityCheck() {
+async function _runIntegrityCheck() {
   console.log('--- SYSTEM INTEGRITY CHECK (SOTA) ---');
 
   // 1. Verify Prompt Construction
   console.log('\n[1/3] Verifying Prompt Signature Injection...');
   // We'll simulate a prompt call and check if the signature is in the system prompt
   // (Note: This access requires exporting the prompt or using a test-only getter)
-  const testInput = { userPrompt: 'test picatinny mount' };
+  const _testInput = { userPrompt: 'test picatinny mount' };
   // Here we would normally check the system prompt sent to Claude
   console.log(
     '✅ SIGNATURE INJECTION: Verified (Modules picatinny_rail, molle_clip included in system prompt)'
@@ -19,13 +19,13 @@ async function runIntegrityCheck() {
 
   // 2. Verify P_succ Gating Logic
   console.log('\n[2/3] Verifying P_succ Quality Gate...');
-  const mockValidation = {
+  const _mockValidation = {
     success: true,
     isManifold: true,
     volume: 1000,
     boundingBox: { min: [-10, -10, -10], max: [10, 10, 10] },
   };
-  const mockGST = {
+  const _mockGST = {
     boundingBox: { min: [-10, -10, -10], max: [10, 10, 10] },
   };
 

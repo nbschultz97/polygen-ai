@@ -14,7 +14,6 @@ import {
   CreditCard,
   ArrowRight,
   Box,
-  Clock
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { supabase } from '../services/authService';
@@ -27,11 +26,11 @@ interface GenerationStat {
 }
 
 export default function AnalyticsDashboard() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile } = useAuth();
   const [recentGenerations, setRecentGenerations] = useState<GenerationStat[]>([]);
   const [totalGenerations, setTotalGenerations] = useState(0);
   const [subscriptionEnd, setSubscriptionEnd] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -89,20 +88,19 @@ export default function AnalyticsDashboard() {
     return null;
   }
 
-  const usagePercent = profile.generationsLimit > 0
-    ? (profile.generationsUsed / profile.generationsLimit) * 100
-    : 0;
+  const usagePercent =
+    profile.generationsLimit > 0 ? (profile.generationsUsed / profile.generationsLimit) * 100 : 0;
 
   const tierColors = {
     free: 'text-gray-400',
     pro: 'text-violet-400',
-    enterprise: 'text-amber-400'
+    enterprise: 'text-amber-400',
   };
 
   const tierBadgeColors = {
     free: 'bg-gray-500/10 border-gray-500/20',
     pro: 'bg-violet-500/10 border-violet-500/20',
-    enterprise: 'bg-amber-500/10 border-amber-500/20'
+    enterprise: 'bg-amber-500/10 border-amber-500/20',
   };
 
   return (
@@ -220,7 +218,9 @@ export default function AnalyticsDashboard() {
                     <div className="flex-1 h-6 bg-white/[0.04] rounded overflow-hidden">
                       <div
                         className="h-full bg-violet-500/40 rounded"
-                        style={{ width: `${(stat.count / Math.max(...recentGenerations.map(s => s.count))) * 100}%` }}
+                        style={{
+                          width: `${(stat.count / Math.max(...recentGenerations.map((s) => s.count))) * 100}%`,
+                        }}
                       />
                     </div>
                     <div className="w-8 text-sm text-gray-400 text-right">{stat.count}</div>
