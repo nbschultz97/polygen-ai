@@ -2,7 +2,7 @@
  * Tests for openscadLoader pure functions
  * Tests checkForProjection and WASM state management functions
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   checkForProjection,
   getWasmLoadState,
