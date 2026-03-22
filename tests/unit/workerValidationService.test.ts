@@ -35,7 +35,6 @@ describe('WorkerValidationService', () => {
 
     beforeEach(() => {
       originalWorker = globalThis.Worker;
-      // @ts-expect-error - simulating no Worker support
       delete globalThis.Worker;
       vi.resetModules();
     });
