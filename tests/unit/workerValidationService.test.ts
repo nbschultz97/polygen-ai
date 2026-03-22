@@ -35,7 +35,7 @@ describe('WorkerValidationService', () => {
 
     beforeEach(() => {
       originalWorker = globalThis.Worker;
-      // @ts-ignore - simulating no Worker support
+      // @ts-expect-error - simulating no Worker support
       delete globalThis.Worker;
       vi.resetModules();
     });
@@ -57,7 +57,7 @@ describe('WorkerValidationService', () => {
 
     beforeEach(() => {
       originalWorker = globalThis.Worker;
-      // @ts-ignore
+      // @ts-expect-error - mocking Worker with test implementation
       globalThis.Worker = MockWorker;
       vi.resetModules();
       mockPostMessage.mockClear();

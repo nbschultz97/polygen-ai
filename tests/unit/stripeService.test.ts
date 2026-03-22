@@ -7,7 +7,6 @@ import {
   STRIPE_PRICES,
   PRICING_PLANS,
   createCheckoutSession,
-  createPortalSession,
   getSubscriptionStatus,
 } from '../../services/stripeService';
 
@@ -97,12 +96,15 @@ describe('Stripe Service', () => {
 
       const result = await createCheckoutSession('pro');
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/stripe/checkout', expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          'Authorization': 'Bearer mock-token',
-        }),
-      }));
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/stripe/checkout',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer mock-token',
+          }),
+        })
+      );
       expect(result.url).toBe('https://checkout.stripe.com/test');
       expect(result.error).toBeNull();
     });
