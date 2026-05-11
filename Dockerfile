@@ -4,7 +4,7 @@
 # ============================================
 
 # Stage 1: Base image with Node.js and pnpm
-FROM node:20-alpine AS base
+FROM node:26-alpine AS base
 
 # Install pnpm globally
 RUN corepack enable && corepack prepare pnpm@9 --activate
