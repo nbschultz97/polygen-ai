@@ -21,6 +21,7 @@ import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
 import FAQ from './FAQ';
+import ProductStage from './ProductStage';
 import { APP_VERSION } from '../services/geminiService';
 
 interface LandingPageProps {
@@ -287,36 +288,7 @@ export default function LandingPage({
             2 free generations, no account needed. Sign up for more.
           </p>
 
-          {/* Demo Preview - Hero Image */}
-          <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent z-10 pointer-events-none"></div>
-            <div className="aspect-video bg-white/[0.03] border border-white/[0.1] rounded-2xl overflow-hidden relative">
-              <img
-                src="/images/marketing/v2-openscad-hero.png"
-                alt="Complex 3D printed parts created with PolyGen AI"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/50 to-transparent flex flex-col items-center justify-end pb-8 gap-4">
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm mb-2">Example prompt:</p>
-                  <p className="text-white text-lg">
-                    "A desk organizer with 3 pen slots and a phone stand"
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-violet-400">
-                  <Sparkles className="w-5 h-5" />
-                  <span>AI generates OpenSCAD code in seconds</span>
-                </div>
-                <button
-                  onClick={handleTryDemo}
-                  className="group flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-all"
-                >
-                  Try It Now
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <ProductStage onTryDemo={handleTryDemo} />
         </div>
       </section>
 
