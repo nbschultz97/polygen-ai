@@ -1,7 +1,7 @@
 # PolyGen AI - CI/CD Pipeline
-# Runs lint, typecheck, test, build, and deploy to Vercel
+# Runs lint, typecheck, test, and build; Vercel deploys through its GitHub integration
 
-name: CI/CD
+name: CI
 
 on:
   push:
@@ -122,93 +122,3 @@ jobs:
           name: dist
           path: dist/
           retention-days: 7
-
-  # ============================================
-  # Deploy to Vercel
-  # ============================================
-  deploy-preview:
-    name: Deploy Preview
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.event_name == 'pull_request'
-    environment:
-      name: preview
-      url: ${{ steps.deploy.outputs.url }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v7
-        with:
-          name: dist
-          path: dist/
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy to Vercel (Preview)
-        id: deploy
-        run: |
-          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$url" >> $GITHUB_OUTPUT
-
-      - name: Comment PR with preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## Deployment Preview
-
-            | Status | URL |
-            |--------|-----|
-            | Ready | ${{ steps.deploy.outputs.url }} |
-
-            Built from commit: \`${{ github.sha }}\``
-            })
-
-  deploy-production:
-    name: Deploy Production
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.url }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v7
-        with:
-          name: dist
-          path: dist/
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy to Vercel (Production)
-        id: deploy
-        run: |
-          url=$(vercel deploy --prod --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$url" >> $GITHUB_OUTPUT
-
-      - name: Create deployment summary
-        run: |
-          echo "## Production Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| URL | ${{ steps.deploy.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
